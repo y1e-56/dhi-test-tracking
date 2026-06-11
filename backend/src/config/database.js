@@ -10,6 +10,9 @@ dotenv.config();
 
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' 
+    ? { rejectUnauthorized: false } 
+    : false,
 });
 
 pool.on('error', (err) => {
@@ -20,13 +23,37 @@ pool.on('error', (err) => {
 export async function initDb() {
   const client = await pool.connect();
   try {
-    const migrationPath = path.join(__dirname, '../../migrations/001_init.sql');
-    const sql = fs.readFileSync(migrationPath, 'utf-8');
-    await client.query(sql);
+    const migrationsDir = path.join(__dirname, '../../migrations');
+    const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
+    for (const file of files) {
+      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
+      await client.query(sql);
+      console.log(`Migration ${file} applied successfully`);
+    }
     console.log('Database initialized successfully');
   } catch (err) {
     console.error('Failed to initialize database:', err);
     throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Exécute une fonction dans une transaction
+ * @param {Function} fn - Fonction async qui reçoit un client transactionnel
+ * @returns {Promise} Résultat de la fonction
+ */
+export async function withTransaction(fn) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
   } finally {
     client.release();
   }

@@ -3,7 +3,7 @@
 
 -- Enum types
 DO $$ BEGIN
-  CREATE TYPE user_role AS ENUM ('admin', 'test_lead', 'tester', 'developer');
+  CREATE TYPE user_role AS ENUM ('admin', 'chef_testeur', 'tester', 'developer');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
@@ -29,6 +29,11 @@ END $$;
 
 DO $$ BEGIN
   CREATE TYPE notification_type AS ENUM ('anomaly_reported', 'resolution_signaled', 'reopened');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'feature_conforme';
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
@@ -103,11 +108,32 @@ CREATE TABLE IF NOT EXISTS features (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Test cases table
+CREATE TABLE IF NOT EXISTS test_cases (
+  id SERIAL PRIMARY KEY,
+  feature_id INTEGER REFERENCES features(id) ON DELETE CASCADE,
+  campaign_id INTEGER REFERENCES campaigns(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  expected_result TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Ensure legacy schemas get campaign_id on test_cases
+DO $$ BEGIN
+  BEGIN
+    ALTER TABLE test_cases ADD COLUMN IF NOT EXISTS campaign_id INTEGER REFERENCES campaigns(id) ON DELETE CASCADE;
+  EXCEPTION WHEN duplicate_column THEN NULL;
+  END;
+END $$;
+
 -- Anomalies table
 CREATE TABLE IF NOT EXISTS anomalies (
   id SERIAL PRIMARY KEY,
   feature_id INTEGER NOT NULL REFERENCES features(id) ON DELETE CASCADE,
   campaign_id INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  test_case_id INTEGER REFERENCES test_cases(id) ON DELETE SET NULL,
   description TEXT NOT NULL,
   reported_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -116,6 +142,14 @@ CREATE TABLE IF NOT EXISTS anomalies (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Ensure legacy schemas get the test_case_id column
+DO $$ BEGIN
+  BEGIN
+    ALTER TABLE anomalies ADD COLUMN IF NOT EXISTS test_case_id INTEGER REFERENCES test_cases(id) ON DELETE SET NULL;
+  EXCEPTION WHEN duplicate_column THEN NULL;
+  END;
+END $$;
 
 -- Assignments table (feature-to-user assignments)
 CREATE TABLE IF NOT EXISTS assignments (
@@ -146,6 +180,9 @@ CREATE TABLE IF NOT EXISTS campaign_members (
   UNIQUE(campaign_id, user_id)
 );
 
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link_url TEXT;
+
 -- History actions table
 CREATE TABLE IF NOT EXISTS history_actions (
   id SERIAL PRIMARY KEY,
@@ -161,6 +198,7 @@ CREATE TABLE IF NOT EXISTS history_actions (
 CREATE INDEX IF NOT EXISTS idx_campaigns_project_id ON campaigns(project_id);
 CREATE INDEX IF NOT EXISTS idx_features_campaign_id ON features(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_anomalies_feature_id ON anomalies(feature_id);
+CREATE INDEX IF NOT EXISTS idx_anomalies_test_case_id ON anomalies(test_case_id);
 CREATE INDEX IF NOT EXISTS idx_anomalies_campaign_id ON anomalies(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_anomalies_assigned_to ON anomalies(assigned_to);
 CREATE INDEX IF NOT EXISTS idx_assignments_feature_id ON assignments(feature_id);
@@ -168,3 +206,4 @@ CREATE INDEX IF NOT EXISTS idx_assignments_assigned_to ON assignments(assigned_t
 CREATE INDEX IF NOT EXISTS idx_notifications_notified_user_id ON notifications(notified_user_id);
 CREATE INDEX IF NOT EXISTS idx_campaign_members_campaign_id ON campaign_members(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_history_actions_entity_type_entity_id ON history_actions(entity_type, entity_id);
+ 

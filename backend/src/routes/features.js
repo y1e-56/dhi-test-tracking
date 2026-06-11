@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import * as featureService from '../services/featureService.js';
 import { authenticate } from '../middleware/auth.js';
+import bus from '../lib/eventBus.js';
 
 const router = Router();
 
@@ -26,22 +27,26 @@ router.get('/:id', authenticate, async (req, res) => {
 router.post('/', authenticate, async (req, res) => {
   const data = createSchema.parse(req.body);
   const feature = await featureService.createFeature(data);
+  bus.emit('data:changed', { entity: 'features' });
   res.status(201).json({ feature });
 });
 
 router.put('/:id', authenticate, async (req, res) => {
   const feature = await featureService.updateFeature(Number(req.params.id), req.body);
+  bus.emit('data:changed', { entity: 'features' });
   res.json({ feature });
 });
 
 router.patch('/:id/status', authenticate, async (req, res) => {
   const { status } = req.body;
   const feature = await featureService.updateFeatureStatus(Number(req.params.id), status);
+  bus.emit('data:changed', { entity: 'features' });
   res.json({ feature });
 });
 
 router.delete('/:id', authenticate, async (req, res) => {
   await featureService.deleteFeature(Number(req.params.id));
+  bus.emit('data:changed', { entity: 'features' });
   res.status(204).send();
 });
 

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import * as teamService from '../services/teamService.js';
-import * as teamMemberService from '../services/teamMemberService.js';
+import * as campaignMemberService from '../services/campaignMemberService.js';
 import * as campaignService from '../services/campaignService.js';
 import { authenticate } from '../middleware/auth.js';
 
@@ -26,23 +26,23 @@ router.get('/stats/:projectId', authenticate, async (req, res) => {
 
 router.post('/members', authenticate, async (req, res) => {
   const data = addMemberSchema.parse(req.body);
-  await teamMemberService.addMember(data.campaign_id, data.user_id, data.team_type);
+  await campaignMemberService.addMember(data.campaign_id, data.user_id, data.team_type);
   res.status(201).json({ message: 'Membre ajouté' });
 });
 
 router.delete('/members/:campaignId/:userId', authenticate, async (req, res) => {
-  await teamMemberService.removeMember(Number(req.params.campaignId), Number(req.params.userId));
+  await campaignMemberService.removeMember(Number(req.params.campaignId), Number(req.params.userId));
   res.json({ message: 'Membre retiré' });
 });
 
 router.get('/campaigns/:campaignId/members', authenticate, async (req, res) => {
-  const result = await teamMemberService.getCampaignMembers(Number(req.params.campaignId));
+  const result = await campaignMemberService.getCampaignMembersWithDetails(Number(req.params.campaignId));
   res.json(result);
 });
 
 router.get('/users/:userId/campaigns', authenticate, async (req, res) => {
   const campaigns = await campaignService.listCampaigns();
-  const memberships = await teamMemberService.getUserCampaigns(Number(req.params.userId));
+  const memberships = await campaignMemberService.getUserCampaigns(Number(req.params.userId));
   const userCampaigns = campaigns.filter(c => memberships.some(m => m.campaign_id === c.id));
   res.json(userCampaigns);
 });

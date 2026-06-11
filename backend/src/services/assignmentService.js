@@ -1,79 +1,88 @@
-import pool from '../config/database.js';
 import { AppError } from '../middleware/errorHandler.js';
+import bus from '../lib/eventBus.js';
+import * as db from '../db/index.js';
+
+async function checkFeatureNotConforme(featureId) {
+  const feature = await db.features.findById(featureId);
+  if (!feature) throw new AppError('Fonctionnalité non trouvée', 404);
+  if (feature.status === 'conforme') {
+    throw new AppError('Impossible d\'assigner une fonctionnalité déjà marquée conforme', 400);
+  }
+}
 
 export async function createAssignment(featureId, assignedTo) {
-  const result = await pool.query(
-    'INSERT INTO assignments (feature_id, assigned_to) VALUES ($1, $2) RETURNING *',
-    [featureId, assignedTo]
-  );
-  return result.rows[0];
+  await checkFeatureNotConforme(featureId);
+
+  const assignment = await db.assignments.create(featureId, assignedTo);
+
+  const feature = await db.features.findById(featureId);
+  const featureName = feature?.name || 'une fonctionnalité';
+  let campaignName = '';
+  if (feature?.campaign_id) {
+    const campaign = await db.campaigns.findById(feature.campaign_id).catch(() => null);
+    if (campaign) campaignName = campaign.name;
+  }
+
+  bus.emit('assignment:created', { assigned_to: assignedTo, feature_name: featureName, feature_id: featureId, campaign_name: campaignName });
+
+  return assignment;
 }
 
 export async function getAssignment(id) {
-  const result = await pool.query('SELECT * FROM assignments WHERE id = $1', [id]);
-  if (result.rows.length === 0) {
-    throw new AppError('Assignation non trouvée', 404);
-  }
-  return result.rows[0];
+  const assignment = await db.assignments.findById(id);
+  if (!assignment) throw new AppError('Assignation non trouvée', 404);
+  return assignment;
 }
 
 export async function updateAssignment(id, data) {
-  const fields = [];
-  const values = [];
-  let index = 1;
-
-  if (data.assigned_to !== undefined) { fields.push(`assigned_to = $${index++}`); values.push(data.assigned_to); }
-  if (data.status !== undefined) { fields.push(`status = $${index++}`); values.push(data.status); }
-
-  if (fields.length === 0) {
-    throw new AppError('Aucune donnée à mettre à jour', 400);
+  const assignment = await getAssignment(id);
+  if (data.assigned_to !== undefined) {
+    await checkFeatureNotConforme(assignment.feature_id);
   }
 
-  values.push(id);
-  const result = await pool.query(`UPDATE assignments SET ${fields.join(', ')} WHERE id = $${index} RETURNING *`, values);
-  if (result.rows.length === 0) {
-    throw new AppError('Assignation non trouvée', 404);
+  try {
+    const updated = await db.assignments.update(id, data);
+    if (!updated) throw new AppError('Assignation non trouvée', 404);
+
+    if (data.assigned_to !== undefined) {
+      const feature = await db.features.findById(assignment.feature_id);
+      const featureName = feature?.name || 'une fonctionnalité';
+      let campaignName = '';
+      if (feature?.campaign_id) {
+        const campaign = await db.campaigns.findById(feature.campaign_id).catch(() => null);
+        if (campaign) campaignName = campaign.name;
+      }
+
+      bus.emit('assignment:reassigned', { assigned_to: data.assigned_to, feature_name: featureName, feature_id: assignment.feature_id, campaign_name: campaignName });
+    }
+
+    return updated;
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError(error.message, 400);
   }
-  return result.rows[0];
 }
 
 export async function deleteAssignment(id) {
-  const result = await pool.query('DELETE FROM assignments WHERE id = $1 RETURNING id', [id]);
-  if (result.rows.length === 0) {
-    throw new AppError('Assignation non trouvée', 404);
-  }
+  const assignment = await getAssignment(id);
+  await checkFeatureNotConforme(assignment.feature_id);
+
+  const result = await db.assignments.remove(id);
+  if (!result) throw new AppError('Assignation non trouvée', 404);
+  bus.emit('assignment:deleted', { assignment, assignment_id: id, feature_id: assignment.feature_id });
 }
 
 export async function getUserAssignments(userId) {
-  const result = await pool.query(
-    'SELECT * FROM assignments WHERE assigned_to = $1 ORDER BY assigned_at DESC',
-    [userId]
-  );
-  return result.rows;
+  return db.assignments.findByUser(userId);
 }
 
 export async function getCampaignAssignments(campaignId) {
-  const result = await pool.query(
-    `SELECT a.*, f.name as feature_name
-     FROM assignments a
-     JOIN features f ON f.id = a.feature_id
-     WHERE f.campaign_id = $1
-     ORDER BY a.assigned_at DESC`,
-    [campaignId]
-  );
-  return result.rows;
+  return db.assignments.findByCampaign(campaignId);
 }
 
 export async function getFeatureAssignments(featureId) {
-  const result = await pool.query(
-    `SELECT a.*, u.id as user_id, u.email, u.first_name, u.last_name, u.role, u.created_at
-     FROM assignments a
-     JOIN users u ON u.id = a.assigned_to
-     WHERE a.feature_id = $1
-     ORDER BY a.assigned_at DESC`,
-    [featureId]
-  );
-  return result.rows.map((r) => ({
+  const rows = await db.assignments.findByFeature(featureId);
+  return rows.map((r) => ({
     id: r.id,
     feature_id: r.feature_id,
     assigned_to: r.assigned_to,

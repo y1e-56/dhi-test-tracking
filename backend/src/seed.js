@@ -14,20 +14,26 @@ async function seed() {
     await client.query(sql);
     console.log('Database schema ensured');
 
+    await client.query('DELETE FROM campaign_test_leads');
+    await client.query('DELETE FROM project_test_leads');
     await client.query('DELETE FROM history_actions');
     await client.query('DELETE FROM notifications');
     await client.query('DELETE FROM assignments');
     await client.query('DELETE FROM campaign_members');
     await client.query('DELETE FROM anomalies');
+    await client.query('DELETE FROM test_cases');
     await client.query('DELETE FROM features');
     await client.query('DELETE FROM campaigns');
     await client.query('DELETE FROM projects');
     await client.query('DELETE FROM users');
+    await client.query("ALTER SEQUENCE campaign_test_leads_id_seq RESTART WITH 1");
+    await client.query("ALTER SEQUENCE project_test_leads_id_seq RESTART WITH 1");
     await client.query("ALTER SEQUENCE users_id_seq RESTART WITH 1");
     await client.query("ALTER SEQUENCE projects_id_seq RESTART WITH 1");
     await client.query("ALTER SEQUENCE campaigns_id_seq RESTART WITH 1");
     await client.query("ALTER SEQUENCE features_id_seq RESTART WITH 1");
     await client.query("ALTER SEQUENCE anomalies_id_seq RESTART WITH 1");
+    await client.query("ALTER SEQUENCE test_cases_id_seq RESTART WITH 1");
     await client.query("ALTER SEQUENCE assignments_id_seq RESTART WITH 1");
     await client.query("ALTER SEQUENCE campaign_members_id_seq RESTART WITH 1");
     await client.query("ALTER SEQUENCE notifications_id_seq RESTART WITH 1");
@@ -38,16 +44,18 @@ async function seed() {
     const users = await client.query(`
       INSERT INTO users (email, password_hash, first_name, last_name, role) VALUES
         ('admin@test.fr', $1, 'Admin', 'Principal', 'admin'),
-        ('chef@test.fr', $2, 'Chef', 'Projet', 'test_lead'),
-        ('testeur@test.fr', $3, 'Testeur', 'Principal', 'tester'),
-        ('dev@test.fr', $4, 'Developpeur', 'Senior', 'developer')
+        ('chef@test.fr', $2, 'Chef', 'Projet', 'chef_testeur'),
+        ('chef2@test.fr', $3, 'Second', 'Chef', 'chef_testeur'),
+        ('testeur@test.fr', $4, 'Testeur', 'Principal', 'tester'),
+        ('dev@test.fr', $5, 'Developpeur', 'Senior', 'developer')
       RETURNING id, email, role
-    `, [hash('admin123'), hash('chef123'), hash('testeur123'), hash('dev123')]);
+    `, [hash('admin123'), hash('chef123'), hash('chef123'), hash('testeur123'), hash('dev123')]);
 
     const adminId = users.rows[0].id;
     const chefId = users.rows[1].id;
-    const testeurId = users.rows[2].id;
-    const devId = users.rows[3].id;
+    const chef2Id = users.rows[2].id;
+    const testeurId = users.rows[3].id;
+    const devId = users.rows[4].id;
 
     const projects = await client.query(`
       INSERT INTO projects (name, description, start_date, end_date, created_by) VALUES
@@ -59,17 +67,27 @@ async function seed() {
     const project1Id = projects.rows[0].id;
     const project2Id = projects.rows[1].id;
 
+    await client.query(`
+      INSERT INTO project_test_leads (project_id, user_id) VALUES
+        ($1, $2), ($1, $3), ($4, $2)
+    `, [project1Id, chefId, chef2Id, project2Id]);
+
     const campaigns = await client.query(`
-      INSERT INTO campaigns (project_id, name, objective, organization_mode, start_date, end_date, test_lead_id, status) VALUES
-        ($1, 'Campagne Exploratoire V1', 'Tester les fonctionnalités principales en exploration libre', 'exploratory', '2025-01-15', '2025-02-28', $2, 'completed'),
-        ($1, 'Campagne Scénarios Métier', 'Valider les parcours utilisateur critiques', 'scenario', '2025-03-01', '2025-04-15', $2, 'in_progress'),
-        ($2, 'Campagne Mobile PUSH', 'Tester les notifications push et la synchronisation', 'combination', '2025-04-01', '2025-05-30', $3, 'planning')
+      INSERT INTO campaigns (project_id, name, objective, organization_mode, start_date, end_date, status) VALUES
+        ($1, 'Campagne Exploratoire V1', 'Tester les fonctionnalités principales en exploration libre', 'exploratory', '2025-01-15', '2025-02-28', 'completed'),
+        ($1, 'Campagne Scénarios Métier', 'Valider les parcours utilisateur critiques', 'scenario', '2025-03-01', '2025-04-15', 'in_progress'),
+        ($2, 'Campagne Mobile PUSH', 'Tester les notifications push et la synchronisation', 'combination', '2025-04-01', '2025-05-30', 'planning')
       RETURNING id
-    `, [project1Id, chefId, testeurId]);
+    `, [project1Id, project1Id, project2Id]);
 
     const camp1Id = campaigns.rows[0].id;
     const camp2Id = campaigns.rows[1].id;
     const camp3Id = campaigns.rows[2].id;
+
+    await client.query(`
+      INSERT INTO campaign_test_leads (campaign_id, user_id) VALUES
+        ($1, $2), ($3, $2), ($4, $5)
+    `, [camp1Id, chefId, camp2Id, camp3Id, chef2Id]);
 
     await client.query(`
       INSERT INTO campaign_members (campaign_id, user_id, team_type) VALUES
@@ -86,10 +104,22 @@ async function seed() {
         ($3, 'Notifications Push', 'Envoi et réception de notifications push', 'high', 'pending'),
         ($3, 'Synchronisation', 'Sync des données hors-ligne', 'medium', 'pending')
       RETURNING id
-    `, [camp1Id, camp1Id, camp2Id, camp2Id, camp3Id, camp3Id]);
+    `, [camp1Id, camp2Id, camp3Id]);
 
     const feat1Id = features.rows[0].id;
     const feat2Id = features.rows[1].id;
+
+    const testCases = await client.query(`
+      INSERT INTO test_cases (feature_id, campaign_id, name, description, expected_result) VALUES
+        ($1, $2, 'TC-LOGIN-001', 'Vérifier le succès de connexion', 'L''utilisateur est connecté'),
+        ($1, $2, 'TC-LOGIN-002', 'Erreur mot de passe invalide', 'Un message d''erreur apparaît'),
+        ($3, $2, 'TC-PROJECTS-001', 'Rafraîchissement liste projets', 'La liste se met à jour après création')
+      RETURNING id
+    `, [feat1Id, camp1Id, feat2Id]);
+
+    const tcLogin1 = testCases.rows[0].id;
+    const tcLogin2 = testCases.rows[1].id;
+    const tcProjects = testCases.rows[2].id;
 
     await client.query(`
       INSERT INTO assignments (feature_id, assigned_to, status) VALUES
@@ -97,13 +127,13 @@ async function seed() {
     `, [feat1Id, testeurId, feat2Id]);
 
     await client.query(`
-      INSERT INTO anomalies (feature_id, campaign_id, description, reported_by, assigned_to, status) VALUES
-        ($1, $2, 'Le bouton de connexion ne répond pas sur Safari', $3, $4, 'new'),
-        ($1, $2, 'Le message d''erreur "Session expirée" ne s''affiche pas en français', $3, $4, 'in_progress'),
-        ($5, $2, 'La liste des projets ne se rafraîchit pas après création', $6, $4, 'resolution_signaled'),
-        ($5, $2, 'Le filtre par statut des projets est inactif', $6, NULL, 'new')
+      INSERT INTO anomalies (feature_id, campaign_id, test_case_id, description, reported_by, assigned_to, status) VALUES
+        ($1, $2, $3, 'Le bouton de connexion ne répond pas sur Safari', $4, $5, 'new'),
+        ($1, $2, $6, 'Le message d''erreur "Session expirée" ne s''affiche pas en français', $4, $5, 'in_progress'),
+        ($7, $2, $8, 'La liste des projets ne se rafraîchit pas après création', $9, $5, 'resolution_signaled'),
+        ($7, $2, $8, 'Le filtre par statut des projets est inactif', $9, NULL, 'new')
       RETURNING id
-    `, [feat1Id, camp1Id, testeurId, devId, feat2Id, testeurId]);
+    `, [feat1Id, camp1Id, tcLogin1, testeurId, devId, tcLogin2, feat2Id, tcProjects, testeurId]);
 
     console.log('Seed completed successfully');
     console.log('Demo accounts:');

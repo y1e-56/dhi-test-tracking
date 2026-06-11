@@ -1,0 +1,287 @@
+<mxfile host="app.diagrams.net" modified="2026-05-29T11:45:00.000Z" agent="Cascade" version="24.0.0">
+  <diagram id="class-dhi-simple" name="Diagramme de classes simplifié - DHI">
+    <mxGraphModel dx="1800" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="2000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ============ TITRE ============ -->
+        <mxCell id="title" value="Diagramme de classes — DHI Test Tracking" style="text;html=1;align=center;fontSize=28;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="20" width="1200" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ====================================================================== -->
+        <!-- NIVEAU 1 : USER (entité centrale en haut)                              -->
+        <!-- ====================================================================== -->
+        <mxCell id="cUser" value="&lt;b&gt;User&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;color:#666666&quot;&gt;Utilisateur du système&lt;/font&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;div style=&quot;text-align:left;font-size:11px&quot;&gt;• id : int  &lt;i&gt;{clé primaire}&lt;/i&gt;&lt;br/&gt;• email : string  &lt;i&gt;{unique}&lt;/i&gt;&lt;br/&gt;• password : string  &lt;i&gt;{haché}&lt;/i&gt;&lt;br/&gt;• first_name : string&lt;br/&gt;• last_name : string&lt;br/&gt;• role : enum {admin, test_lead, tester, developer}&lt;br/&gt;• is_active : boolean&lt;br/&gt;• created_at : timestamp&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;align=center;verticalAlign=top;fontSize=12;spacingLeft=10;spacingRight=10;spacingTop=8;strokeWidth=2;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="100" width="400" height="240" as="geometry" />
+        </mxCell>
+
+        <!-- ====================================================================== -->
+        <!-- NIVEAU 2 : PROJECT (sous User)                                         -->
+        <!-- ====================================================================== -->
+        <mxCell id="cProject" value="&lt;b&gt;Project&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;color:#666666&quot;&gt;Projet de test&lt;/font&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;div style=&quot;text-align:left;font-size:11px&quot;&gt;• id : int  &lt;i&gt;{clé primaire}&lt;/i&gt;&lt;br/&gt;• name : string&lt;br/&gt;• description : text&lt;br/&gt;• start_date : date&lt;br/&gt;• end_date : date&lt;br/&gt;• is_archived : boolean&lt;br/&gt;• created_by : int  &lt;i&gt;{→ User}&lt;/i&gt;&lt;br/&gt;• created_at : timestamp&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#388e3c;align=center;verticalAlign=top;fontSize=12;spacingLeft=10;spacingRight=10;spacingTop=8;strokeWidth=2;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="450" width="350" height="220" as="geometry" />
+        </mxCell>
+
+        <!-- ====================================================================== -->
+        <!-- NIVEAU 3 : CAMPAIGN (sous Project)                                     -->
+        <!-- ====================================================================== -->
+        <mxCell id="cCampaign" value="&lt;b&gt;Campaign&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;color:#666666&quot;&gt;Campagne de test&lt;/font&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;div style=&quot;text-align:left;font-size:11px&quot;&gt;• id : int  &lt;i&gt;{clé primaire}&lt;/i&gt;&lt;br/&gt;• project_id : int  &lt;i&gt;{→ Project}&lt;/i&gt;&lt;br/&gt;• name : string&lt;br/&gt;• objective : text&lt;br/&gt;• start_date : date&lt;br/&gt;• end_date : date&lt;br/&gt;• created_by : int  &lt;i&gt;{→ User}&lt;/i&gt;&lt;br/&gt;• created_at : timestamp&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffde7;strokeColor=#fbc02d;align=center;verticalAlign=top;fontSize=12;spacingLeft=10;spacingRight=10;spacingTop=8;strokeWidth=2;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="780" width="350" height="220" as="geometry" />
+        </mxCell>
+
+        <!-- ====================================================================== -->
+        <!-- NIVEAU 4 : FEATURE (sous Campaign)                                     -->
+        <!-- ====================================================================== -->
+        <mxCell id="cFeature" value="&lt;b&gt;Feature&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;color:#666666&quot;&gt;Fonctionnalité à tester&lt;/font&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;div style=&quot;text-align:left;font-size:11px&quot;&gt;• id : int  &lt;i&gt;{clé primaire}&lt;/i&gt;&lt;br/&gt;• campaign_id : int  &lt;i&gt;{→ Campaign}&lt;/i&gt;&lt;br/&gt;• name : string&lt;br/&gt;• description : text&lt;br/&gt;• priority : enum {low, medium, high, critical}&lt;br/&gt;• status : enum {pending, conforme, anomaly_detected}&lt;br/&gt;• created_at : timestamp&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;align=center;verticalAlign=top;fontSize=12;spacingLeft=10;spacingRight=10;spacingTop=8;strokeWidth=2;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="1110" width="350" height="220" as="geometry" />
+        </mxCell>
+
+        <!-- ====================================================================== -->
+        <!-- NIVEAU 5 : ANOMALY (sous Feature)                                      -->
+        <!-- ====================================================================== -->
+        <mxCell id="cAnomaly" value="&lt;b&gt;Anomaly&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;color:#666666&quot;&gt;Anomalie / Bug détecté&lt;/font&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;div style=&quot;text-align:left;font-size:11px&quot;&gt;• id : int  &lt;i&gt;{clé primaire}&lt;/i&gt;&lt;br/&gt;• feature_id : int  &lt;i&gt;{→ Feature}&lt;/i&gt;&lt;br/&gt;• campaign_id : int  &lt;i&gt;{→ Campaign}&lt;/i&gt;&lt;br/&gt;• reported_by : int  &lt;i&gt;{→ User}&lt;/i&gt;&lt;br/&gt;• assigned_to : int  &lt;i&gt;{→ User}&lt;/i&gt;&lt;br/&gt;• description : text&lt;br/&gt;• status : enum {new, in_progress, resolution_signaled, validated}&lt;br/&gt;• created_at : timestamp&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;align=center;verticalAlign=top;fontSize=12;spacingLeft=10;spacingRight=10;spacingTop=8;strokeWidth=2;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="1440" width="380" height="240" as="geometry" />
+        </mxCell>
+
+        <!-- ====================================================================== -->
+        <!-- COLONNE DROITE : Classes satellites                                     -->
+        <!-- ====================================================================== -->
+
+        <!-- CAMPAIGN MEMBER -->
+        <mxCell id="cCM" value="&lt;b&gt;CampaignMember&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;color:#666666&quot;&gt;Membre d'une campagne&lt;/font&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;div style=&quot;text-align:left;font-size:11px&quot;&gt;• id : int  &lt;i&gt;{clé primaire}&lt;/i&gt;&lt;br/&gt;• campaign_id : int  &lt;i&gt;{→ Campaign}&lt;/i&gt;&lt;br/&gt;• user_id : int  &lt;i&gt;{→ User}&lt;/i&gt;&lt;br/&gt;• team_type : enum {testers, developers}&lt;br/&gt;• joined_at : timestamp&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffde7;strokeColor=#fbc02d;align=center;verticalAlign=top;fontSize=12;spacingLeft=10;spacingRight=10;spacingTop=8;strokeWidth=2;shadow=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1600" y="780" width="320" height="180" as="geometry" />
+        </mxCell>
+
+        <!-- TASK ASSIGNMENT -->
+        <mxCell id="cTask" value="&lt;b&gt;TaskAssignment&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;color:#666666&quot;&gt;Assignation de tâche&lt;/font&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;div style=&quot;text-align:left;font-size:11px&quot;&gt;• id : int  &lt;i&gt;{clé primaire}&lt;/i&gt;&lt;br/&gt;• feature_id : int  &lt;i&gt;{→ Feature}&lt;/i&gt;&lt;br/&gt;• assigned_to : int  &lt;i&gt;{→ User}&lt;/i&gt;&lt;br/&gt;• assigned_by : int  &lt;i&gt;{→ User}&lt;/i&gt;&lt;br/&gt;• status : enum {pending, in_progress, completed}&lt;br/&gt;• assigned_at : timestamp&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#c62828;align=center;verticalAlign=top;fontSize=12;spacingLeft=10;spacingRight=10;spacingTop=8;strokeWidth=2;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1600" y="1110" width="320" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- ANOMALY NOTIFICATION -->
+        <mxCell id="cNotif" value="&lt;b&gt;AnomalyNotification&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;color:#666666&quot;&gt;Notification d'anomalie&lt;/font&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;div style=&quot;text-align:left;font-size:11px&quot;&gt;• id : int  &lt;i&gt;{clé primaire}&lt;/i&gt;&lt;br/&gt;• anomaly_id : int  &lt;i&gt;{→ Anomaly}&lt;/i&gt;&lt;br/&gt;• notified_user_id : int  &lt;i&gt;{→ User}&lt;/i&gt;&lt;br/&gt;• notification_type : enum {created, resolved, validated, rejected}&lt;br/&gt;• is_read : boolean&lt;br/&gt;• created_at : timestamp&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;align=center;verticalAlign=top;fontSize=12;spacingLeft=10;spacingRight=10;spacingTop=8;strokeWidth=2;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1600" y="1440" width="340" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- ACTION LOG -->
+        <mxCell id="cLog" value="&lt;b&gt;ActionLog&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;color:#666666&quot;&gt;Journal d'audit&lt;/font&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;div style=&quot;text-align:left;font-size:11px&quot;&gt;• id : int  &lt;i&gt;{clé primaire}&lt;/i&gt;&lt;br/&gt;• user_id : int  &lt;i&gt;{→ User}&lt;/i&gt;&lt;br/&gt;• campaign_id : int  &lt;i&gt;{→ Campaign}&lt;/i&gt;&lt;br/&gt;• action_type : string&lt;br/&gt;• entity_type : string&lt;br/&gt;• description : text&lt;br/&gt;• created_at : timestamp&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;align=center;verticalAlign=top;fontSize=12;spacingLeft=10;spacingRight=10;spacingTop=8;strokeWidth=2;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1600" y="450" width="320" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- ====================================================================== -->
+        <!-- RELATIONS — Chaîne principale (composition verticale)                  -->
+        <!-- ====================================================================== -->
+
+        <!-- User → Project : crée -->
+        <mxCell id="r1" value="crée" style="endArrow=none;html=1;strokeWidth=2;exitX=0.25;exitY=1;entryX=1;entryY=0.5;fontStyle=2;fontSize=13;" edge="1" parent="1" source="cUser" target="cProject">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r1a" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r1">
+          <mxGeometry x="-0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        <mxCell id="r1b" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r1">
+          <mxGeometry x="0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- Project ◆→ Campaign : contient -->
+        <mxCell id="r2" value="contient" style="endArrow=diamondThin;endFill=1;endSize=20;startArrow=none;html=1;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontStyle=2;fontSize=13;" edge="1" parent="1" source="cProject" target="cCampaign">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r2a" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r2">
+          <mxGeometry x="-0.8" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        <mxCell id="r2b" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r2">
+          <mxGeometry x="0.8" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- Campaign ◆→ Feature : contient -->
+        <mxCell id="r3" value="contient" style="endArrow=diamondThin;endFill=1;endSize=20;startArrow=none;html=1;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontStyle=2;fontSize=13;" edge="1" parent="1" source="cCampaign" target="cFeature">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r3a" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r3">
+          <mxGeometry x="-0.8" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        <mxCell id="r3b" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r3">
+          <mxGeometry x="0.8" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- Feature ◆→ Anomaly : génère -->
+        <mxCell id="r4" value="génère" style="endArrow=diamondThin;endFill=1;endSize=20;startArrow=none;html=1;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontStyle=2;fontSize=13;" edge="1" parent="1" source="cFeature" target="cAnomaly">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r4a" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r4">
+          <mxGeometry x="-0.8" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        <mxCell id="r4b" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r4">
+          <mxGeometry x="0.8" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- ====================================================================== -->
+        <!-- RELATIONS — Classes satellites                                         -->
+        <!-- ====================================================================== -->
+
+        <!-- ActionLog → User -->
+        <mxCell id="r5" value="effectuée par" style="endArrow=open;dashed=1;html=1;strokeWidth=2;exitX=0;exitY=0.5;entryX=1;entryY=0.2;fontStyle=2;fontSize=12;endSize=10;" edge="1" parent="1" source="cLog" target="cUser">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r5a" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r5">
+          <mxGeometry x="-0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        <mxCell id="r5b" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r5">
+          <mxGeometry x="0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- ActionLog → Campaign -->
+        <mxCell id="r6" value="tracée pour" style="endArrow=open;dashed=1;html=1;strokeWidth=2;exitX=0;exitY=0.9;entryX=1;entryY=0.2;fontStyle=2;fontSize=12;endSize=10;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="cLog" target="cCampaign">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1400" y="630" />
+              <mxPoint x="1400" y="860" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r6a" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r6">
+          <mxGeometry x="-0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        <mxCell id="r6b" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r6">
+          <mxGeometry x="0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- User ↔ CampaignMember ↔ Campaign -->
+        <mxCell id="r7" value="participe à" style="endArrow=none;html=1;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontStyle=2;fontSize=13;" edge="1" parent="1" source="cUser" target="cCM">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r7a" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r7">
+          <mxGeometry x="-0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        <mxCell id="r7b" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r7">
+          <mxGeometry x="0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+
+        <mxCell id="r8" value="regroupe" style="endArrow=none;html=1;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontStyle=2;fontSize=13;" edge="1" parent="1" source="cCampaign" target="cCM">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r8a" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r8">
+          <mxGeometry x="-0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        <mxCell id="r8b" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r8">
+          <mxGeometry x="0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- Feature → TaskAssignment -->
+        <mxCell id="r9" value="assignée via" style="endArrow=diamondThin;endFill=1;endSize=20;startArrow=none;html=1;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontStyle=2;fontSize=13;" edge="1" parent="1" source="cFeature" target="cTask">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r9a" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r9">
+          <mxGeometry x="-0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        <mxCell id="r9b" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r9">
+          <mxGeometry x="0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- TaskAssignment → User -->
+        <mxCell id="r10" value="assignée à" style="endArrow=open;dashed=1;html=1;strokeWidth=2;exitX=0.5;exitY=0;entryX=0.8;entryY=1;fontStyle=2;fontSize=12;endSize=10;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="cTask" target="cUser">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r10a" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r10">
+          <mxGeometry x="-0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        <mxCell id="r10b" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r10">
+          <mxGeometry x="0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- Anomaly → User (reported_by) -->
+        <mxCell id="r11" value="déclarée par" style="endArrow=open;dashed=1;html=1;strokeWidth=2;exitX=0.5;exitY=0;entryX=0.2;entryY=1;fontStyle=2;fontSize=12;endSize=10;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="cAnomaly" target="cUser">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="490" y="1300" />
+              <mxPoint x="490" y="1200" />
+              <mxPoint x="1100" y="1200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r11a" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r11">
+          <mxGeometry x="-0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        <mxCell id="r11b" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r11">
+          <mxGeometry x="0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- Anomaly → Notification -->
+        <mxCell id="r12" value="déclenche" style="endArrow=diamondThin;endFill=1;endSize=20;startArrow=none;html=1;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontStyle=2;fontSize=13;" edge="1" parent="1" source="cAnomaly" target="cNotif">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r12a" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r12">
+          <mxGeometry x="-0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        <mxCell id="r12b" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r12">
+          <mxGeometry x="0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- Notification → User -->
+        <mxCell id="r13" value="notifie" style="endArrow=open;dashed=1;html=1;strokeWidth=2;exitX=0.5;exitY=0;entryX=1;entryY=0.8;fontStyle=2;fontSize=12;endSize=10;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="cNotif" target="cUser">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1770" y="1300" />
+              <mxPoint x="1770" y="1200" />
+              <mxPoint x="1300" y="1200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r13a" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r13">
+          <mxGeometry x="-0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        <mxCell id="r13b" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;" vertex="1" connectable="0" parent="r13">
+          <mxGeometry x="0.85" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+
+        <!-- ====================================================================== -->
+        <!-- LÉGENDE (en bas, centrée)                                               -->
+        <!-- ====================================================================== -->
+        <mxCell id="leg" value="Légende" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;verticalAlign=top;fontStyle=1;fontSize=16;align=center;spacingTop=10;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="1780" width="1400" height="180" as="geometry" />
+        </mxCell>
+
+        <!-- composition -->
+        <mxCell id="lg1a" style="endArrow=diamondThin;endFill=1;endSize=20;startArrow=none;html=1;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="540" y="1830" as="sourcePoint" />
+            <mxPoint x="680" y="1830" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lg1b" value="&lt;b&gt;Composition ◆&lt;/b&gt; : « est composé de » — le tout possède la partie (ex: Project contient Campaign)" style="text;html=1;align=left;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="700" y="1815" width="1160" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- association -->
+        <mxCell id="lg2a" style="endArrow=none;html=1;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="540" y="1870" as="sourcePoint" />
+            <mxPoint x="680" y="1870" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lg2b" value="&lt;b&gt;Association simple&lt;/b&gt; : lien logique entre deux classes (ex: User participe à CampaignMember)" style="text;html=1;align=left;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="700" y="1855" width="1160" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- référence -->
+        <mxCell id="lg3a" style="endArrow=open;html=1;strokeWidth=2;endSize=10;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="540" y="1910" as="sourcePoint" />
+            <mxPoint x="680" y="1910" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lg3b" value="&lt;b&gt;Référence (dépendance)&lt;/b&gt; : clé étrangère, la source connaît la cible (ex: Anomaly → User)" style="text;html=1;align=left;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="700" y="1895" width="1160" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- cardinalités -->
+        <mxCell id="lg4" value="&lt;b&gt;Cardinalités&lt;/b&gt; :  &lt;b&gt;1&lt;/b&gt; exactement un  ·  &lt;b&gt;0..1&lt;/b&gt; optionnel  ·  &lt;b&gt;0..*&lt;/b&gt; zéro ou plusieurs  ·  &lt;b&gt;1..*&lt;/b&gt; au moins un" style="text;html=1;align=left;fontSize=13;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="540" y="1930" width="1320" height="25" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

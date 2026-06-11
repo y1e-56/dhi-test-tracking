@@ -7,6 +7,7 @@ import anomaliesRouter from './anomalies.js';
 import tasksRouter from './tasks.js';
 import teamsRouter from './teams.js';
 import dashboardRouter from './dashboard.js';
+import testCasesRouter from './test-cases.js';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/anomalies', anomaliesRouter);
 router.use('/tasks', tasksRouter);
 router.use('/teams', teamsRouter);
 router.use('/dashboard', dashboardRouter);
+router.use('/test-cases', testCasesRouter);
 
 export default router;
