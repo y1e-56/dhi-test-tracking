@@ -14,14 +14,20 @@ export function initMailTransport() {
   transporter = nodemailer.createTransport({
     host,
     port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_SECURE === 'true',
+    secure: false,
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
   });
 
-  console.log('[email] Transport SMTP initialisé');
+  transporter.verify((err) => {
+    if (err) {
+      console.error('[email] Échec vérification SMTP:', err.message);
+    } else {
+      console.log('[email] Transport SMTP OK — prêt à envoyer');
+    }
+  });
 }
 
 export async function sendEmail({ to, subject, html }) {
@@ -32,7 +38,7 @@ export async function sendEmail({ to, subject, html }) {
     return;
   }
 
-  const from = process.env.EMAIL_FROM || '"DHI Test Tracking" <noreply@dhi-test-tracking.com>';
+  const from = process.env.EMAIL_FROM || `"DHI Test Tracking" <${process.env.SMTP_USER}>`;
 
   await transporter.sendMail({ from, to, subject, html });
 }
