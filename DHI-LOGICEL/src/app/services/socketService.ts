@@ -1,7 +1,8 @@
 import { io, Socket } from 'socket.io-client';
 
 const hostname = window.location.hostname;
-const SOCKET_URL = `http://${hostname}:5000`;
+const API_BASE = (import.meta as any).env?.VITE_API_URL || `http://${hostname}:5000/api`;
+const SOCKET_URL = API_BASE.replace(/\/api\/?$/, '');
 
 type EventHandler = (...args: any[]) => void;
 

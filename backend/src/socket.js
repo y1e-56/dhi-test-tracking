@@ -6,7 +6,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 export function initializeSocket(httpServer) {
   const io = new Server(httpServer, {
     cors: {
-      origin: process.env.CORS_ORIGIN === 'dev' ? true : 'http://localhost:5173',
+      origin: process.env.CORS_ORIGIN === 'dev' || process.env.CORS_ORIGIN === '*'
+        ? true
+        : [process.env.CORS_ORIGIN, 'http://localhost:5173'].filter(Boolean),
       methods: ['GET', 'POST'],
       credentials: true
     }
