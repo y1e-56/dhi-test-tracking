@@ -1,21 +1,20 @@
 let sendMail = null;
 
-const mgKey = process.env.MAILGUN_API_KEY;
-const mgDomain = process.env.MAILGUN_DOMAIN;
+const rsKey = process.env.RESEND_API_KEY;
 
-if (mgKey && mgDomain) {
-  const Mailgun = (await import('mailgun.js')).default;
-  const mg = new Mailgun(FormData).client({ username: 'api', key: mgKey });
+if (rsKey) {
+  const { Resend } = await import('resend');
+  const resend = new Resend(rsKey);
   sendMail = ({ to, subject, html }) => {
-    const from = process.env.EMAIL_FROM || `"DHI Test Tracking" <mailgun@${mgDomain}>`;
-    return mg.messages.create(mgDomain, {
+    const from = process.env.EMAIL_FROM || '"DHI Test Tracking" <onboarding@resend.dev>';
+    return resend.emails.send({
       from,
       to: Array.isArray(to) ? to : [to],
       subject,
       html,
     });
   };
-  console.log('[email] Mailgun initialisé');
+  console.log('[email] Resend initialisé');
 } else if (process.env.SMTP_HOST) {
   const nodemailer = (await import('nodemailer')).default;
   const transporter = nodemailer.createTransport({
