@@ -85,14 +85,9 @@ export function Layout({ children }: { children: ReactNode }) {
     }
   };
 
-  console.log('[Layout] Rendu — langue actuelle:', i18n.language);
-
   const toggleLanguage = () => {
     const newLang = i18n.language === 'fr' ? 'en' : 'fr';
-    console.log('[i18n] toggleLanguage — avant:', i18n.language, '→ après:', newLang);
-    i18n.changeLanguage(newLang).then(() => {
-      console.log('[i18n] changeLanguage terminé — langue:', i18n.language, '| localStorage:', localStorage.getItem('i18nextLng'));
-    });
+    i18n.changeLanguage(newLang);
   };
 
   const SidebarContent = () => (

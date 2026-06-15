@@ -21,10 +21,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const refreshNotifications = useCallback(async () => {
     try {
       const data = await anomalyService.getNotifications();
-      console.log('[NotificationContext] refreshNotifications OK — %d notifications', data.length);
       setNotifications(data);
     } catch (e) {
-      console.error('[NotificationContext] refreshNotifications ERROR:', e);
       toast.error('Erreur refreshNotifications : ' + getErrorMessage(e as any));
     }
   }, []);

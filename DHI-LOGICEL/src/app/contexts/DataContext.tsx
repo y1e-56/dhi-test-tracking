@@ -109,7 +109,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
 
     const handleNotification = (notification: any) => {
-      console.log('[DataContext] Notification reçue via Socket.IO:', notification);
       const mapped = mapNotificationFromBackend(notification);
       setNotifications(prev => {
         if (prev.some(n => n.id === mapped.id)) return prev;
@@ -118,21 +117,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
 
     const handleDataChanged = (data: { entity: string }) => {
-      console.log('[DataContext] data-changed:', data.entity);
       switch (data.entity) {
         case 'projects': refreshProjets(); break;
         case 'campaigns': refreshCampagnes(); break;
-        case 'notifications':
-          console.log('[DataContext] Refresh notifications via data-changed');
-          refreshNotifications();
-          break;
+        case 'notifications': refreshNotifications(); break;
         case 'features': refreshFonctionnalites(); refreshNotifications(); break;
         case 'anomalies': refreshAnomalies(); refreshNotifications(); break;
       }
     };
 
     const handleReconnect = () => {
-      console.log('[DataContext] Socket reconnecté — re-abonnement');
       socket.off('campaign-created', handleCampaignCreated);
       socket.on('campaign-created', handleCampaignCreated);
       socket.off('campaign-updated', handleCampaignUpdated);
