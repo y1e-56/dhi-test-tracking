@@ -31,8 +31,6 @@ if (rsKey) {
     return transporter.sendMail({ from, to, subject, html });
   };
   console.log('[email] SMTP initialisé');
-} else {
-  console.log('[email] Aucun service email configuré — emails désactivés');
 }
 
 export async function sendEmail({ to, subject, html }) {
