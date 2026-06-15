@@ -23,4 +23,6 @@ i18n
     },
   });
 
+console.log('[i18n] Initialisé — langue détectée:', i18n.language, '| localStorage:', localStorage.getItem('i18nextLng'));
+
 export default i18n;
