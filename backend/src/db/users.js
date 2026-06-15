@@ -44,7 +44,7 @@ export async function update(id, data, client = null) {
 
 export async function list(client = null) {
   const c = client || pool;
-  const result = await c.query('SELECT id, email, first_name, last_name, role, created_at, locked_until, failed_login_attempts, date_suppression FROM users ORDER BY id');
+  const result = await c.query("SELECT id, email, first_name, last_name, role, created_at, locked_until, failed_login_attempts, date_suppression FROM users WHERE date_suppression IS NULL ORDER BY id");
   return result.rows;
 }
 
