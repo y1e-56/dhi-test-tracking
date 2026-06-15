@@ -21,6 +21,7 @@ export function setupEventSubscribers(io) {
   // ── Socket émissions (adaptateur interne) ──────────────
 
   bus.on('feature:conforme', async ({ feature, campaign_name, test_lead_id }) => {
+    console.log('[notif] feature:conforme — feature_id=%s, test_lead=%s', feature.id, test_lead_id);
     try {
       const notification = await notificationService.createNotification({
         notified_user_id: test_lead_id,
@@ -55,6 +56,7 @@ export function setupEventSubscribers(io) {
 
   bus.on('anomaly:created', async ({ anomaly, assigned_to }) => {
     if (!assigned_to) return;
+    console.log('[notif] anomaly:created — anomaly_id=%s, assigned_to=%s', anomaly.id, assigned_to);
     try {
       const notification = await notificationService.createNotification({
         notified_user_id: assigned_to,
@@ -93,6 +95,7 @@ export function setupEventSubscribers(io) {
 
   bus.on('anomaly:resolution_signaled', async ({ anomaly, reported_by }) => {
     if (!reported_by) return;
+    console.log('[notif] anomaly:resolution_signaled — anomaly_id=%s, reported_by=%s', anomaly.id, reported_by);
     try {
       const notification = await notificationService.createNotification({
         notified_user_id: reported_by,
@@ -127,6 +130,7 @@ export function setupEventSubscribers(io) {
 
   bus.on('anomaly:rejected', async ({ anomaly, reported_by }) => {
     if (!reported_by) return;
+    console.log('[notif] anomaly:rejected — anomaly_id=%s, reported_by=%s', anomaly.id, reported_by);
     try {
       const notification = await notificationService.createNotification({
         notified_user_id: reported_by,
@@ -160,6 +164,7 @@ export function setupEventSubscribers(io) {
   });
 
   bus.on('assignment:created', async ({ assigned_to, feature_name, feature_id, campaign_name }) => {
+    console.log('[notif] assignment:created — feature="%s", assigned_to=%s', feature_name, assigned_to);
     try {
       const notification = await notificationService.createNotification({
         notified_user_id: assigned_to,
@@ -193,6 +198,7 @@ export function setupEventSubscribers(io) {
   });
 
   bus.on('assignment:reassigned', async ({ assigned_to, feature_name, feature_id, campaign_name }) => {
+    console.log('[notif] assignment:reassigned — feature="%s", assigned_to=%s', feature_name, assigned_to);
     try {
       const notification = await notificationService.createNotification({
         notified_user_id: assigned_to,

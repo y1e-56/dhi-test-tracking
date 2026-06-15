@@ -118,10 +118,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
 
     const handleDataChanged = (data: { entity: string }) => {
+      console.log('[DataContext] data-changed:', data.entity);
       switch (data.entity) {
         case 'projects': refreshProjets(); break;
         case 'campaigns': refreshCampagnes(); break;
-        case 'notifications': refreshNotifications(); break;
+        case 'notifications':
+          console.log('[DataContext] Refresh notifications via data-changed');
+          refreshNotifications();
+          break;
         case 'features': refreshFonctionnalites(); refreshNotifications(); break;
         case 'anomalies': refreshAnomalies(); refreshNotifications(); break;
       }
