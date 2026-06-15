@@ -14,9 +14,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return i18n.language;
   });
 
+  console.log('[LanguageProvider] Render — lang:', lang, '| i18n.language:', i18n.language);
+
   useEffect(() => {
     const handleChange = (lng: string) => {
-      console.log('[LanguageProvider] languageChanged →', lng);
+      console.log('[LanguageProvider] languageChanged →', lng, '| has EN:', i18n.hasResourceBundle?.('en', 'translation'), '| has FR:', i18n.hasResourceBundle?.('fr', 'translation'), '| t(dashboard):', i18n.t('nav.dashboard'));
       setLang(lng);
     };
     console.log('[LanguageProvider] Subscription au languageChanged');
