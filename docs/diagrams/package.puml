@@ -1,0 +1,78 @@
+@startuml DHI_Package
+title Diagramme de packages - DHI Test Tracking (Backend)
+
+skinparam packageStyle folder
+skinparam shadowing false
+
+package "dhi-test-tracking" {
+
+  package "backend" {
+
+    package "config" {
+      [database.js]
+    }
+
+    package "middleware" {
+      [auth.js]
+    }
+
+    package "models" <<Domain>> {
+      [User]
+      [Project]
+      [Campaign]
+      [CampaignMember]
+      [Feature]
+      [TaskAssignment]
+      [Anomaly]
+      [AnomalyNotification]
+      [ActionLog]
+    }
+
+    package "controllers" <<Application>> {
+      [authController]
+      [projectController]
+      [campaignController]
+      [teamController]
+      [taskController]
+      [anomalyController]
+      [featureStatusController]
+      [dashboardController]
+    }
+
+    package "routes" <<Presentation>> {
+      [authRoutes]
+      [projectRoutes]
+      [campaignRoutes]
+      [teamRoutes]
+      [taskRoutes]
+      [anomalyRoutes]
+      [featureStatusRoutes]
+      [dashboardRoutes]
+    }
+
+    package "utils" {
+      [helpers]
+    }
+
+    [server.js] <<entrypoint>>
+  }
+
+  package "frontend" <<external>> {
+    [Client React]
+  }
+}
+
+database "PostgreSQL" as DB
+
+' Dépendances
+[server.js] --> routes
+routes --> controllers
+routes --> middleware
+controllers --> models
+controllers --> utils
+models --> config
+config --> DB
+middleware ..> models : User.findById
+[Client React] ..> [server.js] : HTTP / JSON
+
+@enduml

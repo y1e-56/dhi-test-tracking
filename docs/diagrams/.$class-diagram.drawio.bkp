@@ -1,0 +1,13 @@
+<mxfile host="Electron" agent="Cascade">
+  <diagram id="class-dhi" name="Diagramme de classes - DHI">
+    <mxGraphModel dx="2195" dy="1375" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="2000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=28;fontStyle=1;" value="Diagramme de classes — DHI Test Tracking" vertex="1">
+          <mxGeometry height="50" width="1200" x="600" y="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

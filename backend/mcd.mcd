@@ -1,0 +1,94 @@
+# MCD pour Mocodo — DHI Test Tracking (d'après migrations/001_init.sql)
+
+Utilisateurs:
+  *id
+  email
+  password_hash
+  first_name
+  last_name
+  role
+  failed_login_attempts
+  locked_until
+  created_at
+
+Projets:
+  *id
+  name
+  description
+  start_date
+  end_date
+  is_archived
+  created_at
+
+Campagnes:
+  *id
+  name
+  objective
+  organization_mode
+  start_date
+  end_date
+  status
+  created_at
+
+Fonctionnalites:
+  *id
+  name
+  description
+  priority
+  status
+  created_at
+  updated_at
+
+Anomalies:
+  *id
+  description
+  status
+  resolution_description
+  created_at
+  updated_at
+
+Assignments:
+  *id
+  assigned_at
+  status
+
+Notifications:
+  *id
+  notification_type
+  is_read
+  created_at
+
+MembresCampagne:
+  *id
+  team_type
+
+HistoriqueActions:
+  *id
+  entity_type
+  entity_id
+  action_type
+  description
+  created_at
+
+# Associations et cardinalités
+
+CreationProjet: Utilisateurs 0,N - Projets 0,1
+GestionCampagnes: Projets 1,1 - Campagnes 0,N
+ResponsableCampagne: Utilisateurs 0,N - Campagnes 0,1
+OrganisationFonctionnalites: Campagnes 1,1 - Fonctionnalites 0,N
+DeclarationsAnomalies: Fonctionnalites 1,1 - Anomalies 0,N
+AnomaliesCampagne: Campagnes 1,1 - Anomalies 0,N
+Signalements: Utilisateurs 0,N - Anomalies 0,1 [reported_by]
+AttributionsAnomalies: Utilisateurs 0,N - Anomalies 0,1 [assigned_to]
+AssignmentsFeatures: Fonctionnalites 1,1 - Assignments 0,N
+AssignmentsUsers: Utilisateurs 1,1 - Assignments 0,N
+NotificationsUsers: Utilisateurs 1,1 - Notifications 0,N
+NotificationsAnomalies: Anomalies 0,1 - Notifications 0,N
+MembresCampagneUsers: Utilisateurs 1,1 - MembresCampagne 0,N
+MembresCampagneCampagnes: Campagnes 1,1 - MembresCampagne 0,N
+HistoriqueAuteur: Utilisateurs 0,N - HistoriqueActions 0,1
+HistoriqueEntite: HistoriqueActions 0,N - Projets 0,1
+HistoriqueEntite2: HistoriqueActions 0,N - Campagnes 0,1
+HistoriqueEntite3: HistoriqueActions 0,N - Fonctionnalites 0,1
+HistoriqueEntite4: HistoriqueActions 0,N - Anomalies 0,1
+HistoriqueEntite5: HistoriqueActions 0,N - Utilisateurs 0,1

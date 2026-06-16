@@ -1,0 +1,41 @@
+@startuml DHI_Sequence_Login
+title Diagramme de séquence - Authentification (login)
+
+actor Utilisateur
+participant ":Frontend" as UI
+participant ":authRoutes" as Router
+participant ":authController" as Ctrl
+participant ":User (Model)" as Model
+participant "bcrypt" as Bcrypt
+participant "jsonwebtoken" as JWT
+database "PostgreSQL" as DB
+
+Utilisateur -> UI : Saisir email + mot de passe
+UI -> Router : POST /api/auth/login
+Router -> Ctrl : login(req,res)
+Ctrl -> Model : findByEmail(email)
+Model -> DB : SELECT * FROM users WHERE email=$1
+DB --> Model : user
+Model --> Ctrl : user
+
+alt Compte verrouillé
+  Ctrl -> Model : isAccountLocked(email)
+  Model --> Ctrl : true
+  Ctrl --> UI : 423 Locked
+else Identifiants valides
+  Ctrl -> Bcrypt : compare(password, hash)
+  Bcrypt --> Ctrl : true
+  Ctrl -> Model : resetFailedAttempts(email)
+  Model -> DB : UPDATE users
+  Ctrl -> JWT : sign({id,role}, secret)
+  JWT --> Ctrl : token
+  Ctrl --> UI : 200 OK { token, user }
+  UI --> Utilisateur : Redirection dashboard
+else Mot de passe invalide
+  Bcrypt --> Ctrl : false
+  Ctrl -> Model : incrementFailedAttempts(email)
+  Model -> DB : UPDATE users
+  Ctrl --> UI : 401 Unauthorized
+end
+
+@enduml

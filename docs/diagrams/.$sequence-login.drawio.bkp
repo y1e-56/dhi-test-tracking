@@ -1,0 +1,78 @@
+<mxfile host="app.diagrams.net" modified="2026-05-25T17:10:00.000Z" agent="Cascade" version="24.0.0">
+  <diagram id="seq-login" name="Séquence - Login">
+    <mxGraphModel dx="1422" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Diagramme de séquence — Authentification (Login)" style="text;html=1;align=center;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="450" y="15" width="900" height="34" as="geometry" />
+        </mxCell>
+
+        <!-- ============ LIFELINES ============ -->
+        <mxCell id="ll_user"   value="Utilisateur"     style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="60"   y="70" width="120" height="1180" as="geometry" /></mxCell>
+        <mxCell id="ll_ui"     value=":Frontend"       style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;outlineConnect=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="280"  y="70" width="120" height="1180" as="geometry" /></mxCell>
+        <mxCell id="ll_router" value=":authRoutes"     style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;outlineConnect=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="500"  y="70" width="120" height="1180" as="geometry" /></mxCell>
+        <mxCell id="ll_ctrl"   value=":authController" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;outlineConnect=0;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="720"  y="70" width="140" height="1180" as="geometry" /></mxCell>
+        <mxCell id="ll_model"  value=":User"           style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;outlineConnect=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="960"  y="70" width="120" height="1180" as="geometry" /></mxCell>
+        <mxCell id="ll_bcrypt" value="bcrypt"          style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;outlineConnect=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1180" y="70" width="120" height="1180" as="geometry" /></mxCell>
+        <mxCell id="ll_jwt"    value="jsonwebtoken"    style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;outlineConnect=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1400" y="70" width="140" height="1180" as="geometry" /></mxCell>
+        <mxCell id="ll_db"     value="PostgreSQL"      style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1640" y="70" width="140" height="1180" as="geometry" /></mxCell>
+
+        <!-- ============ Phase commune (recherche utilisateur) ============ -->
+        <mxCell id="m1" value="1: saisir email + mot de passe" style="html=1;endArrow=block;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_user" target="ll_ui"><mxGeometry relative="1" as="geometry"><mxPoint y="180" as="sourcePoint"/><mxPoint y="180" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m2" value="2: POST /api/auth/login { email, password }" style="html=1;endArrow=block;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_ui" target="ll_router"><mxGeometry relative="1" as="geometry"><mxPoint y="230" as="sourcePoint"/><mxPoint y="230" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m3" value="3: appeler le contrôleur login(req, res)" style="html=1;endArrow=block;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_router" target="ll_ctrl"><mxGeometry relative="1" as="geometry"><mxPoint y="280" as="sourcePoint"/><mxPoint y="280" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m4" value="4: rechercher l'utilisateur par email" style="html=1;endArrow=block;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_ctrl" target="ll_model"><mxGeometry relative="1" as="geometry"><mxPoint y="330" as="sourcePoint"/><mxPoint y="330" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m5" value="5: SELECT * FROM users WHERE email=?" style="html=1;endArrow=block;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_model" target="ll_db"><mxGeometry relative="1" as="geometry"><mxPoint y="380" as="sourcePoint"/><mxPoint y="380" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m6" value="6: ligne utilisateur (ou null)" style="html=1;endArrow=open;dashed=1;fontSize=12;fontStyle=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_db" target="ll_model"><mxGeometry relative="1" as="geometry"><mxPoint y="430" as="sourcePoint"/><mxPoint y="430" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m6b" value="7: objet utilisateur" style="html=1;endArrow=open;dashed=1;fontSize=12;fontStyle=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_model" target="ll_ctrl"><mxGeometry relative="1" as="geometry"><mxPoint y="475" as="sourcePoint"/><mxPoint y="475" as="targetPoint"/></mxGeometry></mxCell>
+
+        <!-- ============ Fragment alt ============ -->
+        <mxCell id="alt" value="alt" style="shape=umlFrame;whiteSpace=wrap;html=1;fillColor=none;fontStyle=1;fontSize=13;strokeColor=#444444;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="40" y="530" width="1770" height="700" as="geometry" />
+        </mxCell>
+
+        <!-- Branche 1 : compte verrouillé -->
+        <mxCell id="cond1" value="[ compte verrouillé ]" style="text;html=1;align=left;fontSize=12;fontStyle=2;fontColor=#B22222;labelBackgroundColor=#fff2f2;" vertex="1" parent="1">
+          <mxGeometry x="80" y="580" width="320" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="lk1" value="8a: vérifier si le compte est verrouillé" style="html=1;endArrow=block;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_ctrl" target="ll_model"><mxGeometry relative="1" as="geometry"><mxPoint y="620" as="sourcePoint"/><mxPoint y="620" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="lk2" value="9a: vrai (verrouillé)" style="html=1;endArrow=open;dashed=1;fontSize=12;fontStyle=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_model" target="ll_ctrl"><mxGeometry relative="1" as="geometry"><mxPoint y="660" as="sourcePoint"/><mxPoint y="660" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="lk3" value="10a: 423 Locked { message : 'compte verrouillé' }" style="html=1;endArrow=open;dashed=1;fontSize=12;fontStyle=2;strokeColor=#B22222;fontColor=#B22222;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_ctrl" target="ll_ui"><mxGeometry relative="1" as="geometry"><mxPoint y="700" as="sourcePoint"/><mxPoint y="700" as="targetPoint"/></mxGeometry></mxCell>
+
+        <!-- séparateur -->
+        <mxCell id="sep1" value="" style="line;strokeColor=#999999;dashed=1;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="740" width="1740" height="1" as="geometry" />
+        </mxCell>
+
+        <!-- Branche 2 : identifiants valides -->
+        <mxCell id="cond2" value="[ mot de passe correct ]" style="text;html=1;align=left;fontSize=12;fontStyle=2;fontColor=#2E8B57;labelBackgroundColor=#f2fbf5;" vertex="1" parent="1">
+          <mxGeometry x="80" y="755" width="450" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="ok1" value="8b: comparer le mot de passe au hash stocké" style="html=1;endArrow=block;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_ctrl" target="ll_bcrypt"><mxGeometry relative="1" as="geometry"><mxPoint y="795" as="sourcePoint"/><mxPoint y="795" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ok2" value="9b: vrai (mot de passe valide)" style="html=1;endArrow=open;dashed=1;fontSize=12;fontStyle=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_bcrypt" target="ll_ctrl"><mxGeometry relative="1" as="geometry"><mxPoint y="830" as="sourcePoint"/><mxPoint y="830" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ok3" value="10b: réinitialiser le compteur d'échecs" style="html=1;endArrow=block;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_ctrl" target="ll_model"><mxGeometry relative="1" as="geometry"><mxPoint y="865" as="sourcePoint"/><mxPoint y="865" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ok3b" value="11b: UPDATE users SET failed_attempts = 0" style="html=1;endArrow=block;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_model" target="ll_db"><mxGeometry relative="1" as="geometry"><mxPoint y="900" as="sourcePoint"/><mxPoint y="900" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ok4" value="12b: signer un jeton JWT (id, rôle, expiration)" style="html=1;endArrow=block;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_ctrl" target="ll_jwt"><mxGeometry relative="1" as="geometry"><mxPoint y="940" as="sourcePoint"/><mxPoint y="940" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ok5" value="13b: jeton JWT signé" style="html=1;endArrow=open;dashed=1;fontSize=12;fontStyle=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_jwt" target="ll_ctrl"><mxGeometry relative="1" as="geometry"><mxPoint y="975" as="sourcePoint"/><mxPoint y="975" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ok6" value="14b: 200 OK { jeton, utilisateur }" style="html=1;endArrow=open;dashed=1;fontSize=12;fontStyle=2;strokeColor=#2E8B57;fontColor=#2E8B57;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_ctrl" target="ll_ui"><mxGeometry relative="1" as="geometry"><mxPoint y="1010" as="sourcePoint"/><mxPoint y="1010" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ok7" value="15b: stocker le jeton + rediriger vers le tableau de bord" style="html=1;endArrow=open;dashed=1;fontSize=12;fontStyle=2;strokeColor=#2E8B57;fontColor=#2E8B57;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_ui" target="ll_user"><mxGeometry relative="1" as="geometry"><mxPoint y="1045" as="sourcePoint"/><mxPoint y="1045" as="targetPoint"/></mxGeometry></mxCell>
+
+        <!-- séparateur -->
+        <mxCell id="sep2" value="" style="line;strokeColor=#999999;dashed=1;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1080" width="1740" height="1" as="geometry" />
+        </mxCell>
+
+        <!-- Branche 3 : mot de passe invalide -->
+        <mxCell id="cond3" value="[ mot de passe incorrect ]" style="text;html=1;align=left;fontSize=12;fontStyle=2;fontColor=#B22222;labelBackgroundColor=#fff2f2;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1095" width="320" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="ko1" value="8c: incrémenter le compteur d'échecs" style="html=1;endArrow=block;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_ctrl" target="ll_model"><mxGeometry relative="1" as="geometry"><mxPoint y="1135" as="sourcePoint"/><mxPoint y="1135" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ko2" value="9c: UPDATE users SET failed_attempts = failed_attempts + 1" style="html=1;endArrow=block;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_model" target="ll_db"><mxGeometry relative="1" as="geometry"><mxPoint y="1170" as="sourcePoint"/><mxPoint y="1170" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ko3" value="10c: 401 Unauthorized { message : 'identifiants invalides' }" style="html=1;endArrow=open;dashed=1;fontSize=12;fontStyle=2;strokeColor=#B22222;fontColor=#B22222;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ll_ctrl" target="ll_ui"><mxGeometry relative="1" as="geometry"><mxPoint y="1205" as="sourcePoint"/><mxPoint y="1205" as="targetPoint"/></mxGeometry></mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

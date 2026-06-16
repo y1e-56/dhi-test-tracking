@@ -1,0 +1,156 @@
+@startuml DHI_UseCase
+title Diagramme de cas d'utilisation - DHI Test Tracking
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Administrateur" as Admin
+actor "Chef de test\n(Test Lead)" as Lead
+actor "Testeur" as Tester
+actor "Développeur" as Dev
+
+rectangle "Système DHI Test Tracking" {
+
+  package "Authentification" {
+    usecase "S'inscrire" as UC_Register
+    usecase "Se connecter" as UC_Login
+    usecase "Consulter son profil" as UC_Profile
+  }
+
+  package "Gestion des projets" {
+    usecase "Créer un projet" as UC_CreateProject
+    usecase "Consulter les projets" as UC_ViewProjects
+    usecase "Modifier un projet" as UC_UpdateProject
+    usecase "Archiver un projet" as UC_ArchiveProject
+    usecase "Supprimer un projet" as UC_DeleteProject
+  }
+
+  package "Gestion des campagnes" {
+    usecase "Créer une campagne" as UC_CreateCampaign
+    usecase "Consulter les campagnes" as UC_ViewCampaigns
+    usecase "Modifier une campagne" as UC_UpdateCampaign
+    usecase "Supprimer une campagne" as UC_DeleteCampaign
+    usecase "Voir statistiques campagne" as UC_StatsCampaign
+  }
+
+  package "Gestion des équipes" {
+    usecase "Ajouter un membre" as UC_AddMember
+    usecase "Retirer un membre" as UC_RemoveMember
+    usecase "Lister les membres" as UC_ListMembers
+  }
+
+  package "Gestion des tâches" {
+    usecase "Créer une fonctionnalité" as UC_CreateFeature
+    usecase "Assigner une tâche" as UC_AssignTask
+    usecase "Réassigner une tâche" as UC_ReassignTask
+    usecase "Mettre à jour le statut" as UC_UpdateStatus
+    usecase "Consulter mes tâches" as UC_MyTasks
+  }
+
+  package "Gestion des anomalies" {
+    usecase "Déclarer une anomalie" as UC_CreateAnomaly
+    usecase "Consulter mes anomalies" as UC_MyAnomalies
+    usecase "Signaler résolution" as UC_SignalResolve
+    usecase "Valider une anomalie" as UC_ValidateAnomaly
+    usecase "Rejeter une anomalie" as UC_RejectAnomaly
+    usecase "Recevoir notifications" as UC_Notifications
+  }
+
+  package "Tableau de bord & Rapports" {
+    usecase "Consulter dashboard personnel" as UC_PersonalDash
+    usecase "Consulter dashboard projet" as UC_ProjectDash
+    usecase "Consulter dashboard campagne" as UC_CampaignDash
+    usecase "Consulter l'historique" as UC_History
+    usecase "Générer un rapport" as UC_Report
+  }
+}
+
+' Authentification : tous
+Admin   --> UC_Login
+Lead    --> UC_Login
+Tester  --> UC_Login
+Dev     --> UC_Login
+Admin   --> UC_Register
+Admin   --> UC_Profile
+Lead    --> UC_Profile
+Tester  --> UC_Profile
+Dev     --> UC_Profile
+
+' Projets
+Admin --> UC_CreateProject
+Lead  --> UC_CreateProject
+Admin --> UC_UpdateProject
+Lead  --> UC_UpdateProject
+Admin --> UC_ArchiveProject
+Lead  --> UC_ArchiveProject
+Admin --> UC_DeleteProject
+Admin --> UC_ViewProjects
+Lead  --> UC_ViewProjects
+Tester --> UC_ViewProjects
+Dev   --> UC_ViewProjects
+
+' Campagnes
+Admin --> UC_CreateCampaign
+Lead  --> UC_CreateCampaign
+Admin --> UC_UpdateCampaign
+Lead  --> UC_UpdateCampaign
+Admin --> UC_DeleteCampaign
+Lead  --> UC_DeleteCampaign
+Admin --> UC_ViewCampaigns
+Lead  --> UC_ViewCampaigns
+Tester --> UC_ViewCampaigns
+Dev   --> UC_ViewCampaigns
+Lead  --> UC_StatsCampaign
+
+' Équipes
+Admin --> UC_AddMember
+Lead  --> UC_AddMember
+Admin --> UC_RemoveMember
+Lead  --> UC_RemoveMember
+Admin --> UC_ListMembers
+Lead  --> UC_ListMembers
+
+' Tâches
+Admin --> UC_CreateFeature
+Lead  --> UC_CreateFeature
+Admin --> UC_AssignTask
+Lead  --> UC_AssignTask
+Admin --> UC_ReassignTask
+Lead  --> UC_ReassignTask
+Tester --> UC_UpdateStatus
+Dev   --> UC_UpdateStatus
+Tester --> UC_MyTasks
+Dev   --> UC_MyTasks
+
+' Anomalies
+Tester --> UC_CreateAnomaly
+Lead   --> UC_CreateAnomaly
+Dev    --> UC_MyAnomalies
+Dev    --> UC_SignalResolve
+Tester --> UC_ValidateAnomaly
+Lead   --> UC_ValidateAnomaly
+Tester --> UC_RejectAnomaly
+Lead   --> UC_RejectAnomaly
+Admin  --> UC_Notifications
+Lead   --> UC_Notifications
+Tester --> UC_Notifications
+Dev    --> UC_Notifications
+
+' Dashboard
+Admin  --> UC_PersonalDash
+Lead   --> UC_PersonalDash
+Tester --> UC_PersonalDash
+Dev    --> UC_PersonalDash
+Lead   --> UC_ProjectDash
+Lead   --> UC_CampaignDash
+Lead   --> UC_Report
+Admin  --> UC_History
+
+' Relations include
+UC_CreateAnomaly  ..> UC_Notifications : <<include>>
+UC_SignalResolve  ..> UC_Notifications : <<include>>
+UC_ValidateAnomaly ..> UC_Notifications : <<include>>
+UC_AssignTask     ..> UC_Notifications : <<include>>
+
+@enduml

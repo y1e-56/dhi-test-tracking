@@ -1,24 +1,62 @@
-const { Pool } = require('pg');
-require('dotenv').config();
+import pg from 'pg';
+import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
 
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'dhi_test_tracking',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Test de connexion
-pool.on('connect', () => {
-  console.log('Connecté à la base de données PostgreSQL');
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
+const dbUrl = process.env.DATABASE_URL || '';
+const isLocal = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1');
+const pool = new pg.Pool({
+  connectionString: dbUrl,
+  ssl: isLocal ? false : { rejectUnauthorized: false },
 });
 
 pool.on('error', (err) => {
-  console.error('Erreur de connexion à la base de données:', err);
+  console.error('Unexpected error on idle client', err);
+  process.exit(-1);
 });
 
-module.exports = pool;
+export async function initDb() {
+  const client = await pool.connect();
+  try {
+    const migrationsDir = path.join(__dirname, '../../migrations');
+    const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
+    for (const file of files) {
+      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
+      await client.query(sql);
+      console.log(`Migration ${file} applied successfully`);
+    }
+    console.log('Database initialized successfully');
+  } catch (err) {
+    console.error('Failed to initialize database:', err);
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Exécute une fonction dans une transaction
+ * @param {Function} fn - Fonction async qui reçoit un client transactionnel
+ * @returns {Promise} Résultat de la fonction
+ */
+export async function withTransaction(fn) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export default pool;

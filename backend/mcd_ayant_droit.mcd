@@ -1,0 +1,45 @@
+# Modèle conceptuel (Mocodo) — modèle AYANT-DROIT / EMPLOYÉ / PROJET / PIÈCE / SOCIÉTÉ / DÉPARTEMENT
+# Les cardinalités suivent la syntaxe Mocodo : 0N, 01, 11, 1N, etc.
+
+AYANT-DROIT:
+  *id_ayant_droit
+  nom_ayant_droit
+  lien
+
+EMPLOYÉ:
+  *matricule
+  nom_employe
+
+PROJET:
+  *num_projet
+  nom_projet
+
+PIÈCE:
+  *ref_piece
+  libelle_piece
+
+SOCIÉTÉ:
+  *num_societe
+  raison_sociale
+
+DÉPARTEMENT:
+  *num_departement
+  nom_departement
+
+# Associations
+
+DIRIGER, EMPLOYÉ 0N [responsable], PROJET 01 :
+
+REQUÉRIR, PROJET 1N, PIÈCE 0N : qte_requise
+
+COMPOSER, PIÈCE 0N [composée], PIÈCE 0N [composante] : quantite
+
+DF, AYANT-DROIT 11, EMPLOYÉ 0N :
+
+EMPLOYER, EMPLOYÉ 11, DÉPARTEMENT 1N :
+
+TRAVAILLER, EMPLOYÉ 0N, PROJET 1N :
+
+FOURNIR, PROJET 1N, PIÈCE 1N, SOCIÉTÉ 1N : qte_fournie
+
+CONTRÔLER, SOCIÉTÉ 0N< [mère], SOCIÉTÉ 01 [filiale] :

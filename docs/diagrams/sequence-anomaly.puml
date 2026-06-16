@@ -1,0 +1,66 @@
+@startuml DHI_Sequence_Anomaly
+title Diagramme de séquence - Cycle de vie d'une anomalie
+
+actor Testeur
+actor Developpeur as Dev
+participant ":Client (Frontend)" as UI
+participant ":Express\nRouter" as Router
+participant "auth\nMiddleware" as Auth
+participant ":AnomalyController" as Ctrl
+participant ":Anomaly\n(Model)" as Model
+participant ":AnomalyNotification" as Notif
+database "PostgreSQL" as DB
+
+== 1. Déclaration d'une anomalie ==
+Testeur -> UI : Remplir formulaire anomalie
+UI -> Router : POST /api/anomalies\n(JWT, payload)
+Router -> Auth : authenticate()
+Auth -> Auth : Vérifier JWT
+Auth --> Router : user authentifié
+Router -> Auth : authorize('tester','test_lead','admin')
+Auth --> Router : OK
+Router -> Ctrl : createAnomaly(req,res)
+Ctrl -> Model : create(data)
+Model -> DB : INSERT INTO anomalies
+DB --> Model : anomaly
+Model --> Ctrl : anomaly
+Ctrl -> Notif : notifyAssignedDev(anomaly)
+Notif -> DB : INSERT INTO anomaly_notifications
+DB --> Notif : ok
+Notif --> Ctrl : ok
+Ctrl --> UI : 201 Created (anomaly)
+UI --> Testeur : Confirmation
+
+== 2. Le développeur signale la résolution ==
+Dev -> UI : Cliquer "Résoudre"
+UI -> Router : PATCH /api/anomalies/:id/signal-resolution
+Router -> Auth : authenticate + authorize('developer','admin')
+Auth --> Router : OK
+Router -> Ctrl : signalResolution(req,res)
+Ctrl -> Model : updateStatus(id,'resolved')
+Model -> DB : UPDATE anomalies SET status='resolved'
+DB --> Model : updated
+Model --> Ctrl : anomaly
+Ctrl -> Notif : notifyTester(anomaly)
+Notif -> DB : INSERT notification
+DB --> Notif : ok
+Ctrl --> UI : 200 OK
+UI --> Dev : Confirmation
+
+== 3. Le testeur valide ou rejette ==
+Testeur -> UI : Vérifier puis valider/rejeter
+UI -> Router : PATCH /api/anomalies/:id/validate\n(ou /reject)
+Router -> Auth : authenticate + authorize('tester','test_lead','admin')
+Auth --> Router : OK
+Router -> Ctrl : validateAnomaly() / rejectAnomaly()
+Ctrl -> Model : updateStatus(id,'closed' | 'reopened')
+Model -> DB : UPDATE anomalies
+DB --> Model : updated
+Model --> Ctrl : anomaly
+Ctrl -> Notif : notifyDeveloper(anomaly)
+Notif -> DB : INSERT notification
+DB --> Notif : ok
+Ctrl --> UI : 200 OK
+UI --> Testeur : État mis à jour
+
+@enduml

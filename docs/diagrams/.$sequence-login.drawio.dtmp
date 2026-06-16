@@ -1,0 +1,142 @@
+<mxfile host="Electron" agent="Cascade">
+  <diagram id="seq-login" name="Séquence - Login">
+    <mxGraphModel dx="1386" dy="868" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=18;fontStyle=1;" value="Diagramme de séquence — Authentification (login)" vertex="1">
+          <mxGeometry height="30" width="640" x="430" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="ll_user" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Utilisateur" vertex="1">
+          <mxGeometry height="780" width="100" x="60" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ll_ui" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;outlineConnect=0;fillColor=#d5e8d4;strokeColor=#82b366;" value=":Frontend" vertex="1">
+          <mxGeometry height="780" width="100" x="240" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ll_router" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;outlineConnect=0;fillColor=#fff2cc;strokeColor=#d6b656;" value=":authRoutes" vertex="1">
+          <mxGeometry height="780" width="100" x="420" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ll_ctrl" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;outlineConnect=0;fillColor=#ffe6cc;strokeColor=#d79b00;" value=":authController" vertex="1">
+          <mxGeometry height="780" width="120" x="600" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ll_model" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;outlineConnect=0;fillColor=#f8cecc;strokeColor=#b85450;" value=":User" vertex="1">
+          <mxGeometry height="780" width="100" x="800" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ll_bcrypt" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;outlineConnect=0;fillColor=#e1d5e7;strokeColor=#9673a6;" value="bcrypt" vertex="1">
+          <mxGeometry height="780" width="100" x="980" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ll_jwt" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;outlineConnect=0;fillColor=#e1d5e7;strokeColor=#9673a6;" value="jsonwebtoken" vertex="1">
+          <mxGeometry height="780" width="120" x="1160" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ll_db" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="PostgreSQL" vertex="1">
+          <mxGeometry height="780" width="120" x="1340" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="l1" edge="1" parent="1" source="ll_user" style="html=1;endArrow=block;" target="ll_ui" value="1: saisir email + mdp">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="160" as="sourcePoint" />
+            <mxPoint y="160" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2" edge="1" parent="1" source="ll_ui" style="html=1;endArrow=block;" target="ll_router" value="2: POST /api/auth/login">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="200" as="sourcePoint" />
+            <mxPoint y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l3" edge="1" parent="1" source="ll_router" style="html=1;endArrow=block;" target="ll_ctrl" value="3: login(req,res)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="240" as="sourcePoint" />
+            <mxPoint y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l4" edge="1" parent="1" source="ll_ctrl" style="html=1;endArrow=block;" target="ll_model" value="4: findByEmail(email)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="280" as="sourcePoint" />
+            <mxPoint y="280" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l5" edge="1" parent="1" source="ll_model" style="html=1;endArrow=block;" target="ll_db" value="5: SELECT users WHERE email">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="320" as="sourcePoint" />
+            <mxPoint y="320" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l6" edge="1" parent="1" source="ll_db" style="html=1;endArrow=open;dashed=1;" target="ll_model" value="6: user">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="360" as="sourcePoint" />
+            <mxPoint y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="alt" parent="1" style="shape=umlFrame;whiteSpace=wrap;html=1;fillColor=none;fontStyle=2;" value="alt  [compte verrouillé] / [identifiants valides] / [mot de passe invalide]" vertex="1">
+          <mxGeometry height="400" width="1450" x="50" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="lk1" edge="1" parent="1" source="ll_ctrl" style="html=1;endArrow=block;" target="ll_model" value="7a: isAccountLocked(email)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="450" as="sourcePoint" />
+            <mxPoint y="450" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lk2" edge="1" parent="1" source="ll_ctrl" style="html=1;endArrow=open;dashed=1;" target="ll_ui" value="8a: 423 Locked">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="490" as="sourcePoint" />
+            <mxPoint y="490" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sep1" parent="1" style="line;strokeColor=#999999;dashed=1;" value="" vertex="1">
+          <mxGeometry height="1" width="1430" x="60" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="ok1" edge="1" parent="1" source="ll_ctrl" style="html=1;endArrow=block;" target="ll_bcrypt" value="7b: compare(password, hash)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="550" as="sourcePoint" />
+            <mxPoint y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ok2" edge="1" parent="1" source="ll_bcrypt" style="html=1;endArrow=open;dashed=1;" target="ll_ctrl" value="8b: true">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="580" as="sourcePoint" />
+            <mxPoint y="580" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ok3" edge="1" parent="1" source="ll_ctrl" style="html=1;endArrow=block;" target="ll_model" value="9b: resetFailedAttempts()">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="610" as="sourcePoint" />
+            <mxPoint y="610" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ok4" edge="1" parent="1" source="ll_ctrl" style="html=1;endArrow=block;" target="ll_jwt" value="10b: sign({id,role}, secret)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="640" as="sourcePoint" />
+            <mxPoint y="640" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ok5" edge="1" parent="1" source="ll_jwt" style="html=1;endArrow=open;dashed=1;" target="ll_ctrl" value="11b: token">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="670" as="sourcePoint" />
+            <mxPoint y="670" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ok6" edge="1" parent="1" source="ll_ctrl" style="html=1;endArrow=open;dashed=1;" target="ll_ui" value="12b: 200 OK { token, user }">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="700" as="sourcePoint" />
+            <mxPoint y="700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sep2" parent="1" style="line;strokeColor=#999999;dashed=1;" value="" vertex="1">
+          <mxGeometry height="1" width="1430" x="60" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="ko1" edge="1" parent="1" source="ll_ctrl" style="html=1;endArrow=block;" target="ll_model" value="7c: incrementFailedAttempts()">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="760" as="sourcePoint" />
+            <mxPoint y="760" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ko2" edge="1" parent="1" source="ll_ctrl" style="html=1;endArrow=open;dashed=1;" target="ll_ui" value="8c: 401 Unauthorized">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint y="790" as="sourcePoint" />
+            <mxPoint y="790" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
