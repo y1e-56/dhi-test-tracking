@@ -219,7 +219,9 @@ export function CampagnesPage() {
               <div className="space-y-2">
                 <Label htmlFor="projetId">{t('campagne.list.project')}</Label>
                 <Select value={formData.projetId || undefined} onValueChange={(value) => {
-                  setFormData({ ...formData, projetId: value });
+                  const projet = projets.find(p => p.id === value);
+                  const chefsAuto = projet?.chefTesteurIds || [];
+                  setFormData({ ...formData, projetId: value, chefTesteurIds: editingCampagne ? formData.chefTesteurIds : chefsAuto });
                   if (errors.projetId) setErrors({ ...errors, projetId: '' });
                 }}>
                   <SelectTrigger className={errors.projetId ? 'border-red-500 focus:border-red-500' : ''}>

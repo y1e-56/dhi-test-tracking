@@ -4,11 +4,18 @@ import jwt from 'jsonwebtoken';
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 
 export function initializeSocket(httpServer) {
+  const socketCorsOrigin = process.env.CORS_ORIGIN === 'dev' || process.env.CORS_ORIGIN === '*'
+    ? true
+    : [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        ...(process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : []),
+        ...(process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : []),
+      ].filter(Boolean);
+
   const io = new Server(httpServer, {
     cors: {
-      origin: process.env.CORS_ORIGIN === 'dev' || process.env.CORS_ORIGIN === '*'
-        ? true
-        : [process.env.CORS_ORIGIN, 'http://localhost:5173'].filter(Boolean),
+      origin: socketCorsOrigin,
       methods: ['GET', 'POST'],
       credentials: true
     }

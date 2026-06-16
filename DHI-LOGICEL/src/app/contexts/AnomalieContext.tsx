@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { Anomalie, StatutAnomalie } from '../types';
 import { anomalyService } from '../services/anomalyService';
 import { campaignService } from '../services/campaignService';
+import { projectService } from '../services/projectService';
 import api, { getErrorMessage } from '../services/api';
 import { mapAnomalyStatusToBackend, mapAnomalieFromBackend } from '../utils/mappers';
 import { useAuth } from './AuthContext';
@@ -32,8 +33,17 @@ export function AnomalieProvider({ children }: { children: ReactNode }) {
       } else if (currentUser.role === 'testeur') {
         data = await anomalyService.getReported();
       } else if (currentUser.role === 'chef_testeur') {
-        const allCampagnes = await campaignService.getAll();
-        const mesCampagnes = allCampagnes.filter(c => c.chefTesteurIds.includes(currentUser.id));
+        const [allCampagnes, allProjets] = await Promise.all([
+          campaignService.getAll(),
+          projectService.getAll()
+        ]);
+        const mesProjetsIds = allProjets
+          .filter(p => p.chefTesteurIds.includes(currentUser.id))
+          .map(p => p.id);
+        const mesCampagnes = allCampagnes.filter(c =>
+          c.chefTesteurIds.includes(currentUser.id) ||
+          mesProjetsIds.includes(c.projetId)
+        );
         const results = await Promise.all(
           mesCampagnes.map(c => anomalyService.getByCampaign(c.id).catch(() => []))
         );

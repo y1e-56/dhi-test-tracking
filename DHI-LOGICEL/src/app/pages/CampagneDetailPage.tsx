@@ -183,7 +183,8 @@ export function CampagneDetailPage() {
     return <div className="text-center py-12"><p className="text-gray-500">{t('campagne.detail.not_found')}</p></div>;
   }
 
-  const canEdit = currentUser.role === 'chef_testeur' && campagne.chefTesteurIds.includes(currentUser.id);
+  const estChefProjet = projets.some(p => p.id === campagne.projetId && p.chefTesteurIds.includes(currentUser.id));
+  const canEdit = currentUser.role === 'chef_testeur' && (campagne.chefTesteurIds.includes(currentUser.id) || estChefProjet);
   const canView = canEdit || currentUser.role === 'admin';
 
   if (!canView) {
