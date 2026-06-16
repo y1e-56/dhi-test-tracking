@@ -464,6 +464,23 @@ export function setupEventSubscribers(io) {
 
   bus.on('campaignMember:added', async ({ campaign_id, user_id, team_type }) => {
     try {
+      const campaign = await db.campaigns.findById(campaign_id);
+      if (campaign) {
+        const roleLabel = team_type === 'tester' ? 'testeur' : 'développeur';
+        const notification = await notificationService.createNotification({
+          notified_user_id: user_id,
+          anomaly_id: null,
+          notification_type: 'member_added',
+          description: `Vous avez été ajouté comme ${roleLabel} à la campagne "${campaign.name}"`,
+          link_url: `/campagnes/${campaign_id}`,
+        });
+        if (io) emitNotification(io, user_id, notification);
+      }
+    } catch (e) {
+      console.error('[events] Erreur notification campaignMember:added', e);
+    }
+
+    try {
       await db.history.addAction({
         entity_type: 'campaign',
         entity_id: campaign_id,

@@ -96,15 +96,23 @@ export async function updateCampaign(id, data) {
     }
     
     if (data.testers !== undefined) {
-      console.log('[campaignService] Mise à jour testeurs:', data.testers);
+      const oldTesters = await db.campaignMembers.getMemberIds(id, client);
       await _setTestersWithClient(id, data.testers, client);
-      console.log('[campaignService] Testeurs mis à jour');
+      const newTesters = data.testers;
+      const addedTesters = newTesters.filter(t => !oldTesters.testers.includes(t));
+      for (const userId of addedTesters) {
+        bus.emit('campaignMember:added', { campaign_id: id, user_id: userId, team_type: 'tester' });
+      }
     }
     
     if (data.developers !== undefined) {
-      console.log('[campaignService] Mise à jour développeurs:', data.developers);
+      const oldDevs = await db.campaignMembers.getMemberIds(id, client);
       await _setDevelopersWithClient(id, data.developers, client);
-      console.log('[campaignService] Développeurs mis à jour');
+      const newDevs = data.developers;
+      const addedDevs = newDevs.filter(d => !oldDevs.developers.includes(d));
+      for (const userId of addedDevs) {
+        bus.emit('campaignMember:added', { campaign_id: id, user_id: userId, team_type: 'developer' });
+      }
     }
     
     const campaignWithMembers = await getCampaignWithMembers(id, client);

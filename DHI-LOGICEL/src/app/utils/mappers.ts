@@ -258,6 +258,7 @@ const NOTIF_TYPE_EN_TO_FR: Record<string, Notification['type']> = {
   reopened: 'anomalie',
   feature_conforme: 'validation',
   task_assigned: 'assignation',
+  member_added: 'information',
 };
 
 export const mapNotificationFromBackend = (n: any): Notification => ({
@@ -274,6 +275,8 @@ export const mapNotificationFromBackend = (n: any): Notification => ({
     ? 'Fonctionnalité conforme'
     : n.notification_type === 'task_assigned'
     ? 'Tâche assignée'
+    : n.notification_type === 'member_added'
+    ? 'Membre ajouté'
     : 'Notification',
   message: n.anomaly_description || n.description || '',
   lue: !!n.is_read,

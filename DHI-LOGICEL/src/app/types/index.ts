@@ -88,7 +88,7 @@ export interface HistoriqueAction {
 export interface Notification {
   id: string;
   userId: string;
-  type: 'assignation' | 'anomalie' | 'resolution' | 'validation' | 'autre';
+  type: 'assignation' | 'anomalie' | 'resolution' | 'validation' | 'information' | 'autre';
   titre: string;
   message: string;
   lue: boolean;
