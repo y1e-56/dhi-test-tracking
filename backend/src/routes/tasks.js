@@ -34,27 +34,27 @@ router.get('/campaigns/:campaignId/features', authenticate, async (req, res) => 
 
 router.post('/assignments', authenticate, async (req, res) => {
   const data = createAssignmentSchema.parse(req.body);
-  const assignment = await assignmentService.createAssignment(data.feature_id, data.assigned_to);
+  const assignment = await assignmentService.createAssignment(data.feature_id, data.assigned_to, req.user.id);
   bus.emit('data:changed', { entity: 'features' });
   res.status(201).json(assignment);
 });
 
 router.patch('/assignments/:id/reassign', authenticate, async (req, res) => {
   const { new_assigned_to } = req.body;
-  const assignment = await assignmentService.updateAssignment(Number(req.params.id), { assigned_to: new_assigned_to });
+  const assignment = await assignmentService.updateAssignment(Number(req.params.id), { assigned_to: new_assigned_to }, req.user.id);
   bus.emit('data:changed', { entity: 'features' });
   res.json(assignment);
 });
 
 router.patch('/assignments/:id/status', authenticate, async (req, res) => {
   const { status } = req.body;
-  const assignment = await assignmentService.updateAssignment(Number(req.params.id), { status });
+  const assignment = await assignmentService.updateAssignment(Number(req.params.id), { status }, req.user.id);
   bus.emit('data:changed', { entity: 'features' });
   res.json(assignment);
 });
 
 router.delete('/assignments/:id', authenticate, async (req, res) => {
-  await assignmentService.deleteAssignment(Number(req.params.id));
+  await assignmentService.deleteAssignment(Number(req.params.id), req.user.id);
   bus.emit('data:changed', { entity: 'features' });
   res.status(204).send();
 });

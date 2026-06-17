@@ -32,21 +32,21 @@ export async function createAnomaly(data) {
   return anomaly;
 }
 
-export async function updateAnomaly(id, data) {
+export async function updateAnomaly(id, data, userId = null) {
   try {
     const updated = await db.anomalies.update(id, data);
     if (!updated) throw new AppError('Anomalie non trouvée', 404);
 
     if (data.status === 'resolution_signaled' && updated.reported_by) {
-      bus.emit('anomaly:resolution_signaled', { anomaly: updated, reported_by: updated.reported_by });
+      bus.emit('anomaly:resolution_signaled', { anomaly: updated, reported_by: updated.reported_by, user_id: userId });
     }
 
     if (data.status === 'rejected') {
-      bus.emit('anomaly:rejected', { anomaly: updated, reported_by: updated.reported_by });
+      bus.emit('anomaly:rejected', { anomaly: updated, reported_by: updated.reported_by, user_id: userId });
     }
 
     if (data.status) {
-      bus.emit('anomaly:status_changed', { anomaly: updated, user_id: null, new_status: data.status });
+      bus.emit('anomaly:status_changed', { anomaly: updated, user_id: userId, new_status: data.status });
     }
 
     bus.emit('anomaly:updated', { anomaly: updated, anomaly_id: id });
@@ -58,24 +58,24 @@ export async function updateAnomaly(id, data) {
   }
 }
 
-export async function deleteAnomaly(id) {
+export async function deleteAnomaly(id, userId = null) {
   const result = await db.anomalies.remove(id);
   if (!result) throw new AppError('Anomalie non trouvée', 404);
-  bus.emit('anomaly:deleted', { anomaly_id: id });
+  bus.emit('anomaly:deleted', { anomaly_id: id, user_id: userId });
 }
 
 export async function getAnomalyHistory(anomalyId) {
   return db.history.findByEntity('anomaly', anomalyId);
 }
 
-export async function signalResolution(id, resolutionDescription) {
-  return updateAnomaly(id, { status: 'resolution_signaled', resolution_description: resolutionDescription });
+export async function signalResolution(id, resolutionDescription, userId = null) {
+  return updateAnomaly(id, { status: 'resolution_signaled', resolution_description: resolutionDescription }, userId);
 }
 
-export async function validateAnomaly(id) {
-  return updateAnomaly(id, { status: 'validated' });
+export async function validateAnomaly(id, userId = null) {
+  return updateAnomaly(id, { status: 'validated' }, userId);
 }
 
-export async function rejectAnomaly(id) {
-  return updateAnomaly(id, { status: 'rejected' });
+export async function rejectAnomaly(id, userId = null) {
+  return updateAnomaly(id, { status: 'rejected' }, userId);
 }

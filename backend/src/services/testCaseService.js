@@ -21,7 +21,8 @@ export async function createTestCase(data) {
 }
 
 export async function deleteTestCase(id) {
-  const result = await db.testCases.remove(id);
-  if (!result) throw new AppError('Cas de test non trouvé', 404);
-  bus.emit('testCase:deleted', { test_case_id: id });
+  const testCase = await db.testCases.findById(id);
+  if (!testCase) throw new AppError('Cas de test non trouvé', 404);
+  await db.testCases.remove(id);
+  bus.emit('testCase:deleted', { test_case_id: id, feature_id: testCase.feature_id });
 }

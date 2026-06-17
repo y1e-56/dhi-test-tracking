@@ -56,32 +56,32 @@ router.post('/', authenticate, async (req, res) => {
 });
 
 router.put('/:id', authenticate, async (req, res) => {
-  const anomaly = await anomalyService.updateAnomaly(Number(req.params.id), req.body);
+  const anomaly = await anomalyService.updateAnomaly(Number(req.params.id), req.body, req.user.id);
   bus.emit('data:changed', { entity: 'anomalies' });
   res.json({ anomaly });
 });
 
 router.patch('/:id/signal-resolution', authenticate, async (req, res) => {
   const { resolution_description } = req.body;
-  const anomaly = await anomalyService.signalResolution(Number(req.params.id), resolution_description);
+  const anomaly = await anomalyService.signalResolution(Number(req.params.id), resolution_description, req.user.id);
   bus.emit('data:changed', { entity: 'anomalies' });
   res.json({ anomaly });
 });
 
 router.patch('/:id/validate', authenticate, async (req, res) => {
-  const anomaly = await anomalyService.validateAnomaly(Number(req.params.id));
+  const anomaly = await anomalyService.validateAnomaly(Number(req.params.id), req.user.id);
   bus.emit('data:changed', { entity: 'anomalies' });
   res.json({ anomaly });
 });
 
 router.patch('/:id/reject', authenticate, async (req, res) => {
-  const anomaly = await anomalyService.rejectAnomaly(Number(req.params.id));
+  const anomaly = await anomalyService.rejectAnomaly(Number(req.params.id), req.user.id);
   bus.emit('data:changed', { entity: 'anomalies' });
   res.json({ anomaly });
 });
 
 router.delete('/:id', authenticate, async (req, res) => {
-  await anomalyService.deleteAnomaly(Number(req.params.id));
+  await anomalyService.deleteAnomaly(Number(req.params.id), req.user.id);
   bus.emit('data:changed', { entity: 'anomalies' });
   res.status(204).send();
 });

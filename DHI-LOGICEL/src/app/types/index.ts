@@ -83,6 +83,9 @@ export interface HistoriqueAction {
   action: string;
   commentaire?: string;
   date: string;
+  entityType: string;
+  entityId: string;
+  userName: string;
 }
 
 export interface Notification {

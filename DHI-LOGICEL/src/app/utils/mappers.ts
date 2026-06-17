@@ -294,4 +294,7 @@ export const mapHistoriqueFromBackend = (h: any): HistoriqueAction => ({
   action: h.action_type,
   commentaire: h.description,
   date: h.created_at,
+  entityType: h.entity_type,
+  entityId: String(h.entity_id),
+  userName: [h.first_name, h.last_name].filter(Boolean).join(' ') || 'Inconnu',
 });

@@ -448,6 +448,48 @@ export function setupEventSubscribers(io) {
     }
   });
 
+  bus.on('anomaly:resolution_signaled', async ({ anomaly, reported_by, user_id }) => {
+    try {
+      await db.history.addAction({
+        entity_type: 'anomaly',
+        entity_id: anomaly.id,
+        user_id: user_id || null,
+        action_type: 'status_changed',
+        description: 'Résolution signalée par le développeur',
+      });
+    } catch (e) {
+      console.error('[events] Erreur history anomaly:resolution_signaled', e);
+    }
+  });
+
+  bus.on('anomaly:rejected', async ({ anomaly, reported_by, user_id }) => {
+    try {
+      await db.history.addAction({
+        entity_type: 'anomaly',
+        entity_id: anomaly.id,
+        user_id: user_id || null,
+        action_type: 'status_changed',
+        description: 'Résolution rejetée par le testeur — anomalie rouverte',
+      });
+    } catch (e) {
+      console.error('[events] Erreur history anomaly:rejected', e);
+    }
+  });
+
+  bus.on('anomaly:deleted', async ({ anomaly_id, user_id }) => {
+    try {
+      await db.history.addAction({
+        entity_type: 'anomaly',
+        entity_id: anomaly_id,
+        user_id: user_id || null,
+        action_type: 'deleted',
+        description: 'Anomalie supprimée',
+      });
+    } catch (e) {
+      console.error('[events] Erreur history anomaly:deleted', e);
+    }
+  });
+
   bus.on('feature:status_changed', async ({ feature, user_id, new_status }) => {
     try {
       await db.history.addAction({
@@ -459,6 +501,49 @@ export function setupEventSubscribers(io) {
       });
     } catch (e) {
       console.error('[events] Erreur history feature:status_changed', e);
+    }
+  });
+
+  bus.on('assignment:created', async ({ assigned_to, feature_name, feature_id, user_id }) => {
+    try {
+      await db.history.addAction({
+        entity_type: 'feature',
+        entity_id: feature_id,
+        user_id: user_id || null,
+        action_type: 'assigned',
+        description: `Fonctionnalité "${feature_name}" assignée au testeur`,
+      });
+    } catch (e) {
+      console.error('[events] Erreur history assignment:created', e);
+    }
+  });
+
+  bus.on('assignment:reassigned', async ({ assigned_to, feature_name, feature_id, user_id }) => {
+    try {
+      await db.history.addAction({
+        entity_type: 'feature',
+        entity_id: feature_id,
+        user_id: user_id || null,
+        action_type: 'assigned',
+        description: `Fonctionnalité "${feature_name}" réassignée`,
+      });
+    } catch (e) {
+      console.error('[events] Erreur history assignment:reassigned', e);
+    }
+  });
+
+  bus.on('assignment:deleted', async ({ assignment, feature_id, user_id }) => {
+    try {
+      const featureName = assignment?.feature_id ? `#${assignment.feature_id}` : '';
+      await db.history.addAction({
+        entity_type: 'feature',
+        entity_id: feature_id,
+        user_id: user_id || null,
+        action_type: 'assigned',
+        description: `Assignation supprimée pour la fonctionnalité ${featureName}`,
+      });
+    } catch (e) {
+      console.error('[events] Erreur history assignment:deleted', e);
     }
   });
 
@@ -521,11 +606,11 @@ export function setupEventSubscribers(io) {
     }
   });
 
-  bus.on('testCase:deleted', async ({ test_case_id }) => {
+  bus.on('testCase:deleted', async ({ test_case_id, feature_id }) => {
     try {
       await db.history.addAction({
         entity_type: 'feature',
-        entity_id: null,
+        entity_id: feature_id,
         user_id: null,
         action_type: 'test_case_deleted',
         description: 'Cas de test supprimé',

@@ -1,34 +1,83 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
-import { useData } from '../contexts/DataContext';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { dashboardService } from '../services/dashboardService';
+import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Input } from '../components/ui/input';
-import { History, Clock, User, Filter, Search, CheckCircle, AlertTriangle, XCircle, FileText } from 'lucide-react';
+import { History, Clock, User, Search, CheckCircle, AlertTriangle, FileText, Loader2 } from 'lucide-react';
+import { HistoriqueAction } from '../types';
 
 interface AuditEntry {
   id: string;
   type: 'creation' | 'modification' | 'suppression' | 'statut' | 'assignation';
   entity: 'utilisateur' | 'projet' | 'campagne' | 'fonctionnalite' | 'anomalie';
-  entityId: string;
   entityName: string;
-  userId: string;
   userName: string;
   action: string;
   details: string;
   timestamp: string;
 }
 
+const ACTION_TYPE_MAP: Record<string, AuditEntry['type']> = {
+  created: 'creation',
+  updated: 'modification',
+  deleted: 'suppression',
+  archived: 'statut',
+  status_changed: 'statut',
+  assigned: 'assignation',
+  commented: 'modification',
+  member_added: 'modification',
+  member_removed: 'modification',
+  test_case_created: 'modification',
+  test_case_deleted: 'suppression',
+};
+
+const ENTITY_TYPE_MAP: Record<string, AuditEntry['entity']> = {
+  user: 'utilisateur',
+  project: 'projet',
+  campaign: 'campagne',
+  feature: 'fonctionnalite',
+  anomaly: 'anomalie',
+};
+
+function toAuditEntry(h: HistoriqueAction): AuditEntry {
+  const type = ACTION_TYPE_MAP[h.action] || 'modification';
+  const entity = ENTITY_TYPE_MAP[h.entityType] || 'anomalie';
+  return {
+    id: h.id,
+    type,
+    entity,
+    entityName: h.commentaire || '',
+    userName: h.userName,
+    action: h.commentaire || h.action,
+    details: '',
+    timestamp: h.date,
+  };
+}
+
 export function AdminHistoryPage() {
   const { t } = useTranslation();
-  const { currentUser, users } = useAuth();
-  const { projets, campagnes, fonctionnalites, anomalies, notifications } = useData();
-  const [filterType, setFilterType] = useState<'tous' | 'creation' | 'modification' | 'suppression' | 'statut' | 'assignation'>('tous');
-  const [filterEntity, setFilterEntity] = useState<'tous' | 'utilisateur' | 'projet' | 'campagne' | 'fonctionnalite' | 'anomalie'>('tous');
+  const { currentUser } = useAuth();
+  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState<string>('tous');
+  const [filterEntity, setFilterEntity] = useState<string>('tous');
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const history = await dashboardService.getHistory();
+        setAuditEntries(history.map(toAuditEntry));
+      } catch (err) {
+        console.error('Erreur chargement historique', err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   if (!currentUser || currentUser.role !== 'admin') {
     return (
@@ -39,181 +88,14 @@ export function AdminHistoryPage() {
     );
   }
 
-  // Générer des entrées d'audit à partir des données existantes
-  const generateAuditEntries = (): AuditEntry[] => {
-    const entries: AuditEntry[] = [];
-
-    // Entrées pour les utilisateurs
-    users.forEach((user: any) => {
-      entries.push({
-        id: `u-${user.id}`,
-        type: 'creation',
-        entity: 'utilisateur',
-        entityId: user.id,
-        entityName: `${user.prenom} ${user.nom}`,
-        userId: user.id,
-        userName: `${user.prenom} ${user.nom}`,
-        action: t('admin.history.action_user_creation'),
-        details: t('admin.history.details_role', { role: user.role }),
-        timestamp: new Date().toISOString()
-      });
-
-      if (user.bloqueJusqua) {
-        entries.push({
-          id: `ub-${user.id}`,
-          type: 'statut',
-          entity: 'utilisateur',
-          entityId: user.id,
-          entityName: `${user.prenom} ${user.nom}`,
-          userId: user.id,
-          userName: `${user.prenom} ${user.nom}`,
-          action: t('admin.history.action_user_blocked'),
-          details: t('admin.history.details_blocked_until', { date: new Date(user.bloqueJusqua).toLocaleDateString('fr-FR') }),
-          timestamp: user.bloqueJusqua.toISOString()
-        });
-      }
-    });
-
-    // Entrées pour les projets
-    projets.forEach((projet: any) => {
-      entries.push({
-        id: `p-${projet.id}`,
-        type: 'creation',
-        entity: 'projet',
-        entityId: projet.id,
-        entityName: projet.nom,
-        userId: projet.creePar,
-        userName: users.find((u: any) => u.id === projet.creePar)?.prenom + ' ' + users.find((u: any) => u.id === projet.creePar)?.nom || t('common.unknown'),
-        action: t('admin.history.action_project_creation'),
-        details: t('admin.history.details_status', { status: projet.statut }),
-        timestamp: projet.dateCreation
-      });
-
-      if (projet.statut === 'archive') {
-        entries.push({
-          id: `pa-${projet.id}`,
-          type: 'statut',
-          entity: 'projet',
-          entityId: projet.id,
-          entityName: projet.nom,
-          userId: projet.creePar,
-          userName: users.find((u: any) => u.id === projet.creePar)?.prenom + ' ' + users.find((u: any) => u.id === projet.creePar)?.nom || t('common.unknown'),
-          action: t('admin.history.action_project_archived'),
-          details: t('admin.history.details_project_archived'),
-          timestamp: projet.dateCreation
-        });
-      }
-    });
-
-    // Entrées pour les campagnes
-    campagnes.forEach((campagne: any) => {
-      const chefNames = (campagne.chefTesteurIds || [])
-        .map((id: string) => users.find((u: any) => u.id === id))
-        .filter(Boolean)
-        .map((u: any) => u.prenom + ' ' + u.nom)
-        .join(', ');
-      entries.push({
-        id: `c-${campagne.id}`,
-        type: 'creation',
-        entity: 'campagne',
-        entityId: campagne.id,
-        entityName: campagne.nom,
-        userId: (campagne.chefTesteurIds || [])[0] || '',
-        userName: chefNames || t('common.unknown'),
-        action: t('admin.history.action_campaign_creation'),
-        details: t('admin.history.details_status', { status: campagne.statut }),
-        timestamp: campagne.dateCreation
-      });
-    });
-
-    // Entrées pour les fonctionnalités
-    fonctionnalites.forEach((fonct: any) => {
-      if (fonct.dateAssignation) {
-        entries.push({
-          id: `fa-${fonct.id}`,
-          type: 'assignation',
-          entity: 'fonctionnalite',
-          entityId: fonct.id,
-          entityName: fonct.nom,
-          userId: fonct.testeurAssigneId || '',
-          userName: users.find((u: any) => u.id === fonct.testeurAssigneId)?.prenom + ' ' + users.find((u: any) => u.id === fonct.testeurAssigneId)?.nom || t('common.unknown'),
-          action: t('admin.history.action_feature_assignment'),
-          details: t('admin.history.details_assigned_to', { name: users.find((u: any) => u.id === fonct.testeurAssigneId)?.prenom || t('common.unknown') }),
-          timestamp: fonct.dateAssignation
-        });
-      }
-
-      if (fonct.statut !== 'non_testee') {
-        entries.push({
-          id: `fs-${fonct.id}`,
-          type: 'statut',
-          entity: 'fonctionnalite',
-          entityId: fonct.id,
-          entityName: fonct.nom,
-          userId: fonct.testeurAssigneId || '',
-          userName: users.find((u: any) => u.id === fonct.testeurAssigneId)?.prenom + ' ' + users.find((u: any) => u.id === fonct.testeurAssigneId)?.nom || t('common.unknown'),
-          action: t('admin.history.action_feature_status_change'),
-          details: t('admin.history.details_status', { status: fonct.statut }),
-          timestamp: fonct.dateAssignation || new Date().toISOString()
-        });
-      }
-    });
-
-    // Entrées pour les anomalies
-    anomalies.forEach((anomalie: any) => {
-      entries.push({
-        id: `a-${anomalie.id}`,
-        type: 'creation',
-        entity: 'anomalie',
-        entityId: anomalie.id,
-        entityName: anomalie.titre,
-        userId: anomalie.testeurId,
-        userName: users.find((u: any) => u.id === anomalie.testeurId)?.prenom + ' ' + users.find((u: any) => u.id === anomalie.testeurId)?.nom || t('common.unknown'),
-        action: t('admin.history.action_anomaly_creation'),
-        details: t('admin.history.details_priority_dev', {
-          priority: anomalie.priorite,
-          dev: users.find((u: any) => u.id === anomalie.developpeurId)?.prenom || t('common.unknown')
-        }),
-        timestamp: anomalie.dateCreation
-      });
-
-      if (anomalie.statut !== 'nouvelle') {
-        entries.push({
-          id: `as-${anomalie.id}`,
-          type: 'statut',
-          entity: 'anomalie',
-          entityId: anomalie.id,
-          entityName: anomalie.titre,
-          userId: anomalie.developpeurId || anomalie.testeurId,
-          userName: users.find((u: any) => u.id === (anomalie.developpeurId || anomalie.testeurId))?.prenom + ' ' + users.find((u: any) => u.id === (anomalie.developpeurId || anomalie.testeurId))?.nom || t('common.unknown'),
-          action: t('admin.history.action_anomaly_status_change'),
-          details: t('admin.history.details_status', { status: anomalie.statut }),
-          timestamp: anomalie.dateCreation
-        });
-      }
-    });
-
-    // Entrées pour les notifications
-    notifications.forEach((notif: any) => {
-      entries.push({
-        id: `n-${notif.id}`,
-        type: 'creation',
-        entity: 'anomalie',
-        entityId: notif.id,
-        entityName: notif.titre,
-        userId: notif.userId,
-        userName: users.find((u: any) => u.id === notif.userId)?.prenom + ' ' + users.find((u: any) => u.id === notif.userId)?.nom || t('common.unknown'),
-        action: t('admin.history.action_notification_sent'),
-        details: notif.message,
-        timestamp: notif.dateCreation
-      });
-    });
-
-    // Trier par date décroissante
-    return entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  };
-
-  const auditEntries = generateAuditEntries();
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+        <span className="ml-2 text-slate-500">{t('common.loading')}</span>
+      </div>
+    );
+  }
 
   const filteredEntries = auditEntries.filter(entry => {
     const matchType = filterType === 'tous' || entry.type === filterType;
@@ -321,6 +203,7 @@ export function AdminHistoryPage() {
                 <SelectItem value="tous">{t('admin.history.all_types')}</SelectItem>
                 <SelectItem value="creation">{t('admin.history.creations')}</SelectItem>
                 <SelectItem value="modification">{t('admin.history.modifications')}</SelectItem>
+                <SelectItem value="suppression">{t('admin.history.deletions')}</SelectItem>
                 <SelectItem value="statut">{t('admin.history.statuses')}</SelectItem>
                 <SelectItem value="assignation">{t('admin.history.assignments')}</SelectItem>
               </SelectContent>

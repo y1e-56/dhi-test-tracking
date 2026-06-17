@@ -10,7 +10,7 @@ async function checkFeatureNotConforme(featureId) {
   }
 }
 
-export async function createAssignment(featureId, assignedTo) {
+export async function createAssignment(featureId, assignedTo, userId = null) {
   await checkFeatureNotConforme(featureId);
 
   const assignment = await db.assignments.create(featureId, assignedTo);
@@ -23,7 +23,7 @@ export async function createAssignment(featureId, assignedTo) {
     if (campaign) campaignName = campaign.name;
   }
 
-  bus.emit('assignment:created', { assigned_to: assignedTo, feature_name: featureName, feature_id: featureId, campaign_name: campaignName });
+  bus.emit('assignment:created', { assigned_to: assignedTo, feature_name: featureName, feature_id: featureId, campaign_name: campaignName, user_id: userId });
 
   return assignment;
 }
@@ -34,7 +34,7 @@ export async function getAssignment(id) {
   return assignment;
 }
 
-export async function updateAssignment(id, data) {
+export async function updateAssignment(id, data, userId = null) {
   const assignment = await getAssignment(id);
   if (data.assigned_to !== undefined) {
     await checkFeatureNotConforme(assignment.feature_id);
@@ -53,7 +53,7 @@ export async function updateAssignment(id, data) {
         if (campaign) campaignName = campaign.name;
       }
 
-      bus.emit('assignment:reassigned', { assigned_to: data.assigned_to, feature_name: featureName, feature_id: assignment.feature_id, campaign_name: campaignName });
+      bus.emit('assignment:reassigned', { assigned_to: data.assigned_to, feature_name: featureName, feature_id: assignment.feature_id, campaign_name: campaignName, user_id: userId });
     }
 
     return updated;
@@ -63,13 +63,13 @@ export async function updateAssignment(id, data) {
   }
 }
 
-export async function deleteAssignment(id) {
+export async function deleteAssignment(id, userId = null) {
   const assignment = await getAssignment(id);
   await checkFeatureNotConforme(assignment.feature_id);
 
   const result = await db.assignments.remove(id);
   if (!result) throw new AppError('Assignation non trouvée', 404);
-  bus.emit('assignment:deleted', { assignment, assignment_id: id, feature_id: assignment.feature_id });
+  bus.emit('assignment:deleted', { assignment, assignment_id: id, feature_id: assignment.feature_id, user_id: userId });
 }
 
 export async function getUserAssignments(userId) {

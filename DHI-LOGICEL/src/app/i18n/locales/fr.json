@@ -335,6 +335,7 @@
   "admin.history.modifications": "Modifications",
   "admin.history.statuses": "Statuts",
   "admin.history.assignments": "Assignations",
+  "admin.history.deletions": "Suppressions",
   "admin.history.search_placeholder": "Rechercher par action, entité ou utilisateur...",
   "admin.history.filter_type": "Filtrer par type",
   "admin.history.all_types": "Tous types",
