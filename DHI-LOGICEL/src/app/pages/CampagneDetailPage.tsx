@@ -13,9 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { ArrowLeft, Plus, TestTube, AlertTriangle, CheckCircle2, Clock, User, Play, Flag, X, Users, Trash2 } from 'lucide-react';
-import { Fonctionnalite, Priorite, StatutFonctionnalite, TestCase } from '../types';
+import { Fonctionnalite, Priorite, StatutFonctionnalite, TestCase, HistoriqueAction } from '../types';
 import { campaignService } from '../services/campaignService';
 import { testCaseService } from '../services/testCaseService';
+import { dashboardService } from '../services/dashboardService';
 import { toast } from 'sonner';
 
 export function CampagneDetailPage() {
@@ -34,6 +35,8 @@ export function CampagneDetailPage() {
   const [ajoutMembreDialogOpen, setAjoutMembreDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('fonctionnalites');
   const [filtreStatut, setFiltreStatut] = useState<StatutFonctionnalite | 'tous'>('tous');
+  const [historiqueActions, setHistoriqueActions] = useState<HistoriqueAction[]>([]);
+  const [historiqueLoading, setHistoriqueLoading] = useState(false);
   const [formData, setFormData] = useState({
     nom: '', description: '', module: '',
     testeurAssigneId: '', developpeurAssigneId: '',
@@ -65,6 +68,21 @@ export function CampagneDetailPage() {
     };
     loadTestCases();
   }, [selectedFonctionnalite]);
+
+  useEffect(() => {
+    if (activeTab !== 'historique' || !campagneId || historiqueLoading) return;
+    (async () => {
+      setHistoriqueLoading(true);
+      try {
+        const history = await dashboardService.getHistory({ campaign_id: campagneId });
+        setHistoriqueActions(history);
+      } catch (e) {
+        console.error('Erreur chargement historique campagne', e);
+      } finally {
+        setHistoriqueLoading(false);
+      }
+    })();
+  }, [activeTab, campagneId]);
 
   const campagne = campagnes.find((c: any) => c.id === campagneId);
   const projet = projets.find((p: any) => p.id === campagne?.projetId);
@@ -374,11 +392,12 @@ export function CampagneDetailPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="fonctionnalites">{t('campagne.detail.features_tab')}</TabsTrigger>
           <TabsTrigger value="testcases">{t('campagne.detail.testcases_tab')}</TabsTrigger>
           <TabsTrigger value="anomalies">{t('campagne.detail.anomalies_tab')}</TabsTrigger>
           <TabsTrigger value="equipe">{t('campagne.detail.team_tab')}</TabsTrigger>
+          <TabsTrigger value="historique">{t('campagne.detail.history_tab')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="fonctionnalites" className="space-y-4">
@@ -632,6 +651,43 @@ export function CampagneDetailPage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+        <TabsContent value="historique" className="space-y-4">
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-3 pt-5 px-5">
+              <CardTitle className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                {t('campagne.detail.history_tab')} ({historiqueActions.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-5 pb-5">
+              {historiqueLoading ? (
+                <p className="text-sm text-slate-400 text-center py-4">Chargement...</p>
+              ) : historiqueActions.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-4">{t('anomalie.detail.no_history')}</p>
+              ) : (
+                <div className="space-y-3">
+                  {historiqueActions.map((action, idx) => {
+                    const auteur = users.find(u => u.id === action.userId);
+                    return (
+                      <div key={action.id} className="relative pl-5">
+                        {idx < historiqueActions.length - 1 && (
+                          <div className="absolute left-[7px] top-4 bottom-0 w-px bg-slate-200" />
+                        )}
+                        <div className="absolute left-0 top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white bg-indigo-400 shadow-sm" />
+                        <p className="text-sm font-semibold text-slate-800">{action.action}</p>
+                        {action.commentaire && (
+                          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{action.commentaire}</p>
+                        )}
+                        <p className="text-[10px] font-mono text-slate-400 mt-1">
+                          {auteur?.prenom} {auteur?.nom} · {new Date(action.date).toLocaleString('fr-FR')}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

@@ -242,6 +242,7 @@
   "campagne.detail.testcases_tab": "Test Cases",
   "campagne.detail.anomalies_tab": "Anomalies",
   "campagne.detail.team_tab": "Team",
+  "campagne.detail.history_tab": "History",
   "campagne.detail.filter_status": "Filter by status",
   "campagne.detail.all": "All",
   "campagne.detail.not_assigned": "Not assigned",
