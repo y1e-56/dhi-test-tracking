@@ -4,24 +4,13 @@ import { useLocation } from 'react-router';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import {
-  Send, Sparkles, X, Minimize2, Maximize2, ArrowLeft,
+  Send, Sparkles, X, Minimize2, Maximize2,
   TrendingUp, Bug, TestTube, BarChart3, Clock, FileText,
-  HelpCircle, User, Copy, Download, Check
+  HelpCircle, User, Copy, Download, Check, MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
-import {
-  suggerePriorite, suggereDeveloppeur,
-  genererCasDeTest, genererResumeAnomalies,
-  predireTempsResolution, analyserTendances,
-  genererRapportIA
-} from '../services/aiService';
-
-type Step = 'menu'
-  | 'priorite_input' | 'developpeur_input'
-  | 'cas_test_input' | 'prediction_input'
-  | 'rapport_campagne_input'
-  | 'done';
+import { envoyerMessageIA } from '../services/aiService';
 
 interface Message {
   id: string;
@@ -55,10 +44,9 @@ function MarkdownContent({ content }: { content: string }) {
     }
 
     if (line.startsWith('── ') && line.endsWith(' ──')) {
-      const title = line.slice(3, -3);
       elements.push(
         <div key={`e${i}`} className="text-xs font-bold uppercase tracking-widest text-purple-400 py-1.5">
-          {title}
+          {line.slice(3, -3)}
         </div>
       );
       continue;
@@ -115,47 +103,6 @@ function TypingText({ text, onDone }: { text: string; onDone?: () => void }) {
   return <MarkdownContent content={displayed} />;
 }
 
-const MENU_OPTIONS = (t: (key: string) => string) => [
-  { key: '1', icon: Bug, label: t('ai.suggerer_priorite'), desc: t('ai.suggerer_priorite_desc'), color: 'text-red-400', bg: 'bg-red-500/10' },
-  { key: '2', icon: User, label: t('ai.suggerer_developpeur'), desc: t('ai.suggerer_developpeur_desc'), color: 'text-blue-400', bg: 'bg-blue-500/10' },
-  { key: '3', icon: TestTube, label: t('ai.generer_cas_test'), desc: t('ai.generer_cas_test_desc'), color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-  { key: '4', icon: BarChart3, label: t('ai.resume_anomalies'), desc: t('ai.resume_anomalies_desc'), color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
-  { key: '5', icon: Clock, label: t('ai.predire_delai'), desc: t('ai.predire_delai_desc'), color: 'text-amber-400', bg: 'bg-amber-500/10' },
-  { key: '6', icon: TrendingUp, label: t('ai.analyser_tendances'), desc: t('ai.analyser_tendances_desc'), color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
-  { key: '7', icon: FileText, label: t('ai.rapport_campagne'), desc: t('ai.rapport_campagne_desc'), color: 'text-purple-400', bg: 'bg-purple-500/10' },
-  { key: '0', icon: HelpCircle, label: t('ai.aide'), desc: t('ai.aide_desc'), color: 'text-slate-400', bg: 'bg-slate-500/10' },
-];
-
-function MenuView({ onSelect, t }: { onSelect: (key: string) => void; t: (key: string) => string }) {
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center gap-2 mb-3 px-0.5">
-        <Sparkles className="w-4 h-4 text-purple-500" />
-        <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">{t('ai.que_souhaitez_vous_faire')}</span>
-      </div>
-      {MENU_OPTIONS(t).map(opt => {
-        const Icon = opt.icon;
-        return (
-          <button
-            key={opt.key}
-            onClick={() => onSelect(opt.key)}
-            className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-transparent transition-all duration-150 hover:border-slate-600 hover:bg-white/[0.04] active:scale-[0.98]"
-          >
-            <div className={`w-9 h-9 rounded-lg ${opt.bg} flex items-center justify-center flex-shrink-0`}>
-              <Icon className={`w-4 h-4 ${opt.color}`} />
-            </div>
-            <div className="text-left min-w-0">
-              <div className="text-sm font-medium text-slate-200 leading-tight">{opt.label}</div>
-              <div className="text-[11px] text-slate-500 leading-tight mt-0.5">{opt.desc}</div>
-            </div>
-            <div className="ml-auto text-slate-600 text-xs font-mono">{opt.key}</div>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 function BotMessage({ content }: { content: string }) {
   return (
     <div className="flex gap-2.5">
@@ -205,6 +152,13 @@ function LoadingDots() {
   );
 }
 
+const SUGGESTIONS = [
+  { icon: BarChart3, label: 'Résumé des anomalies', action: 'Donne-moi un résumé des anomalies' },
+  { icon: TrendingUp, label: 'Tendances qualité', action: 'Quelles sont les tendances qualité ?' },
+  { icon: FileText, label: 'Rapport campagne', action: 'Génère un rapport de campagne' },
+  { icon: Bug, label: 'Suggérer priorité', action: 'Suggère-moi une priorité pour une anomalie' },
+];
+
 interface AIChatBoxProps {
   open?: boolean;
   onClose?: () => void;
@@ -217,23 +171,15 @@ export function AIChatBox({ open = true, onClose }: AIChatBoxProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [step, setStep] = useState<Step>('menu');
   const [copied, setCopied] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const msgId = useRef(0);
 
-  const { currentUser, users } = useAuth();
-  const { anomalies, fonctionnalites, campagnes } = useData();
-  const developpeurs = users.filter(u => u.role === 'developpeur');
-
   const pageContext = useMemo(() => {
     const match = location.pathname.match(/\/campagnes\/(\d+)/);
-    if (match) {
-      const campaign = campagnes.find((c: any) => String(c.id) === match[1]);
-      if (campaign) return { type: 'campagne' as const, id: String(campaign.id), name: campaign.nom };
-    }
+    if (match) return { campaignId: match[1] };
     return null;
-  }, [location.pathname, campagnes]);
+  }, [location.pathname]);
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -245,154 +191,34 @@ export function AIChatBox({ open = true, onClose }: AIChatBoxProps) {
 
   useEffect(scrollToBottom, [messages]);
 
-  const envoyer = useCallback((message: string) => {
-    setMessages(prev => [...prev, { id: `m-${++msgId.current}`, role: 'assistant', content: message }]);
+  const ajouterMessage = useCallback((role: 'user' | 'assistant', content: string) => {
+    setMessages(prev => [...prev, { id: `m-${++msgId.current}`, role, content }]);
   }, []);
 
-  const retourMenu = useCallback(() => {
-    setStep('menu');
-  }, []);
+  const handleSendMessage = useCallback(async (texte: string) => {
+    const message = texte.trim();
+    if (!message || isLoading) return;
 
-  const terminer = useCallback(() => {
-    setStep('done');
-  }, []);
-
-  const executer = useCallback((action: () => void) => {
-    action();
-    scrollToBottom();
-  }, [scrollToBottom]);
-
-  const traiterMenu = useCallback((choix: string) => {
-    switch (choix) {
-      case '1': setStep('priorite_input'); envoyer(t('ai.entrez_description_anomalie')); break;
-      case '2': setStep('developpeur_input'); envoyer(t('ai.entrez_description_developpeur')); break;
-      case '3': setStep('cas_test_input'); envoyer(t('ai.entrez_description_fonctionnalite')); break;
-      case '5': setStep('prediction_input'); envoyer(t('ai.entrez_description_delai')); break;
-      case '7':
-        if (campagnes.length === 0) { envoyer(t('ai.aucune_campagne')); terminer(); return; }
-        if (pageContext?.type === 'campagne') {
-          const c = campagnes.find((x: any) => String(x.id) === pageContext.id);
-          if (c) {
-            executer(() => {
-              envoyer(genererRapportIA(c, anomalies.filter((a: any) => a.campagneId === c.id), fonctionnalites.filter((f: any) => f.campagneId === c.id)));
-            });
-            terminer();
-            return;
-          }
-        }
-        setStep('rapport_campagne_input');
-        envoyer(`${t('ai.choisissez_campagne')}\n\n${campagnes.map((c: any, i: number) => `  ${i + 1}. ${c.nom}`).join('\n')}`);
-        break;
-      case '4':
-        executer(() => {
-          if (anomalies.length === 0) { envoyer(t('ai.aucune_anomalie')); }
-          else { envoyer(genererResumeAnomalies(anomalies)); }
-          terminer();
-        });
-        break;
-      case '6':
-        executer(() => {
-          const tend = analyserTendances(anomalies, fonctionnalites);
-          const lignes = tend.map((x: any) => `${x.titre} : ${x.valeur}\n${x.description}`).join('\n\n');
-          envoyer(`── ${t('dashboard.ai_trends')} ──\n\n${lignes}`);
-          terminer();
-        });
-        break;
-      case '0':
-        envoyer([
-          t('ai.aide_titre'),
-          '',
-          `1  ${t('ai.suggerer_priorite')}`,
-          `2  ${t('ai.suggerer_developpeur')}`,
-          `3  ${t('ai.generer_cas_test')}`,
-          `4  ${t('ai.resume_anomalies')}`,
-          `5  ${t('ai.predire_delai')}`,
-          `6  ${t('ai.analyser_tendances')}`,
-          `7  ${t('ai.rapport_campagne')}`,
-          '',
-          t('ai.aide_instruction'),
-        ].join('\n'));
-        break;
-    }
-  }, [anomalies, fonctionnalites, campagnes, pageContext, envoyer, terminer, executer, t]);
-
-  const traiterPriorite = useCallback((texte: string) => {
-    const p = suggerePriorite(texte, '');
-    envoyer(t('ai.priorite_suggeree', { priority: p }));
-    terminer();
-  }, [envoyer, terminer, t]);
-
-  const traiterDeveloppeur = useCallback((texte: string) => {
-    if (developpeurs.length === 0) { envoyer(t('ai.aucun_developpeur')); terminer(); return; }
-    const id = suggereDeveloppeur({ titre: texte, description: '' }, anomalies, developpeurs);
-    const dev = id ? developpeurs.find(d => d.id === id) : null;
-    envoyer(dev ? t('ai.developpeur_suggere', { name: `${dev.prenom} ${dev.nom}` }) : t('ai.impossible_suggerer'));
-    terminer();
-  }, [developpeurs, anomalies, envoyer, terminer, t]);
-
-  const traiterCasTest = useCallback((texte: string) => {
-    const cas = genererCasDeTest(texte);
-    if (cas.length === 0) { envoyer(t('ai.aucun_cas_test')); terminer(); return; }
-    const lignes = cas.map((ct: any) =>
-      `[${ct.id}] **${ct.titre}**\n  ${t('ai.objectif')} : ${ct.objectif}` +
-      (ct.prerequis.length ? `\n  ${t('ai.prerequis')} : ${ct.prerequis.join(', ')}` : '') +
-      `\n${ct.etapes.map((e: string, j: number) => `  ${j + 1}. ${e}`).join('\n')}\n  ${t('ai.resultat_attendu')} : ${ct.resultatAttendu}`
-    ).join('\n\n');
-    envoyer(`${t('ai.cas_test_generes', { count: cas.length })}\n\n${lignes}`);
-    terminer();
-  }, [envoyer, terminer, t]);
-
-  const traiterPrediction = useCallback((texte: string) => {
-    const p = suggerePriorite(texte, '');
-    const pred = predireTempsResolution({ titre: texte, description: '', priorite: p }, anomalies);
-    envoyer(pred.estimation);
-    terminer();
-  }, [anomalies, envoyer, terminer]);
-
-  const traiterRapportCampagne = useCallback((texte: string) => {
-    const index = parseInt(texte.trim(), 10) - 1;
-    if (isNaN(index) || index < 0 || index >= campagnes.length) {
-      envoyer(t('ai.numero_invalide'));
-      return;
-    }
-    const c = campagnes[index];
-    envoyer(genererRapportIA(c, anomalies.filter((a: any) => a.campagneId === c.id), fonctionnalites.filter((f: any) => f.campagneId === c.id)));
-    terminer();
-  }, [campagnes, anomalies, fonctionnalites, envoyer, terminer]);
-
-  const handleSendMessage = useCallback(async () => {
-    const texte = input.trim();
-    if (!texte || isLoading) return;
-
-    setMessages(prev => [...prev, { id: `m-${++msgId.current}`, role: 'user', content: texte }]);
+    ajouterMessage('user', message);
     setInput('');
     setIsLoading(true);
 
     try {
-      if (step === 'menu') traiterMenu(texte);
-      else if (step === 'done') { retourMenu(); traiterMenu(texte); }
-      else if (step === 'priorite_input') traiterPriorite(texte);
-      else if (step === 'developpeur_input') traiterDeveloppeur(texte);
-      else if (step === 'cas_test_input') traiterCasTest(texte);
-      else if (step === 'prediction_input') traiterPrediction(texte);
-      else if (step === 'rapport_campagne_input') traiterRapportCampagne(texte);
+      const { reply } = await envoyerMessageIA(message, pageContext?.campaignId);
+      ajouterMessage('assistant', reply);
     } catch {
-      envoyer(t('ai.erreur_survenue'));
+      ajouterMessage('assistant', `Désolé, je n'ai pas pu traiter votre demande. Vérifiez qu'Ollama est lancé (\`ollama run qwen2.5:7b\`).`);
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, step, traiterMenu, traiterPriorite, traiterDeveloppeur, traiterCasTest, traiterPrediction, traiterRapportCampagne, envoyer, t]);
+  }, [isLoading, pageContext, ajouterMessage]);
 
-  const onClickMenuItem = useCallback((key: string) => {
-    setMessages(prev => [...prev, { id: `m-${++msgId.current}`, role: 'user', content: key }]);
-    setIsLoading(true);
-    try {
-      traiterMenu(key);
-    } catch {
-      envoyer(t('ai.erreur_survenue'));
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage(input);
     }
-    setIsLoading(false);
-  }, [traiterMenu, envoyer, t]);
+  }, [handleSendMessage, input]);
 
   const handleCopy = useCallback(() => {
     const text = messages.map(m => `${m.role === 'user' ? 'Vous' : 'Assistant'} :\n${m.content}`).join('\n\n');
@@ -463,35 +289,39 @@ export function AIChatBox({ open = true, onClose }: AIChatBoxProps) {
       {!isMinimized && (
         <>
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3.5" ref={messagesContainerRef}>
-            {messages.map(msg =>
-              msg.role === 'user'
-                ? <UserMessage key={msg.id} content={msg.content} />
-                : <BotMessage key={msg.id} content={msg.content} />
-            )}
-
-            {messages.length === 0 && (
-              <div className="text-center py-12">
-                <Sparkles className="w-10 h-10 text-purple-500/30 mx-auto mb-3" />
-                <p className="text-sm text-slate-500">{t('ai.bienvenue')}</p>
-                <p className="text-xs text-slate-600 mt-1">{t('ai.bienvenue_desc')}</p>
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full py-8">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-purple-500/20 mb-4">
+                  <MessageCircle className="w-7 h-7 text-white" />
+                </div>
+                <h2 className="text-lg font-semibold text-white mb-1">{t('ai.bienvenue')}</h2>
+                <p className="text-sm text-slate-400 text-center max-w-xs mb-6">{t('ai.bienvenue_desc')}</p>
+                <div className="grid grid-cols-2 gap-2 w-full">
+                  {SUGGESTIONS.map((s, i) => {
+                    const Icon = s.icon;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => handleSendMessage(s.action)}
+                        className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-slate-800 border border-slate-700/60 hover:border-purple-500/40 hover:bg-slate-750 transition-all duration-150 text-center"
+                      >
+                        <Icon className="w-4 h-4 text-purple-400" />
+                        <span className="text-[11px] text-slate-300 leading-tight">{s.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+            ) : (
+              <>
+                {messages.map(msg =>
+                  msg.role === 'user'
+                    ? <UserMessage key={msg.id} content={msg.content} />
+                    : <BotMessage key={msg.id} content={msg.content} />
+                )}
+                {isLoading && <LoadingDots />}
+              </>
             )}
-
-            {step === 'menu' && messages.length > 0 && <MenuView onSelect={onClickMenuItem} t={t} />}
-
-            {step === 'done' && (
-              <div className="flex justify-center pt-1">
-                <button
-                  onClick={retourMenu}
-                  className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-300 transition-colors py-1 px-3 rounded-full hover:bg-white/5"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  {t('ai.retour_menu')}
-                </button>
-              </div>
-            )}
-
-            {isLoading && <LoadingDots />}
           </div>
 
           <div className="border-t border-slate-700/50 px-4 py-3 bg-slate-800/50">
@@ -499,18 +329,13 @@ export function AIChatBox({ open = true, onClose }: AIChatBoxProps) {
               <Input
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-                placeholder={
-                  step === 'menu' ? t('ai.placeholder_menu') :
-                  step === 'done' ? t('ai.placeholder_done') :
-                  step === 'rapport_campagne_input' ? t('ai.placeholder_campagne') :
-                  t('ai.placeholder_default')
-                }
+                onKeyDown={handleKeyDown}
+                placeholder="Écrivez votre message..."
                 disabled={isLoading}
                 className="flex-1 bg-slate-800 border-slate-600 rounded-xl text-sm h-10 text-slate-200 placeholder:text-slate-500 focus-visible:ring-purple-400"
               />
               <Button
-                onClick={handleSendMessage}
+                onClick={() => handleSendMessage(input)}
                 disabled={isLoading || !input.trim()}
                 size="icon"
                 className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed"

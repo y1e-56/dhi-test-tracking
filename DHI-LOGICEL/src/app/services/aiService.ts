@@ -1,3 +1,4 @@
+import api from './api';
 import { Priorite, Anomalie, User, Fonctionnalite, Campagne } from '../types';
 
 /**
@@ -1083,4 +1084,15 @@ export function genererRapportIA(
   sections.push('── Fin du rapport généré par l\'assistant IA ──');
 
   return sections.join('\n');
+}
+
+export async function envoyerMessageIA(
+  message: string,
+  campaignId?: string
+): Promise<{ reply: string; source: 'ollama' | 'fallback' | 'offline' }> {
+  const response = await api.post('/chat', {
+    message,
+    campaignId: campaignId ? Number(campaignId) : undefined,
+  });
+  return response.data;
 }

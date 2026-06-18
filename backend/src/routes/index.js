@@ -8,6 +8,7 @@ import tasksRouter from './tasks.js';
 import teamsRouter from './teams.js';
 import dashboardRouter from './dashboard.js';
 import testCasesRouter from './test-cases.js';
+import chatRouter from './chat.js';
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use('/tasks', tasksRouter);
 router.use('/teams', teamsRouter);
 router.use('/dashboard', dashboardRouter);
 router.use('/test-cases', testCasesRouter);
+router.use('/chat', chatRouter);
 
 export default router;
