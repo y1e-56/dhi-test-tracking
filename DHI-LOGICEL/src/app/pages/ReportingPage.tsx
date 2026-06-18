@@ -14,7 +14,7 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-import { genererRapportIA } from '../services/aiService';
+import { envoyerMessageIA } from '../services/aiService';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose
 } from '../components/ui/dialog';
@@ -299,16 +299,24 @@ export function ReportingPage() {
   const [rapportDialogOpen, setRapportDialogOpen] = useState(false);
   const [rapportContenu, setRapportContenu] = useState('');
 
-  const handleGenererRapportIA = () => {
+  const handleGenererRapportIA = async () => {
     if (!campagne || !stats) {
       toast.error(t('reporting.select_campaign_error'));
       return;
     }
-    const anomaliesCampagne = anomalies.filter(a => a.campagneId === campagneSelectionnee);
-    const fonctionnalitesCampagne = fonctionnalites.filter(f => f.campagneId === campagneSelectionnee);
-    const rapport = genererRapportIA(campagne, anomaliesCampagne, fonctionnalitesCampagne);
-    setRapportContenu(rapport);
-    setRapportDialogOpen(true);
+    try {
+      toast.loading(t('reporting.ai_report_generating'));
+      const { reply } = await envoyerMessageIA(
+        `Génère un rapport IA complet pour la campagne "${campagne.nom}"`,
+        campagneSelectionnee
+      );
+      toast.dismiss();
+      setRapportContenu(reply);
+      setRapportDialogOpen(true);
+    } catch {
+      toast.dismiss();
+      toast.error(t('reporting.ai_report_error'));
+    }
   };
 
   const tauxConformite = stats && stats.totalFonctionnalites > 0

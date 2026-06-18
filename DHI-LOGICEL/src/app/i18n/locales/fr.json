@@ -214,6 +214,8 @@
   "reporting.ai_report_title": "Rapport IA — {{name}}",
   "reporting.ai_report_desc": "Analyse intelligente générée par l'assistant IA",
   "reporting.close": "Fermer",
+  "reporting.ai_report_generating": "Génération du rapport IA...",
+  "reporting.ai_report_error": "Erreur lors de la génération du rapport IA.",
   "campagne.detail.not_found": "Campagne introuvable",
   "campagne.detail.access_denied": "Accès non autorisé",
   "campagne.detail.archived_badge": "Campagne archivée — consultation seule",
