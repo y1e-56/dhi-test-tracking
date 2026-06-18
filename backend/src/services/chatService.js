@@ -7,13 +7,13 @@ async function getContextData(campaignId) {
   const c = pool;
 
   const [campaignsRes, currentCampaignRes, anomaliesRes, recentActivityRes, featuresRes] = await Promise.all([
-    c.query('SELECT id, nom, statut, created_at FROM campaigns ORDER BY created_at DESC LIMIT 10'),
-    campaignId ? c.query('SELECT id, nom, statut FROM campaigns WHERE id = $1', [campaignId]) : Promise.resolve({ rows: [] }),
+    c.query('SELECT id, name, status, created_at FROM campaigns ORDER BY created_at DESC LIMIT 10'),
+    campaignId ? c.query('SELECT id, name, status FROM campaigns WHERE id = $1', [campaignId]) : Promise.resolve({ rows: [] }),
     c.query('SELECT status, COUNT(*)::int as count FROM anomalies GROUP BY status'),
     c.query(`SELECT h.action_type, h.description, h.created_at, u.first_name, u.last_name
       FROM history_actions h LEFT JOIN users u ON u.id = h.user_id
       ORDER BY h.created_at DESC LIMIT 10`),
-    c.query('SELECT statut, COUNT(*)::int as count FROM features GROUP BY statut'),
+    c.query('SELECT status, COUNT(*)::int as count FROM features GROUP BY status'),
   ]);
 
   const totalCampaigns = await c.query('SELECT COUNT(*)::int as count FROM campaigns');
@@ -23,8 +23,8 @@ async function getContextData(campaignId) {
   const currentCampaign = currentCampaignRes.rows[0] || null;
 
   return {
-    campaigns: campaignsRes.rows,
-    currentCampaign: currentCampaign ? { id: currentCampaign.id, nom: currentCampaign.nom, statut: currentCampaign.statut } : null,
+    campaigns: campaignsRes.rows.map(c => ({ id: c.id, nom: c.name, statut: c.status, created_at: c.created_at })),
+    currentCampaign: currentCampaign ? { id: currentCampaign.id, nom: currentCampaign.name, statut: currentCampaign.status } : null,
     anomaliesByStatus: anomaliesRes.rows,
     featuresByStatus: featuresRes.rows,
     recentActivity: recentActivityRes.rows.slice(0, 5),
@@ -58,7 +58,7 @@ function buildSystemPrompt(context, user) {
     .join('\n');
 
   const featuresParStatut = context.featuresByStatus
-    .map(f => `  - ${statusLabels[f.statut] || f.statut} : ${f.count}`)
+    .map(f => `  - ${statusLabels[f.status] || f.status} : ${f.count}`)
     .join('\n');
 
   const campagnesRecentes = context.campaigns
