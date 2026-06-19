@@ -68,7 +68,7 @@ export async function listPaginated(filters = {}, client = null) {
   if (filters.bloque === 'true' || filters.bloque === true) {
     conditions.push(`u.locked_until IS NOT NULL AND u.locked_until > NOW()`);
   }
-  if (filters.includeSupprimes !== 'true' && filters.includeSupprimes !== true) {
+  if (filters.includeSupprimes !== 'true' && filters.includeSupprimes !== true && filters.includeSupprimes !== 'seuls') {
     conditions.push(`u.date_suppression IS NULL`);
   }
   if (filters.includeSupprimes === 'seuls') {
