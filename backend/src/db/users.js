@@ -61,8 +61,9 @@ export async function listPaginated(filters = {}, client = null) {
     idx++;
   }
   if (filters.role) {
+    const ROLE_MAP = { testeur: 'tester', developpeur: 'developer' };
     conditions.push(`u.role = $${idx++}`);
-    params.push(filters.role);
+    params.push(ROLE_MAP[filters.role] || filters.role);
   }
   if (filters.bloque === 'true' || filters.bloque === true) {
     conditions.push(`u.locked_until IS NOT NULL AND u.locked_until > NOW()`);
