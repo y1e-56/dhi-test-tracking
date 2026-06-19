@@ -1,4 +1,5 @@
 import pool from '../config/database.js';
+import { paginate } from './helpers/paginate.js';
 
 export async function list(projectId, client = null) {
   const c = client || pool;
@@ -11,6 +12,56 @@ export async function list(projectId, client = null) {
   query += ' ORDER BY created_at DESC';
   const result = await c.query(query, params);
   return attachTestLeadIds(result.rows, c);
+}
+
+export async function listPaginated(filters = {}, client = null) {
+  const c = client || pool;
+  const conditions = [];
+  const params = [];
+  let idx = 1;
+
+  if (filters.projetId) {
+    conditions.push(`c.project_id = $${idx++}`);
+    params.push(filters.projetId);
+  }
+  if (filters.statut) {
+    conditions.push(`c.status = $${idx++}`);
+    params.push(filters.statut);
+  } else {
+    conditions.push(`c.status != 'archived'`);
+  }
+  if (filters.recherche) {
+    conditions.push(`(c.name ILIKE $${idx} OR c.objective ILIKE $${idx})`);
+    params.push(`%${filters.recherche}%`);
+    idx++;
+  }
+  if (filters.chefTesteurId) {
+    conditions.push(`ctl.user_id = $${idx++}`);
+    params.push(filters.chefTesteurId);
+  }
+  if (filters.dateDebut) {
+    conditions.push(`c.created_at >= $${idx++}`);
+    params.push(filters.dateDebut);
+  }
+  if (filters.dateFin) {
+    conditions.push(`c.created_at <= $${idx++}`);
+    params.push(filters.dateFin);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const joins = `LEFT JOIN campaign_test_leads ctl ON ctl.campaign_id = c.id`;
+
+  const countQuery = `SELECT COUNT(DISTINCT c.id) FROM campaigns c ${joins} ${where}`;
+  const dataQuery = `SELECT DISTINCT c.* FROM campaigns c ${joins} ${where}`;
+
+  const result = await paginate(c, countQuery, dataQuery, params, {
+    page: filters.page,
+    limit: filters.limit,
+    orderBy: filters.orderBy || 'c.created_at DESC',
+  });
+
+  result.data = await attachTestLeadIds(result.data, c);
+  return result;
 }
 
 export async function findById(id, client = null) {

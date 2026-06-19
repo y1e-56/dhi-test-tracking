@@ -17,6 +17,29 @@ export async function listCampaigns(projectId) {
   return enriched;
 }
 
+export async function listCampaignsPaginated(filters = {}) {
+  const result = await db.campaigns.listPaginated({
+    projetId: filters.projetId,
+    statut: filters.statut,
+    recherche: filters.recherche,
+    chefTesteurId: filters.chefTesteurId,
+    dateDebut: filters.dateDebut,
+    dateFin: filters.dateFin,
+    page: filters.page,
+    limit: filters.limit,
+    orderBy: filters.orderBy,
+  });
+
+  result.data = await Promise.all(
+    result.data.map(async (campaign) => {
+      const { testers, developers } = await db.campaignMembers.getMemberIds(campaign.id);
+      return { ...campaign, testers, developers };
+    })
+  );
+
+  return result;
+}
+
 export async function listCampaignsByProject(projectId) {
   return listCampaigns(projectId);
 }

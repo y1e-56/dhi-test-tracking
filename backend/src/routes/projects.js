@@ -23,9 +23,21 @@ const updateSchema = z.object({
 });
 
 router.get('/', authenticate, async (req, res) => {
-  const includeArchived = req.query.includeArchived === 'true';
-  const projects = await projectService.listProjects(includeArchived);
-  res.json(projects);
+  const { page, limit, ...filters } = req.query;
+  if (page || limit || filters.recherche || filters.statut || filters.chefTesteurId) {
+    const result = await projectService.listProjectsPaginated({
+      page: page ? Math.max(1, parseInt(page)) : 1,
+      limit: limit ? Math.max(1, Math.min(200, parseInt(limit))) : 20,
+      recherche: filters.recherche || undefined,
+      statut: filters.statut || undefined,
+      chefTesteurId: filters.chefTesteurId ? Number(filters.chefTesteurId) : undefined,
+    });
+    res.json(result);
+  } else {
+    const includeArchived = filters.includeArchived === 'true';
+    const projects = await projectService.listProjects(includeArchived);
+    res.json(projects);
+  }
 });
 
 router.get('/:id', authenticate, async (req, res) => {

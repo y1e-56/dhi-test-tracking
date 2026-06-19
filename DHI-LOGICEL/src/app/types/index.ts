@@ -109,3 +109,58 @@ export interface TestCase {
   priority?: Priorite;
   dateCreation?: string;
 }
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: PaginationMeta;
+}
+
+export interface AnomalieFilters {
+  page?: number;
+  limit?: number;
+  campagneId?: string;
+  fonctionnaliteId?: string;
+  statut?: StatutAnomalie;
+  projetId?: string;
+  testeurId?: string;
+  developpeurId?: string;
+  recherche?: string;
+  dateDebut?: string;
+  dateFin?: string;
+}
+
+export interface UserFilters {
+  page?: number;
+  limit?: number;
+  recherche?: string;
+  role?: UserRole;
+  bloque?: string;
+  includeSupprimes?: string;
+}
+
+export interface FeatureFilters {
+  page?: number;
+  limit?: number;
+  campaignId?: string;
+  recherche?: string;
+  statut?: StatutFonctionnalite;
+  priorite?: Priorite;
+  assigneeId?: string;
+}
+
+export interface HistoryFilters {
+  page?: number;
+  limit?: number;
+  typeAction?: string;
+  typeEntite?: string;
+  recherche?: string;
+  dateDebut?: string;
+  dateFin?: string;
+}

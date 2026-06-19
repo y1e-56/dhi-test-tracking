@@ -36,10 +36,27 @@ router.get('/campaigns/:campaignId/report', authenticate, async (req, res) => {
 });
 
 router.get('/history', authenticate, async (req, res) => {
-  const userId = req.query.user_id ? Number(req.query.user_id) : undefined;
-  const campaignId = req.query.campaign_id ? Number(req.query.campaign_id) : undefined;
-  const history = await dashboardService.getHistory(userId, campaignId);
-  res.json(history);
+  const { page, limit, ...filters } = req.query;
+  if (page || limit || filters.typeAction || filters.typeEntite || filters.recherche || filters.dateDebut || filters.dateFin) {
+    const result = await dashboardService.getHistoryPaginated({
+      page: page ? Math.max(1, parseInt(page)) : 1,
+      limit: limit ? Math.max(1, Math.min(200, parseInt(limit))) : 20,
+      userId: filters.user_id ? Number(filters.user_id) : undefined,
+      campagneId: filters.campaign_id ? Number(filters.campaign_id) : undefined,
+      typeAction: filters.typeAction || undefined,
+      typeEntite: filters.typeEntite || undefined,
+      entityId: filters.entityId ? Number(filters.entityId) : undefined,
+      recherche: filters.recherche || undefined,
+      dateDebut: filters.dateDebut || undefined,
+      dateFin: filters.dateFin || undefined,
+    });
+    res.json(result);
+  } else {
+    const userId = filters.user_id ? Number(filters.user_id) : undefined;
+    const campaignId = filters.campaign_id ? Number(filters.campaign_id) : undefined;
+    const history = await dashboardService.getHistory(userId, campaignId);
+    res.json(history);
+  }
 });
 
 export default router;

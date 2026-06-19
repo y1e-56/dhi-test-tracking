@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
@@ -12,18 +12,32 @@ import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Checkbox } from '../components/ui/checkbox';
-import { Plus, TestTube, Users, Calendar } from 'lucide-react';
+import { Loader2, Plus, TestTube, Users, Calendar, Search } from 'lucide-react';
 import { Campagne } from '../types';
+import { campaignService } from '../services/campaignService';
+import { useDebounce } from '../hooks/useDebounce';
+import { Pagination } from '../components/ui/Pagination';
 import { toast } from 'sonner';
 
 export function CampagnesPage() {
   const { t } = useTranslation();
   const { currentUser, users } = useAuth();
-  const { projets, campagnes, ajouterCampagne, modifierCampagne } = useData();
+  const { projets, ajouterCampagne, modifierCampagne } = useData();
   const navigate = useNavigate();
+
+  const [paginatedCampagnes, setPaginatedCampagnes] = useState<Campagne[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 300);
+  const [filtreArchive, setFiltreArchive] = useState(false);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCampagne, setEditingCampagne] = useState<Campagne | null>(null);
-  const [filtreArchive, setFiltreArchive] = useState(false);
 
   const [formData, setFormData] = useState({
     nom: '',
@@ -43,8 +57,27 @@ export function CampagnesPage() {
     dateFin: ''
   });
 
+  const fetchCampagnes = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await campaignService.listPaginated({
+        page,
+        limit,
+        recherche: debouncedSearch || undefined,
+        statut: filtreArchive ? 'archived' : undefined,
+      });
+      setPaginatedCampagnes(result.data);
+      setTotal(result.pagination.total);
+      setTotalPages(result.pagination.totalPages);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, limit, debouncedSearch, filtreArchive]);
+
+  useEffect(() => { fetchCampagnes(); }, [fetchCampagnes]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, filtreArchive]);
+
   const isAdmin = currentUser?.role === 'admin';
-  const canEdit = currentUser?.role === 'chef_testeur';
 
   if (!currentUser || (currentUser.role !== 'chef_testeur' && currentUser.role !== 'admin')) {
     return (
@@ -142,6 +175,7 @@ export function CampagnesPage() {
 
       setDialogOpen(false);
       setErrors({ nom: '', projetId: '', chefTesteurIds: '', dateDebut: '', dateFin: '' });
+      fetchCampagnes();
     } catch (error) {
       console.error('[CampagnesPage] Erreur:', error);
       toast.error(t('campagne.list.error_save'));
@@ -363,91 +397,115 @@ export function CampagnesPage() {
         )}
       </div>
 
-      <div className="flex gap-2 mb-4">
-        <Button
-          variant={!filtreArchive ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setFiltreArchive(false)}
-        >
-          {t('campagne.list.active')}
-        </Button>
-        <Button
-          variant={filtreArchive ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setFiltreArchive(true)}
-        >
-          {t('campagne.list.archived')}
-        </Button>
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder={t('common.search')}
+            className="pl-9 bg-white border-slate-200 h-9"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant={!filtreArchive ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFiltreArchive(false)}
+          >
+            {t('campagne.list.active')}
+          </Button>
+          <Button
+            variant={filtreArchive ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFiltreArchive(true)}
+          >
+            {t('campagne.list.archived')}
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {campagnes
-          .filter(c => filtreArchive ? c.statut === 'archive' : c.statut !== 'archive')
-          .map((campagne) => {
-          const projet = projets.find(p => p.id === campagne.projetId);
-          const statutColors: { [key: string]: string } = {
-            en_preparation: 'bg-yellow-100 text-yellow-700',
-            en_cours: 'bg-blue-100 text-blue-700',
-            terminee: 'bg-green-100 text-green-700',
-            archive: 'bg-gray-100 text-gray-700'
-          };
-          const statutLabels: { [key: string]: string } = {
-            en_preparation: t('campagne.list.status_planned'),
-            en_cours: t('campagne.list.status_in_progress'),
-            terminee: t('campagne.list.status_completed'),
-            archive: t('campagne.list.status_archived')
-          };
-
-          return (
-            <Card key={campagne.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/campagnes/${campagne.id}`)}>
-              <CardHeader>
-                <div className="flex items-start justify-between mb-2">
-                  <TestTube className="w-5 h-5 text-blue-600" />
-                  <Badge className={statutColors[campagne.statut]}>
-                    {statutLabels[campagne.statut]}
-                  </Badge>
-                </div>
-                <CardTitle className="text-lg">{campagne.nom}</CardTitle>
-                <CardDescription>{projet?.nom}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-gray-600 min-h-[2.5rem]">
-                  {campagne.description}
-                </p>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-1">
-                    <Users className="w-4 h-4" />
-                    <span>{campagne.equipeTesteurs.length} {t('campagne.list.testers')}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Users className="w-4 h-4" />
-                    <span>{campagne.equipeDeveloppeurs.length} {t('campagne.list.devs')}</span>
-                  </div>
-                </div>
-                {isAdmin && (() => {
-                  const chefsCampagne = chefs.filter(c => campagne.chefTesteurIds.includes(c.id));
-                  if (chefsCampagne.length === 0) return null;
-                  return <div className="flex items-center gap-1 text-sm text-gray-600"><Users className="w-4 h-4" /><span>{t('campagne.list.leads')} : {chefsCampagne.map(c => `${c.prenom} ${c.nom}`).join(', ')}</span></div>;
-                })()}
-                <div className="flex items-center gap-1 text-sm text-gray-600">
-                  <Calendar className="w-4 h-4" />
-                  <span>
-                    {new Date(campagne.dateDebut).toLocaleDateString('fr-FR')} - {new Date(campagne.dateFin).toLocaleDateString('fr-FR')}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {campagnes.filter(c => filtreArchive ? c.statut === 'archive' : c.statut !== 'archive').length === 0 && (
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+          <span className="ml-2 text-slate-500">{t('common.loading')}</span>
+        </div>
+      ) : paginatedCampagnes.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <TestTube className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500">{filtreArchive ? t('campagne.list.no_archived') : t('campagne.list.no_active')}</p>
           </CardContent>
         </Card>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedCampagnes.map((campagne) => {
+            const projet = projets.find(p => p.id === campagne.projetId);
+            const statutColors: { [key: string]: string } = {
+              en_preparation: 'bg-yellow-100 text-yellow-700',
+              en_cours: 'bg-blue-100 text-blue-700',
+              terminee: 'bg-green-100 text-green-700',
+              archive: 'bg-gray-100 text-gray-700'
+            };
+            const statutLabels: { [key: string]: string } = {
+              en_preparation: t('campagne.list.status_planned'),
+              en_cours: t('campagne.list.status_in_progress'),
+              terminee: t('campagne.list.status_completed'),
+              archive: t('campagne.list.status_archived')
+            };
+
+            return (
+              <Card key={campagne.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/campagnes/${campagne.id}`)}>
+                <CardHeader>
+                  <div className="flex items-start justify-between mb-2">
+                    <TestTube className="w-5 h-5 text-blue-600" />
+                    <Badge className={statutColors[campagne.statut]}>
+                      {statutLabels[campagne.statut]}
+                    </Badge>
+                  </div>
+                  <CardTitle className="text-lg">{campagne.nom}</CardTitle>
+                  <CardDescription>{projet?.nom}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-gray-600 min-h-[2.5rem]">
+                    {campagne.description}
+                  </p>
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-1">
+                      <Users className="w-4 h-4" />
+                      <span>{campagne.equipeTesteurs.length} {t('campagne.list.testers')}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Users className="w-4 h-4" />
+                      <span>{campagne.equipeDeveloppeurs.length} {t('campagne.list.devs')}</span>
+                    </div>
+                  </div>
+                  {isAdmin && (() => {
+                    const chefsCampagne = chefs.filter(c => campagne.chefTesteurIds.includes(c.id));
+                    if (chefsCampagne.length === 0) return null;
+                    return <div className="flex items-center gap-1 text-sm text-gray-600"><Users className="w-4 h-4" /><span>{t('campagne.list.leads')} : {chefsCampagne.map(c => `${c.prenom} ${c.nom}`).join(', ')}</span></div>;
+                  })()}
+                  <div className="flex items-center gap-1 text-sm text-gray-600">
+                    <Calendar className="w-4 h-4" />
+                    <span>
+                      {new Date(campagne.dateDebut).toLocaleDateString('fr-FR')} - {new Date(campagne.dateFin).toLocaleDateString('fr-FR')}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          limit={limit}
+          onPageChange={setPage}
+          onLimitChange={(newLimit) => { setLimit(newLimit); setPage(1); }}
+        />
+        </>
       )}
     </div>
   );

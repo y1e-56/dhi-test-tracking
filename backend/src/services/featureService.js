@@ -7,6 +7,19 @@ export async function listFeatures(campaignId) {
   return db.features.findByCampaign(campaignId);
 }
 
+export async function listFeaturesPaginated(filters = {}) {
+  return db.features.findByCampaignPaginated({
+    campaignId: filters.campaignId,
+    recherche: filters.recherche,
+    statut: filters.statut,
+    priorite: filters.priorite,
+    assigneeId: filters.assigneeId,
+    page: filters.page,
+    limit: filters.limit,
+    orderBy: filters.orderBy,
+  });
+}
+
 export async function getFeature(id) {
   const feature = await db.features.findById(id);
   if (!feature) throw new AppError('Fonctionnalité non trouvée', 404);

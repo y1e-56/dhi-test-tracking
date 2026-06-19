@@ -14,9 +14,23 @@ const createSchema = z.object({
 });
 
 router.get('/', authenticate, async (req, res) => {
-  const campaignId = req.query.campaignId ? Number(req.query.campaignId) : undefined;
-  const features = await featureService.listFeatures(campaignId);
-  res.json(features);
+  const { page, limit, ...filters } = req.query;
+  if (page || limit || filters.recherche || filters.statut || filters.priorite || filters.assigneeId) {
+    const result = await featureService.listFeaturesPaginated({
+      page: page ? Math.max(1, parseInt(page)) : 1,
+      limit: limit ? Math.max(1, Math.min(200, parseInt(limit))) : 20,
+      campaignId: filters.campaignId ? Number(filters.campaignId) : undefined,
+      recherche: filters.recherche || undefined,
+      statut: filters.statut || undefined,
+      priorite: filters.priorite || undefined,
+      assigneeId: filters.assigneeId ? Number(filters.assigneeId) : undefined,
+    });
+    res.json(result);
+  } else {
+    const campaignId = filters.campaignId ? Number(filters.campaignId) : undefined;
+    const features = await featureService.listFeatures(campaignId);
+    res.json(features);
+  }
 });
 
 router.get('/:id', authenticate, async (req, res) => {

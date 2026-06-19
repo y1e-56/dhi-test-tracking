@@ -55,9 +55,22 @@ router.put('/me/password', authenticate, async (req, res) => {
   res.json({ message: 'Mot de passe mis à jour' });
 });
 
-router.get('/users', authenticate, async (_req, res) => {
-  const users = await authService.listUsers();
-  res.json(users);
+router.get('/users', authenticate, async (req, res) => {
+  const { page, limit, ...filters } = req.query;
+  if (page || limit || filters.recherche || filters.role || filters.bloque) {
+    const result = await authService.listUsersPaginated({
+      page: page ? Math.max(1, parseInt(page)) : 1,
+      limit: limit ? Math.max(1, Math.min(200, parseInt(limit))) : 20,
+      recherche: filters.recherche || undefined,
+      role: filters.role || undefined,
+      bloque: filters.bloque || undefined,
+      includeSupprimes: filters.includeSupprimes || undefined,
+    });
+    res.json(result);
+  } else {
+    const users = await authService.listUsers();
+    res.json(users);
+  }
 });
 
 router.patch('/users/:id/block', authenticate, async (req, res) => {

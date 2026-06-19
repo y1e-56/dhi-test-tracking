@@ -1,4 +1,5 @@
 import pool from '../config/database.js';
+import { paginate } from './helpers/paginate.js';
 
 export async function findByEmail(email, client = null) {
   const c = client || pool;
@@ -46,6 +47,45 @@ export async function list(client = null) {
   const c = client || pool;
   const result = await c.query("SELECT id, email, first_name, last_name, role, created_at, locked_until, failed_login_attempts, date_suppression FROM users WHERE date_suppression IS NULL ORDER BY id");
   return result.rows;
+}
+
+export async function listPaginated(filters = {}, client = null) {
+  const c = client || pool;
+  const conditions = [];
+  const params = [];
+  let idx = 1;
+
+  if (filters.recherche) {
+    conditions.push(`(u.first_name ILIKE $${idx} OR u.last_name ILIKE $${idx} OR u.email ILIKE $${idx})`);
+    params.push(`%${filters.recherche}%`);
+    idx++;
+  }
+  if (filters.role) {
+    conditions.push(`u.role = $${idx++}`);
+    params.push(filters.role);
+  }
+  if (filters.bloque === 'true' || filters.bloque === true) {
+    conditions.push(`u.locked_until IS NOT NULL AND u.locked_until > NOW()`);
+  }
+  if (filters.includeSupprimes !== 'true' && filters.includeSupprimes !== true) {
+    conditions.push(`u.date_suppression IS NULL`);
+  }
+  if (filters.includeSupprimes === 'seuls') {
+    conditions.push(`u.date_suppression IS NOT NULL`);
+  }
+
+  const select = `u.id, u.email, u.first_name, u.last_name, u.role, u.created_at, u.locked_until, u.failed_login_attempts, u.date_suppression`;
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const from = `FROM users u`;
+
+  const countQuery = `SELECT COUNT(*) ${from} ${where}`;
+  const dataQuery = `SELECT ${select} ${from} ${where}`;
+
+  return paginate(c, countQuery, dataQuery, params, {
+    page: filters.page,
+    limit: filters.limit,
+    orderBy: filters.orderBy || 'u.id',
+  });
 }
 
 export async function listByRole(role, client = null) {

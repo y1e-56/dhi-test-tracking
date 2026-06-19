@@ -16,11 +16,29 @@ const createSchema = z.object({
   test_case_id: z.number().optional(),
 });
 
+// Paginated + filtered list (nouveau)
 router.get('/', authenticate, async (req, res) => {
-  const campaignId = req.query.campaignId ? Number(req.query.campaignId) : undefined;
-  const featureId = req.query.featureId ? Number(req.query.featureId) : undefined;
-  const anomalies = await anomalyService.listAnomalies(campaignId, featureId);
-  res.json(anomalies);
+  const { page, limit, ...filters } = req.query;
+  const result = await anomalyService.listAnomaliesPaginated({
+    page: page ? Math.max(1, parseInt(page)) : 1,
+    limit: limit ? Math.max(1, Math.min(200, parseInt(limit))) : 20,
+    campagneId: filters.campagneId ? Number(filters.campagneId) : undefined,
+    fonctionnaliteId: filters.fonctionnaliteId ? Number(filters.fonctionnaliteId) : undefined,
+    statut: filters.statut || undefined,
+    projetId: filters.projetId ? Number(filters.projetId) : undefined,
+    testeurId: filters.testeurId ? Number(filters.testeurId) : undefined,
+    developpeurId: filters.developpeurId ? Number(filters.developpeurId) : undefined,
+    recherche: filters.recherche || undefined,
+    dateDebut: filters.dateDebut || undefined,
+    dateFin: filters.dateFin || undefined,
+  });
+  res.json(result);
+});
+
+// Stats pour les KPIs des pages admin
+router.get('/stats', authenticate, async (_req, res) => {
+  const stats = await anomalyService.getAnomalyStats();
+  res.json(stats);
 });
 
 router.get('/campaigns/:campaignId', authenticate, async (req, res) => {

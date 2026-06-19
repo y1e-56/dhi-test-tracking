@@ -9,6 +9,8 @@ import {
   Bell, LogOut, Menu, Home, FolderKanban, TestTube,
   BarChart3, ChevronRight, Bug, Users, Sparkles, Languages
 } from 'lucide-react';
+import { Breadcrumbs } from './ui/Breadcrumbs';
+import { useBreadcrumbs } from '../hooks/useBreadcrumbs';
 import { Badge } from './ui/badge';
 import {
   DropdownMenu,
@@ -28,6 +30,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatBoxOpen, setChatBoxOpen] = useState(false);
+  const breadcrumbItems = useBreadcrumbs();
 
   if (!currentUser) return <>{children}</>;
 
@@ -70,8 +73,6 @@ export function Layout({ children }: { children: ReactNode }) {
 
   const isActive = (path: string) =>
     location.pathname === path || (path !== '/dashboard' && location.pathname.startsWith(path));
-
-  const currentPageLabel = navLinks.find(l => isActive(l.path))?.label || t('nav.dashboard');
 
   const handleLogout = () => {
     logout();
@@ -205,10 +206,8 @@ export function Layout({ children }: { children: ReactNode }) {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-slate-400 hidden sm:inline font-medium">{t('layout.dhi_breadcrumb')}</span>
-              <span className="text-slate-300 hidden sm:inline">/</span>
-              <span className="font-semibold text-slate-800">{currentPageLabel}</span>
+            <div className="hidden sm:block">
+              <Breadcrumbs items={breadcrumbItems} />
             </div>
           </div>
 

@@ -1,4 +1,5 @@
 import pool from '../config/database.js';
+import { paginate } from './helpers/paginate.js';
 
 async function attachTestLeadIds(rows, client) {
   if (!rows || rows.length === 0) return rows;
@@ -25,6 +26,43 @@ export async function list(includeArchived = false, client = null) {
   query += ' ORDER BY created_at DESC';
   const result = await c.query(query);
   return attachTestLeadIds(result.rows, c);
+}
+
+export async function listPaginated(filters = {}, client = null) {
+  const c = client || pool;
+  const conditions = [];
+  const params = [];
+  let idx = 1;
+
+  if (filters.recherche) {
+    conditions.push(`(p.name ILIKE $${idx} OR p.description ILIKE $${idx})`);
+    params.push(`%${filters.recherche}%`);
+    idx++;
+  }
+  if (filters.statut === 'actif') {
+    conditions.push('p.is_archived = FALSE');
+  } else if (filters.statut === 'archive') {
+    conditions.push('p.is_archived = TRUE');
+  }
+  if (filters.chefTesteurId) {
+    conditions.push(`ptl.user_id = $${idx++}`);
+    params.push(filters.chefTesteurId);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const joins = `LEFT JOIN project_test_leads ptl ON ptl.project_id = p.id`;
+
+  const countQuery = `SELECT COUNT(DISTINCT p.id) FROM projects p ${joins} ${where}`;
+  const dataQuery = `SELECT DISTINCT p.* FROM projects p ${joins} ${where}`;
+
+  const result = await paginate(c, countQuery, dataQuery, params, {
+    page: filters.page,
+    limit: filters.limit,
+    orderBy: filters.orderBy || 'p.created_at DESC',
+  });
+
+  result.data = await attachTestLeadIds(result.data, c);
+  return result;
 }
 
 export async function findById(id, client = null) {

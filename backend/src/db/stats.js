@@ -31,6 +31,16 @@ export async function getGlobalStats(client = null) {
   };
 }
 
+export async function getAnomalyStats(client = null) {
+  const c = client || pool;
+  const result = await c.query(
+    `SELECT status, COUNT(*)::int as count FROM anomalies GROUP BY status`
+  );
+  const total = result.rows.reduce((sum, row) => sum + row.count, 0);
+  const byStatus = Object.fromEntries(result.rows.map(r => [r.status, r.count]));
+  return { total, byStatus };
+}
+
 export async function getProjectDashboard(projectId, client = null) {
   const c = client || pool;
   const project = await c.query('SELECT * FROM projects WHERE id = $1', [projectId]);

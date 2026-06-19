@@ -1,23 +1,107 @@
 import pool from '../config/database.js';
+import { paginate } from './helpers/paginate.js';
 
 export async function list(filters = {}, client = null) {
   const c = client || pool;
   const conditions = [];
   const params = [];
   let idx = 1;
-  if (filters.campaignId) { conditions.push(`campaign_id = $${idx++}`); params.push(filters.campaignId); }
-  if (filters.featureId) { conditions.push(`feature_id = $${idx++}`); params.push(filters.featureId); }
-  if (filters.assignedTo) { conditions.push(`assigned_to = $${idx++}`); params.push(filters.assignedTo); }
-  if (filters.reportedBy) { conditions.push(`reported_by = $${idx++}`); params.push(filters.reportedBy); }
-  if (filters.testCaseId) { conditions.push(`test_case_id = $${idx++}`); params.push(filters.testCaseId); }
+
+  if (filters.campagneId) {
+    conditions.push(`a.campaign_id = $${idx++}`);
+    params.push(filters.campagneId);
+  }
+  if (filters.fonctionnaliteId) {
+    conditions.push(`a.feature_id = $${idx++}`);
+    params.push(filters.fonctionnaliteId);
+  }
+  if (filters.testeurId) {
+    conditions.push(`a.reported_by = $${idx++}`);
+    params.push(filters.testeurId);
+  }
+  if (filters.developpeurId) {
+    conditions.push(`a.assigned_to = $${idx++}`);
+    params.push(filters.developpeurId);
+  }
+  if (filters.testCaseId) {
+    conditions.push(`a.test_case_id = $${idx++}`);
+    params.push(filters.testCaseId);
+  }
+  if (filters.statut) {
+    conditions.push(`a.status = $${idx++}`);
+    params.push(filters.statut);
+  }
+  if (filters.projetId) {
+    conditions.push(`camp.project_id = $${idx++}`);
+    params.push(filters.projetId);
+  }
+  if (filters.recherche) {
+    conditions.push(`(a.description ILIKE $${idx} OR a.description ILIKE $${idx})`);
+    params.push(`%${filters.recherche}%`);
+    idx++;
+  }
+  if (filters.dateDebut) {
+    conditions.push(`a.created_at >= $${idx++}`);
+    params.push(filters.dateDebut);
+  }
+  if (filters.dateFin) {
+    conditions.push(`a.created_at <= $${idx++}`);
+    params.push(filters.dateFin);
+  }
+
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-  const result = await c.query(`SELECT * FROM anomalies ${where} ORDER BY created_at DESC`, params);
-  return result.rows;
+
+  const joins = `
+    LEFT JOIN features feat ON feat.id = a.feature_id
+    LEFT JOIN campaigns camp ON camp.id = a.campaign_id
+    LEFT JOIN projects proj ON proj.id = camp.project_id
+    LEFT JOIN users reporter ON reporter.id = a.reported_by
+    LEFT JOIN users assignee ON assignee.id = a.assigned_to
+  `;
+
+  const select = `
+    a.*,
+    feat.name AS feature_name,
+    camp.name AS campaign_name,
+    camp.project_id,
+    proj.name AS project_name,
+    reporter.first_name AS reporter_first_name,
+    reporter.last_name AS reporter_last_name,
+    assignee.first_name AS assignee_first_name,
+    assignee.last_name AS assignee_last_name
+  `;
+
+  const countQuery = `SELECT COUNT(*) FROM anomalies a ${joins} ${where}`;
+  const dataQuery = `SELECT ${select} FROM anomalies a ${joins} ${where}`;
+
+  return paginate(c, countQuery, dataQuery, params, {
+    page: filters.page,
+    limit: filters.limit,
+    orderBy: filters.orderBy || 'a.created_at DESC',
+  });
 }
 
 export async function findById(id, client = null) {
   const c = client || pool;
-  const result = await c.query('SELECT * FROM anomalies WHERE id = $1', [id]);
+  const result = await c.query(
+    `SELECT a.*,
+            feat.name AS feature_name,
+            camp.name AS campaign_name,
+            camp.project_id,
+            proj.name AS project_name,
+            reporter.first_name AS reporter_first_name,
+            reporter.last_name AS reporter_last_name,
+            assignee.first_name AS assignee_first_name,
+            assignee.last_name AS assignee_last_name
+     FROM anomalies a
+     LEFT JOIN features feat ON feat.id = a.feature_id
+     LEFT JOIN campaigns camp ON camp.id = a.campaign_id
+     LEFT JOIN projects proj ON proj.id = camp.project_id
+     LEFT JOIN users reporter ON reporter.id = a.reported_by
+     LEFT JOIN users assignee ON assignee.id = a.assigned_to
+     WHERE a.id = $1`,
+    [id]
+  );
   return result.rows[0] || null;
 }
 

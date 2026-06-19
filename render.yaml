@@ -6,6 +6,7 @@ services:
     rootDir: DHI-LOGICEL
     buildCommand: npm run build
     staticPublishPath: ./dist
+    autoDeploy: false
     pullRequestPreviewsEnabled: false
     envVars:
       - key: VITE_API_URL
@@ -20,6 +21,7 @@ services:
     env: node
     region: frankfurt
     plan: free
+    autoDeploy: false
     rootDir: backend
     buildCommand: npm install
     startCommand: node src/index.js

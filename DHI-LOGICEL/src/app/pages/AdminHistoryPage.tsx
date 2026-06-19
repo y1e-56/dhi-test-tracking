@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { dashboardService } from '../services/dashboardService';
@@ -6,8 +6,11 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Input } from '../components/ui/input';
-import { History, Clock, User, Search, CheckCircle, AlertTriangle, FileText, Loader2 } from 'lucide-react';
+import { History, Clock, User, Search, CheckCircle, AlertTriangle, FileText, Loader2, ExternalLink, Bug, Users, UserPlus, LayoutDashboard } from 'lucide-react';
 import { HistoriqueAction } from '../types';
+import { useDebounce } from '../hooks/useDebounce';
+import { Pagination } from '../components/ui/Pagination';
+import { useNavigate } from 'react-router';
 
 interface AuditEntry {
   id: string;
@@ -18,6 +21,7 @@ interface AuditEntry {
   action: string;
   details: string;
   timestamp: string;
+  entityId?: string;
 }
 
 const ACTION_TYPE_MAP: Record<string, AuditEntry['type']> = {
@@ -42,6 +46,14 @@ const ENTITY_TYPE_MAP: Record<string, AuditEntry['entity']> = {
   anomaly: 'anomalie',
 };
 
+const ENTITY_TYPE_TO_ROUTE: Record<string, string> = {
+  projet: '/projets/',
+  campagne: '/campagnes/',
+  anomalie: '/anomalies/',
+  fonctionnalite: '/admin/assignation/',
+  utilisateur: '/admin/utilisateurs/',
+};
+
 function toAuditEntry(h: HistoriqueAction): AuditEntry {
   const type = ACTION_TYPE_MAP[h.action] || 'modification';
   const entity = ENTITY_TYPE_MAP[h.entityType] || 'anomalie';
@@ -54,30 +66,47 @@ function toAuditEntry(h: HistoriqueAction): AuditEntry {
     action: h.commentaire || h.action,
     details: '',
     timestamp: h.date,
+    entityId: h.entityId,
   };
 }
 
 export function AdminHistoryPage() {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
+
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
   const [filterType, setFilterType] = useState<string>('tous');
   const [filterEntity, setFilterEntity] = useState<string>('tous');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const history = await dashboardService.getHistory();
-        setAuditEntries(history.map(toAuditEntry));
-      } catch (err) {
-        console.error('Erreur chargement historique', err);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  const fetchHistory = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await dashboardService.getHistoryPaginated({
+        page,
+        limit,
+        typeAction: filterType !== 'tous' ? filterType : undefined,
+        typeEntite: filterEntity !== 'tous' ? filterEntity : undefined,
+        recherche: debouncedSearch || undefined,
+      });
+      setAuditEntries(result.data.map(toAuditEntry));
+      setTotal(result.pagination.total);
+      setTotalPages(result.pagination.totalPages);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, limit, filterType, filterEntity, debouncedSearch]);
+
+  useEffect(() => { fetchHistory(); }, [fetchHistory]);
+  useEffect(() => { setPage(1); }, [filterType, filterEntity, debouncedSearch]);
 
   if (!currentUser || currentUser.role !== 'admin') {
     return (
@@ -87,25 +116,6 @@ export function AdminHistoryPage() {
       </div>
     );
   }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
-        <span className="ml-2 text-slate-500">{t('common.loading')}</span>
-      </div>
-    );
-  }
-
-  const filteredEntries = auditEntries.filter(entry => {
-    const matchType = filterType === 'tous' || entry.type === filterType;
-    const matchEntity = filterEntity === 'tous' || entry.entity === filterEntity;
-    const matchSearch = !searchTerm || 
-      entry.entityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.userName.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchType && matchEntity && matchSearch;
-  });
 
   const getTypeBadge = (type: string) => {
     const config: Record<string, { labelKey: string; className: string }> = {
@@ -120,67 +130,88 @@ export function AdminHistoryPage() {
   };
 
   const getEntityIcon = (entity: string) => {
-    const icons = {
+    const icons: Record<string, React.ComponentType<any>> = {
       utilisateur: User,
       projet: FileText,
       campagne: Clock,
       fonctionnalite: CheckCircle,
       anomalie: AlertTriangle
     };
-    return icons[entity as keyof typeof icons] || FileText;
-  };
-
-  const stats = {
-    total: auditEntries.length,
-    creations: auditEntries.filter(e => e.type === 'creation').length,
-    modifications: auditEntries.filter(e => e.type === 'modification').length,
-    statuts: auditEntries.filter(e => e.type === 'statut').length,
-    assignations: auditEntries.filter(e => e.type === 'assignation').length
+    return icons[entity] || FileText;
   };
 
   return (
     <div className="space-y-6">
       <div>
-          <h1 className="text-xl font-bold text-slate-900">{t('admin.history.title')}</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{t('admin.history.subtitle')}</p>
+        <h1 className="text-xl font-bold text-slate-900">{t('admin.history.title')}</h1>
+        <p className="text-sm text-slate-500 mt-0.5">{t('admin.history.subtitle')}</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card className="border-0 shadow-sm overflow-hidden">
-          <div className="h-0.5 bg-indigo-500" />
-          <CardContent className="pt-4 pb-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t('admin.history.total_actions')}</p>
-            <p className="text-3xl font-bold text-slate-900 mt-1">{stats.total}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm overflow-hidden">
-          <div className="h-0.5 bg-emerald-500" />
-          <CardContent className="pt-4 pb-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t('admin.history.creations')}</p>
-            <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.creations}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm overflow-hidden">
-          <div className="h-0.5 bg-blue-500" />
-          <CardContent className="pt-4 pb-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t('admin.history.modifications')}</p>
-            <p className="text-3xl font-bold text-blue-600 mt-1">{stats.modifications}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm overflow-hidden">
-          <div className="h-0.5 bg-amber-500" />
-          <CardContent className="pt-4 pb-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t('admin.history.statuses')}</p>
-            <p className="text-3xl font-bold text-amber-600 mt-1">{stats.statuts}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm overflow-hidden">
-          <div className="h-0.5 bg-purple-500" />
-          <CardContent className="pt-4 pb-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t('admin.history.assignments')}</p>
-            <p className="text-3xl font-bold text-purple-600 mt-1">{stats.assignations}</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <button onClick={() => navigate('/admin/anomalies')} className="text-left">
+          <Card className="border-0 shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow hover:scale-[1.02] active:scale-[0.98]">
+            <div className="h-1 bg-red-500" />
+            <CardContent className="pt-5 pb-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">{t('admin.history.go_anomalies')}</p>
+                  <p className="text-xs text-slate-400 mt-2 font-medium">{t('admin.history.view_all_anomalies')}</p>
+                </div>
+                <div className="w-10 h-10 bg-red-50 rounded-2xl flex items-center justify-center flex-shrink-0">
+                  <Bug className="w-5 h-5 text-red-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </button>
+        <button onClick={() => navigate('/admin/utilisateurs')} className="text-left">
+          <Card className="border-0 shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow hover:scale-[1.02] active:scale-[0.98]">
+            <div className="h-1 bg-purple-500" />
+            <CardContent className="pt-5 pb-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">{t('admin.history.go_users')}</p>
+                  <p className="text-xs text-slate-400 mt-2 font-medium">{t('admin.history.manage_users')}</p>
+                </div>
+                <div className="w-10 h-10 bg-purple-50 rounded-2xl flex items-center justify-center flex-shrink-0">
+                  <Users className="w-5 h-5 text-purple-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </button>
+        <button onClick={() => navigate('/admin/assignation')} className="text-left">
+          <Card className="border-0 shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow hover:scale-[1.02] active:scale-[0.98]">
+            <div className="h-1 bg-sky-500" />
+            <CardContent className="pt-5 pb-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">{t('admin.history.go_assignments')}</p>
+                  <p className="text-xs text-slate-400 mt-2 font-medium">{t('admin.history.manage_assignments')}</p>
+                </div>
+                <div className="w-10 h-10 bg-sky-50 rounded-2xl flex items-center justify-center flex-shrink-0">
+                  <UserPlus className="w-5 h-5 text-sky-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </button>
+        <button onClick={() => navigate('/dashboard')} className="text-left">
+          <Card className="border-0 shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow hover:scale-[1.02] active:scale-[0.98]">
+            <div className="h-1 bg-indigo-500" />
+            <CardContent className="pt-5 pb-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">{t('admin.history.go_dashboard')}</p>
+                  <p className="text-xs text-slate-400 mt-2 font-medium">{t('admin.history.back_to_dashboard')}</p>
+                </div>
+                <div className="w-10 h-10 bg-indigo-50 rounded-2xl flex items-center justify-center flex-shrink-0">
+                  <LayoutDashboard className="w-5 h-5 text-indigo-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </button>
       </div>
 
       <Card className="border-0 shadow-sm">
@@ -195,7 +226,7 @@ export function AdminHistoryPage() {
                 className="pl-9 bg-white border-slate-200 h-9"
               />
             </div>
-            <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}>
+            <Select value={filterType} onValueChange={(v: any) => { setFilterType(v); setPage(1); }}>
               <SelectTrigger className="w-40 bg-white border-slate-200 h-9">
                 <SelectValue placeholder={t('admin.history.filter_type')} />
               </SelectTrigger>
@@ -208,7 +239,7 @@ export function AdminHistoryPage() {
                 <SelectItem value="assignation">{t('admin.history.assignments')}</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterEntity} onValueChange={(v: any) => setFilterEntity(v)}>
+            <Select value={filterEntity} onValueChange={(v: any) => { setFilterEntity(v); setPage(1); }}>
               <SelectTrigger className="w-40 bg-white border-slate-200 h-9">
                 <SelectValue placeholder={t('admin.history.filter_entity')} />
               </SelectTrigger>
@@ -224,49 +255,75 @@ export function AdminHistoryPage() {
           </div>
         </CardHeader>
         <CardContent className="px-5 pb-5">
-          <div className="space-y-2">
-            {filteredEntries.length === 0 && (
-              <div className="py-10 text-center">
-                <History className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                <p className="text-sm text-slate-400">{t('admin.history.no_entries')}</p>
-              </div>
-            )}
-            {filteredEntries.map(entry => {
-              const typeBadge = getTypeBadge(entry.type);
-              const EntityIcon = getEntityIcon(entry.entity);
+          {loading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+              <span className="ml-2 text-slate-500">{t('common.loading')}</span>
+            </div>
+          ) : auditEntries.length === 0 ? (
+            <div className="py-10 text-center">
+              <History className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+              <p className="text-sm text-slate-400">{t('admin.history.no_entries')}</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {auditEntries.map(entry => {
+                const typeBadge = getTypeBadge(entry.type);
+                const EntityIcon = getEntityIcon(entry.entity);
+                const route = ENTITY_TYPE_TO_ROUTE[entry.entity];
+                const canNavigate = route && entry.entityId;
 
-              return (
-                <div
-                  key={entry.id}
-                  className="flex items-start gap-4 p-4 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-colors"
-                >
-                  <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <EntityIcon className="w-5 h-5 text-slate-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-sm font-semibold text-slate-800">{entry.action}</span>
-                      <Badge className={`text-[10px] px-1.5 py-0 border ${typeBadge.className}`}>
-                        {typeBadge.label}
-                      </Badge>
+                return (
+                  <div
+                    key={entry.id}
+                    className="flex items-start gap-4 p-4 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <EntityIcon className="w-5 h-5 text-slate-500" />
                     </div>
-                    <p className="text-sm text-slate-600 mb-1">{entry.entityName}</p>
-                    <p className="text-xs text-slate-400">{entry.details}</p>
-                    <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
-                      <span className="flex items-center gap-1">
-                        <User className="w-3 h-3" />
-                        {entry.userName}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {new Date(entry.timestamp).toLocaleString('fr-FR')}
-                      </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-sm font-semibold text-slate-800">{entry.action}</span>
+                        <Badge className={`text-[10px] px-1.5 py-0 border ${typeBadge.className}`}>
+                          {typeBadge.label}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-slate-600 mb-1">{entry.entityName}</p>
+                      <p className="text-xs text-slate-400">{entry.details}</p>
+                      <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
+                        <span className="flex items-center gap-1">
+                          <User className="w-3 h-3" />
+                          {entry.userName}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {new Date(entry.timestamp).toLocaleString('fr-FR')}
+                        </span>
+                        {canNavigate && (
+                          <button
+                            onClick={() => navigate(`${route}${entry.entityId}`)}
+                            className="flex items-center gap-1 text-indigo-500 hover:text-indigo-700 transition-colors"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>{entry.entity}</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
+
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            limit={limit}
+            onPageChange={setPage}
+            onLimitChange={(newLimit) => { setLimit(newLimit); setPage(1); }}
+          />
         </CardContent>
       </Card>
     </div>

@@ -11,7 +11,27 @@ export async function getProjectDashboard(projectId) {
 }
 
 export async function getHistory(userId, campaignId) {
-  return db.history.list(userId, campaignId);
+  const filters = {};
+  if (userId) filters.userId = userId;
+  if (campaignId) filters.campagneId = campaignId;
+  const result = await db.history.list(filters);
+  return result.data;
+}
+
+export async function getHistoryPaginated(filters = {}) {
+  return db.history.list({
+    userId: filters.userId,
+    campagneId: filters.campagneId,
+    typeAction: filters.typeAction,
+    typeEntite: filters.typeEntite,
+    entityId: filters.entityId,
+    recherche: filters.recherche,
+    dateDebut: filters.dateDebut,
+    dateFin: filters.dateFin,
+    page: filters.page,
+    limit: filters.limit,
+    orderBy: filters.orderBy,
+  });
 }
 
 export async function addHistoryAction(data) {

@@ -3,6 +3,23 @@ import { mapCampagneFromBackend, mapCampagneToBackend } from '../utils/mappers';
 import { Campagne } from '../types';
 
 export const campaignService = {
+  async listPaginated(filters: { page?: number; limit?: number; projetId?: string; statut?: string; recherche?: string; chefTesteurId?: string } = {}): Promise<{ data: Campagne[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+    const params = new URLSearchParams();
+    if (filters.page) params.append('page', String(filters.page));
+    if (filters.limit) params.append('limit', String(filters.limit));
+    if (filters.projetId) params.append('project_id', filters.projetId);
+    if (filters.statut) params.append('statut', filters.statut);
+    if (filters.recherche) params.append('recherche', filters.recherche);
+    if (filters.chefTesteurId) params.append('chefTesteurId', filters.chefTesteurId);
+    const qs = params.toString();
+    const response = await api.get(`/campaigns${qs ? `?${qs}` : ''}`);
+    const result = response.data;
+    if (result.data) {
+      return { data: result.data.map(mapCampagneFromBackend), pagination: result.pagination };
+    }
+    return { data: result.map(mapCampagneFromBackend), pagination: { page: 1, limit: result.length, total: result.length, totalPages: 1 } };
+  },
+
   async getAll(): Promise<Campagne[]> {
     try {
       console.log('[campaignService] GET /campaigns');

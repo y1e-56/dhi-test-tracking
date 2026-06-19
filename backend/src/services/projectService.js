@@ -7,6 +7,17 @@ export async function listProjects(includeArchived = false) {
   return db.projects.list(includeArchived);
 }
 
+export async function listProjectsPaginated(filters = {}) {
+  return db.projects.listPaginated({
+    recherche: filters.recherche,
+    statut: filters.statut,
+    chefTesteurId: filters.chefTesteurId,
+    page: filters.page,
+    limit: filters.limit,
+    orderBy: filters.orderBy,
+  });
+}
+
 export async function getProject(id) {
   const project = await db.projects.findById(id);
   if (!project) throw new AppError('Projet non trouvé', 404);

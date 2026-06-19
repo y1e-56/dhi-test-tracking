@@ -3,6 +3,22 @@ import { mapProjetFromBackend, mapProjetToBackend } from '../utils/mappers';
 import { Projet } from '../types';
 
 export const projectService = {
+  async listPaginated(filters: { page?: number; limit?: number; recherche?: string; statut?: string; chefTesteurId?: string } = {}): Promise<{ data: Projet[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+    const params = new URLSearchParams();
+    if (filters.page) params.append('page', String(filters.page));
+    if (filters.limit) params.append('limit', String(filters.limit));
+    if (filters.recherche) params.append('recherche', filters.recherche);
+    if (filters.statut) params.append('statut', filters.statut);
+    if (filters.chefTesteurId) params.append('chefTesteurId', filters.chefTesteurId);
+    const qs = params.toString();
+    const response = await api.get(`/projects${qs ? `?${qs}` : ''}`);
+    const result = response.data;
+    if (result.data) {
+      return { data: result.data.map(mapProjetFromBackend), pagination: result.pagination };
+    }
+    return { data: result.map(mapProjetFromBackend), pagination: { page: 1, limit: result.length, total: result.length, totalPages: 1 } };
+  },
+
   async getAll(): Promise<Projet[]> {
     try {
       console.log('[projectService] GET /projects');

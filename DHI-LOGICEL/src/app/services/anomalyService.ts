@@ -1,8 +1,31 @@
 import api from './api';
 import { mapAnomalieFromBackend, mapAnomalieToBackend, mapNotificationFromBackend } from '../utils/mappers';
-import { Anomalie, Notification } from '../types';
+import { Anomalie, Notification, AnomalieFilters } from '../types';
 
 export const anomalyService = {
+  async list(filters: AnomalieFilters = {}): Promise<{ data: Anomalie[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+    const params = new URLSearchParams();
+    if (filters.page) params.append('page', String(filters.page));
+    if (filters.limit) params.append('limit', String(filters.limit));
+    if (filters.campagneId) params.append('campagneId', filters.campagneId);
+    if (filters.fonctionnaliteId) params.append('fonctionnaliteId', filters.fonctionnaliteId);
+    if (filters.statut) params.append('statut', filters.statut);
+    if (filters.projetId) params.append('projetId', filters.projetId);
+    if (filters.testeurId) params.append('testeurId', filters.testeurId);
+    if (filters.developpeurId) params.append('developpeurId', filters.developpeurId);
+    if (filters.recherche) params.append('recherche', filters.recherche);
+    if (filters.dateDebut) params.append('dateDebut', filters.dateDebut);
+    if (filters.dateFin) params.append('dateFin', filters.dateFin);
+    const qs = params.toString();
+    const response = await api.get(`/anomalies${qs ? `?${qs}` : ''}`);
+    return { data: response.data.data.map(mapAnomalieFromBackend), pagination: response.data.pagination };
+  },
+
+  async getStats(): Promise<{ total: number; byStatus: Record<string, number> }> {
+    const response = await api.get('/anomalies/stats');
+    return response.data;
+  },
+
   async create(anomalie: Partial<Anomalie>): Promise<Anomalie> {
     const payload = mapAnomalieToBackend(anomalie);
     const response = await api.post('/anomalies', payload);

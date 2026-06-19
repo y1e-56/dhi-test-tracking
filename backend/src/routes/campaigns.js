@@ -19,9 +19,24 @@ const createSchema = z.object({
 });
 
 router.get('/', authenticate, async (req, res) => {
-  const projectId = req.query.project_id ? Number(req.query.project_id) : req.query.projectId ? Number(req.query.projectId) : undefined;
-  const campaigns = await campaignService.listCampaigns(projectId);
-  res.json(campaigns);
+  const { page, limit, ...filters } = req.query;
+  if (page || limit || filters.recherche || filters.statut || filters.chefTesteurId) {
+    const result = await campaignService.listCampaignsPaginated({
+      page: page ? Math.max(1, parseInt(page)) : 1,
+      limit: limit ? Math.max(1, Math.min(200, parseInt(limit))) : 20,
+      projetId: filters.project_id ? Number(filters.project_id) : filters.projectId ? Number(filters.projectId) : undefined,
+      statut: filters.statut || undefined,
+      recherche: filters.recherche || undefined,
+      chefTesteurId: filters.chefTesteurId ? Number(filters.chefTesteurId) : undefined,
+      dateDebut: filters.dateDebut || undefined,
+      dateFin: filters.dateFin || undefined,
+    });
+    res.json(result);
+  } else {
+    const projectId = filters.project_id ? Number(filters.project_id) : filters.projectId ? Number(filters.projectId) : undefined;
+    const campaigns = await campaignService.listCampaigns(projectId);
+    res.json(campaigns);
+  }
 });
 
 router.get('/:id', authenticate, async (req, res) => {

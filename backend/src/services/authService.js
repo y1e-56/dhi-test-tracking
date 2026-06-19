@@ -75,6 +75,18 @@ export async function listUsers() {
   return db.users.list();
 }
 
+export async function listUsersPaginated(filters = {}) {
+  return db.users.listPaginated({
+    recherche: filters.recherche,
+    role: filters.role,
+    bloque: filters.bloque,
+    includeSupprimes: filters.includeSupprimes,
+    page: filters.page,
+    limit: filters.limit,
+    orderBy: filters.orderBy,
+  });
+}
+
 export async function blockUser(userId, durationMinutes = 60) {
   const lockedUntil = new Date(Date.now() + durationMinutes * 60 * 1000);
   const user = await db.users.block(userId, lockedUntil);

@@ -4,7 +4,36 @@ import bus from '../lib/eventBus.js';
 import * as db from '../db/index.js';
 
 export async function listAnomalies(campaignId, featureId, assignedTo, reportedBy, testCaseId) {
-  return db.anomalies.list({ campaignId, featureId, assignedTo, reportedBy, testCaseId });
+  const result = await db.anomalies.list({
+    campagneId: campaignId,
+    fonctionnaliteId: featureId,
+    developpeurId: assignedTo,
+    testeurId: reportedBy,
+    testCaseId,
+  });
+  return result.data;
+}
+
+export async function listAnomaliesPaginated(filters = {}) {
+  return db.anomalies.list({
+    campagneId: filters.campagneId,
+    fonctionnaliteId: filters.fonctionnaliteId,
+    testeurId: filters.testeurId,
+    developpeurId: filters.developpeurId,
+    testCaseId: filters.testCaseId,
+    statut: filters.statut,
+    projetId: filters.projetId,
+    recherche: filters.recherche,
+    dateDebut: filters.dateDebut,
+    dateFin: filters.dateFin,
+    page: filters.page,
+    limit: filters.limit,
+    orderBy: filters.orderBy,
+  });
+}
+
+export async function getAnomalyStats() {
+  return db.stats.getAnomalyStats();
 }
 
 export async function getAnomaly(id) {
@@ -26,7 +55,6 @@ export async function createAnomaly(data) {
     return anomaly;
   });
 
-  // Notification + history via event bus
   bus.emit('anomaly:created', { anomaly, assigned_to: data.assigned_to, user_id: data.reported_by });
 
   return anomaly;
