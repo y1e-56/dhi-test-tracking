@@ -35,6 +35,10 @@ export async function login(email, password) {
     throw new AppError('Email ou mot de passe incorrect', 401);
   }
 
+  if (user.date_suppression) {
+    throw new AppError('Email ou mot de passe incorrect', 401);
+  }
+
   if (user.locked_until && new Date(user.locked_until) > new Date()) {
     throw new AppError('Compte temporairement verrouillé. Réessayez plus tard.', 423);
   }

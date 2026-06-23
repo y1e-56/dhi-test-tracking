@@ -14,7 +14,7 @@ export async function authenticate(req, res, next) {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     const user = await db.users.findById(decoded.userId);
-    if (!user) {
+    if (!user || user.date_suppression) {
       res.status(401).json({ message: 'Utilisateur non trouvé' });
       return;
     }

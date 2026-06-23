@@ -50,7 +50,7 @@ export function AdminUtilisateursPage() {
   const [totalPages, setTotalPages] = useState(1);
 
   const [filtreRole, setFiltreRole] = useState<string>('tous');
-  const [filtreStatutActifs, setFiltreStatutActifs] = useState(true);
+  const [filtreStatut, setFiltreStatut] = useState<'actifs' | 'bloques' | 'supprimes'>('actifs');
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 300);
 
@@ -66,8 +66,8 @@ export function AdminUtilisateursPage() {
         limit,
         role: filtreRole !== 'tous' ? (filtreRole as UserRole) : undefined,
         recherche: debouncedSearch || undefined,
-        bloque: undefined,
-        includeSupprimes: filtreStatutActifs ? undefined : 'seuls',
+        bloque: filtreStatut === 'bloques' ? 'true' : undefined,
+        includeSupprimes: filtreStatut === 'supprimes' ? 'seuls' : undefined,
       });
       setPaginatedUsers(result.data);
       setTotal(result.pagination.total);
@@ -75,10 +75,10 @@ export function AdminUtilisateursPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, filtreRole, debouncedSearch, filtreStatutActifs]);
+  }, [page, limit, filtreRole, debouncedSearch, filtreStatut]);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
-  useEffect(() => { setPage(1); }, [filtreRole, debouncedSearch, filtreStatutActifs]);
+  useEffect(() => { setPage(1); }, [filtreRole, debouncedSearch, filtreStatut]);
 
   useEffect(() => {
     if (dialogOpen) {
@@ -266,7 +266,7 @@ export function AdminUtilisateursPage() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <button onClick={() => { setFiltreRole('tous'); setFiltreStatutActifs(true); setPage(1); }} className="text-left">
+        <button onClick={() => { setFiltreRole('tous'); setFiltreStatut('actifs'); setPage(1); }} className="text-left">
           <Card className="border-0 shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
             <div className="h-0.5 bg-indigo-500" />
             <CardContent className="pt-4 pb-4">
@@ -275,7 +275,7 @@ export function AdminUtilisateursPage() {
             </CardContent>
           </Card>
         </button>
-        <button onClick={() => { setFiltreStatutActifs(true); setPage(1); }} className="text-left">
+        <button onClick={() => { setFiltreStatut('actifs'); setPage(1); }} className="text-left">
           <Card className="border-0 shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
             <div className="h-0.5 bg-emerald-500" />
             <CardContent className="pt-4 pb-4">
@@ -284,7 +284,7 @@ export function AdminUtilisateursPage() {
             </CardContent>
           </Card>
         </button>
-        <button onClick={() => { setFiltreRole('tous'); setPage(1); }} className="text-left">
+        <button onClick={() => { setFiltreRole('tous'); setFiltreStatut('bloques'); setPage(1); }} className="text-left">
           <Card className="border-0 shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
             <div className="h-0.5 bg-red-500" />
             <CardContent className="pt-4 pb-4">
@@ -293,7 +293,7 @@ export function AdminUtilisateursPage() {
             </CardContent>
           </Card>
         </button>
-        <button onClick={() => { setFiltreStatutActifs(false); setPage(1); }} className="text-left">
+        <button onClick={() => { setFiltreStatut('supprimes'); setPage(1); }} className="text-left">
           <Card className="border-0 shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
             <div className="h-0.5 bg-gray-500" />
             <CardContent className="pt-4 pb-4">
@@ -348,12 +348,13 @@ export function AdminUtilisateursPage() {
                 <SelectItem value="developpeur">{t('role.developer')}</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filtreStatutActifs ? 'actifs' : 'supprimes'} onValueChange={(v: string) => { setFiltreStatutActifs(v === 'actifs'); setPage(1); }}>
+            <Select value={filtreStatut} onValueChange={(v: string) => { setFiltreStatut(v as 'actifs' | 'bloques' | 'supprimes'); setPage(1); }}>
               <SelectTrigger className="w-44 bg-white border-slate-200 h-9">
                 <SelectValue placeholder={t('common.filter')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="actifs">{t('admin.users.active')}</SelectItem>
+                <SelectItem value="bloques">{t('admin.users.blocked')}</SelectItem>
                 <SelectItem value="supprimes">{t('admin.users.deleted')}</SelectItem>
               </SelectContent>
             </Select>
