@@ -375,7 +375,7 @@ export function CampagneDetailPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>{t('campagne.detail.assign_to')}</Label>
-                    <Select value={formData.testeurAssigneId || undefined} onValueChange={(value) => setFormData({ ...formData, testeurAssigneId: value })}>
+                    <Select value={formData.testeurAssigneId || undefined} onValueChange={(value) => setFormData({ ...formData, testeurAssigneId: value })} onClear={() => setFormData({ ...formData, testeurAssigneId: '' })}>
                       <SelectTrigger><SelectValue placeholder={t('campagne.detail.select_tester')}>{formData.testeurAssigneId && tousLesTesteurs.find(t => t.id === formData.testeurAssigneId) ? `${tousLesTesteurs.find(t => t.id === formData.testeurAssigneId)?.prenom} ${tousLesTesteurs.find(t => t.id === formData.testeurAssigneId)?.nom}` : ''}</SelectValue></SelectTrigger>
                       <SelectContent>
                         {tousLesTesteurs.map(testeur => (
@@ -386,7 +386,7 @@ export function CampagneDetailPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>{t('campagne.detail.assign_dev')}</Label>
-                    <Select value={formData.developpeurAssigneId || undefined} onValueChange={(value) => setFormData({ ...formData, developpeurAssigneId: value })}>
+                    <Select value={formData.developpeurAssigneId || undefined} onValueChange={(value) => setFormData({ ...formData, developpeurAssigneId: value })} onClear={() => setFormData({ ...formData, developpeurAssigneId: '' })}>
                       <SelectTrigger><SelectValue placeholder={t('campagne.detail.select_dev')}>{formData.developpeurAssigneId && tousLesDeveloppeurs.find(d => d.id === formData.developpeurAssigneId) ? `${tousLesDeveloppeurs.find(d => d.id === formData.developpeurAssigneId)?.prenom} ${tousLesDeveloppeurs.find(d => d.id === formData.developpeurAssigneId)?.nom}` : ''}</SelectValue></SelectTrigger>
                       <SelectContent>
                         {tousLesDeveloppeurs.map(dev => (
@@ -490,7 +490,7 @@ export function CampagneDetailPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t('campagne.detail.select_feature')}</Label>
-              <Select value={selectedFonctionnalite || undefined} onValueChange={setSelectedFonctionnalite}>
+              <Select value={selectedFonctionnalite || undefined} onValueChange={setSelectedFonctionnalite} onClear={() => setSelectedFonctionnalite(null)}>
                 <SelectTrigger><SelectValue placeholder={t('campagne.detail.choose_feature')} /></SelectTrigger>
                 <SelectContent>
                   {fonctionnalitesCampagne.map((f: any) => (
@@ -745,7 +745,7 @@ export function CampagneDetailPage() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>{t('campagne.detail.assign_to')}</Label>
-              <Select value={assignData.testeurAssigneId || undefined} onValueChange={(value) => setAssignData({ ...assignData, testeurAssigneId: value })}>
+              <Select value={assignData.testeurAssigneId || undefined} onValueChange={(value) => setAssignData({ ...assignData, testeurAssigneId: value })} onClear={() => setAssignData({ ...assignData, testeurAssigneId: '' })}>
                 <SelectTrigger><SelectValue placeholder={t('campagne.detail.select_tester')}>{assignData.testeurAssigneId && tousLesTesteurs.find(t => t.id === assignData.testeurAssigneId) ? `${tousLesTesteurs.find(t => t.id === assignData.testeurAssigneId)?.prenom} ${tousLesTesteurs.find(t => t.id === assignData.testeurAssigneId)?.nom}` : ''}</SelectValue></SelectTrigger>
                 <SelectContent>
                   {tousLesTesteurs.map((testeur: any) => (
@@ -756,7 +756,7 @@ export function CampagneDetailPage() {
             </div>
             <div className="space-y-2">
               <Label>{t('campagne.detail.assign_dev')}</Label>
-              <Select value={assignData.developpeurAssigneId || undefined} onValueChange={(value) => setAssignData({ ...assignData, developpeurAssigneId: value })}>
+              <Select value={assignData.developpeurAssigneId || undefined} onValueChange={(value) => setAssignData({ ...assignData, developpeurAssigneId: value })} onClear={() => setAssignData({ ...assignData, developpeurAssigneId: '' })}>
                 <SelectTrigger><SelectValue placeholder={t('campagne.detail.select_dev')}>{assignData.developpeurAssigneId && tousLesDeveloppeurs.find(d => d.id === assignData.developpeurAssigneId) ? `${tousLesDeveloppeurs.find(d => d.id === assignData.developpeurAssigneId)?.prenom} ${tousLesDeveloppeurs.find(d => d.id === assignData.developpeurAssigneId)?.nom}` : ''}</SelectValue></SelectTrigger>
                 <SelectContent>
                   {tousLesDeveloppeurs.map(dev => (
@@ -805,7 +805,7 @@ export function CampagneDetailPage() {
             </div>
             <div className="space-y-2">
               <Label>{t('campagne.detail.member')}</Label>
-              <Select value={nouveauMembre.userId || undefined} onValueChange={(value) => setNouveauMembre({ ...nouveauMembre, userId: value })}>
+              <Select value={nouveauMembre.userId || undefined} onValueChange={(value) => setNouveauMembre({ ...nouveauMembre, userId: value })} onClear={() => setNouveauMembre({ ...nouveauMembre, userId: '' })}>
                 <SelectTrigger><SelectValue placeholder={t('campagne.detail.select_member')} /></SelectTrigger>
                 <SelectContent>
                   {(nouveauMembre.type === 'testeur' ? tousLesTesteursApp : tousLesDeveloppeursApp)

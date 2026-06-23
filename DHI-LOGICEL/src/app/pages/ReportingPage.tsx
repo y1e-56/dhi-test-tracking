@@ -363,7 +363,7 @@ export function ReportingPage() {
           <label className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 block">
             {t('reporting.select_label')}
           </label>
-          <Select value={campagneSelectionnee || undefined} onValueChange={setCampagneSelectionnee}>
+          <Select value={campagneSelectionnee || undefined} onValueChange={setCampagneSelectionnee} onClear={() => setCampagneSelectionnee('')}>
             <SelectTrigger className="w-full max-w-lg bg-white border-slate-200">
               <SelectValue placeholder={t('reporting.select_placeholder')} />
             </SelectTrigger>

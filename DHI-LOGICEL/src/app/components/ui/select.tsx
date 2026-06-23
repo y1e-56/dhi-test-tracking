@@ -6,14 +6,51 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  XIcon,
 } from "lucide-react";
 
 import { cn } from "./utils";
 
 function Select({
+  value,
+  onClear,
+  children,
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Root>) {
-  return <SelectPrimitive.Root data-slot="select" {...props} />;
+}: React.ComponentProps<typeof SelectPrimitive.Root> & {
+  onClear?: () => void;
+}) {
+  if (!onClear) {
+    return (
+      <SelectPrimitive.Root data-slot="select" value={value} {...props}>
+        {children}
+      </SelectPrimitive.Root>
+    );
+  }
+  return (
+    <div className="relative">
+      <SelectPrimitive.Root data-slot="select" value={value} {...props}>
+        {children}
+      </SelectPrimitive.Root>
+      {value && (
+        <button
+          type="button"
+          tabIndex={-1}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClear();
+          }}
+          className="absolute right-9 top-1/2 z-10 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          aria-label="Effacer la sélection"
+        >
+          <XIcon className="size-3.5" />
+        </button>
+      )}
+    </div>
+  );
 }
 
 function SelectGroup({

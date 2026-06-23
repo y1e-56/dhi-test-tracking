@@ -261,7 +261,7 @@ export function CampagnesPage() {
                   const chefsAuto = projet?.chefTesteurIds || [];
                   setFormData({ ...formData, projetId: value, chefTesteurIds: editingCampagne ? formData.chefTesteurIds : chefsAuto });
                   if (errors.projetId) setErrors({ ...errors, projetId: '' });
-                }}>
+                }} onClear={() => setFormData({ ...formData, projetId: '' })}>
                   <SelectTrigger className={errors.projetId ? 'border-red-500 focus:border-red-500' : ''}>
                     <SelectValue placeholder={t('campagne.list.select_project')} />
                   </SelectTrigger>

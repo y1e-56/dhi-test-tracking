@@ -235,7 +235,7 @@ export function AdminUtilisateursPage() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('common.role')} *</Label>
-                <Select value={newUser.role} onValueChange={(v: UserRole) => { setNewUser({ ...newUser, role: v }); if (errors.role) setErrors({ ...errors, role: '' }); }}>
+                <Select value={newUser.role || undefined} onValueChange={(v: UserRole) => { setNewUser({ ...newUser, role: v }); if (errors.role) setErrors({ ...errors, role: '' }); }} onClear={() => setNewUser({ ...newUser, role: '' })}>
                   <SelectTrigger className="bg-white border-slate-200">
                     <SelectValue placeholder={t('admin.users.select_role')}>
                       {newUser.role ? t(roleOptions.find(opt => opt.value === newUser.role)?.labelKey || '') : t('admin.users.select_role')}

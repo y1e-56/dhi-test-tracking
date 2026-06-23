@@ -473,7 +473,7 @@ export function TesteurTachesPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="developpeur">{t('testeur.tasks.notify_developer')}</Label>
-                <Select value={developpeurSelectionne || undefined} onValueChange={setDeveloppeurSelectionne}>
+                <Select value={developpeurSelectionne || undefined} onValueChange={setDeveloppeurSelectionne} onClear={() => setDeveloppeurSelectionne('')}>
                   <SelectTrigger>
                     <SelectValue placeholder={t('testeur.tasks.select_developer')}>{developpeurSelectionne && developpeurs.find(d => d.id === developpeurSelectionne) ? `${developpeurs.find(d => d.id === developpeurSelectionne)?.prenom} ${developpeurs.find(d => d.id === developpeurSelectionne)?.nom}` : ''}</SelectValue>
                   </SelectTrigger>
@@ -501,7 +501,7 @@ export function TesteurTachesPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="testcase">{t('testeur.tasks.test_case')}</Label>
-                <Select value={testCaseSelectionne || undefined} onValueChange={setTestCaseSelectionne}>
+                <Select value={testCaseSelectionne || undefined} onValueChange={setTestCaseSelectionne} onClear={() => setTestCaseSelectionne('')}>
                   <SelectTrigger>
                     <SelectValue placeholder={testCases.length ? t('testeur.tasks.select_test_case') : t('testeur.tasks.no_test_case')}>{testCaseSelectionne && testCases.find(tc => tc.id === testCaseSelectionne) ? testCases.find(tc => tc.id === testCaseSelectionne)?.nom : ''}</SelectValue>
                   </SelectTrigger>
