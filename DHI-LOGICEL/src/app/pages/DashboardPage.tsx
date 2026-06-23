@@ -61,7 +61,7 @@ export function DashboardPage() {
 
   const projetsActifs = projets.filter(p => p.statut === 'actif');
   const campagnesEnCours = campagnes.filter(c => c.statut === 'en_cours');
-  const anomaliesOuvertes = anomalies.filter(a => a.statut !== 'cloturee');
+  const anomaliesOuvertes = anomalies.filter(a => a.statut !== 'cloturee' && a.statut !== 'validee');
 
   const renderAdminDashboard = () => {
     const fonctionnalitesTestees = fonctionnalites.filter(f => f.statut !== 'non_testee');
@@ -76,7 +76,7 @@ export function DashboardPage() {
     const totalAnomalies = anomalies.length;
     const anomaliesResolues = anomalies.filter(a => a.statut === 'cloturee' || a.statut === 'validee').length;
     const tauxResolution = totalAnomalies > 0 ? Math.round((anomaliesResolues / totalAnomalies) * 100) : 0;
-    const anomaliesCritiques = anomalies.filter(a => a.priorite === 'critique' && a.statut !== 'cloturee').length;
+    const anomaliesCritiques = anomalies.filter(a => a.priorite === 'critique' && a.statut !== 'cloturee' && a.statut !== 'validee').length;
 
     return (
       <div className="space-y-6">
@@ -201,7 +201,7 @@ export function DashboardPage() {
                   {campagnesEnCours.slice(0, 4).map(campagne => {
                     const projet = projets.find(p => p.id === campagne.projetId);
                     const fonctsCampagne = fonctionnalites.filter(f => f.campagneId === campagne.id);
-                    const anomCampagne = anomalies.filter(a => a.campagneId === campagne.id && a.statut !== 'cloturee');
+                    const anomCampagne = anomalies.filter(a => a.campagneId === campagne.id && a.statut !== 'cloturee' && a.statut !== 'validee');
                     const pct = fonctsCampagne.length
                       ? Math.round((fonctsCampagne.filter(f => f.statut !== 'non_testee').length / fonctsCampagne.length) * 100)
                       : 0;
@@ -455,7 +455,7 @@ export function DashboardPage() {
                   {campagnesEnCours.slice(0, 4).map(campagne => {
                     const projet = projets.find(p => p.id === campagne.projetId);
                     const fonctsCampagne = fonctionnalites.filter(f => f.campagneId === campagne.id);
-                    const anomCampagne = anomalies.filter(a => a.campagneId === campagne.id && a.statut !== 'cloturee');
+                    const anomCampagne = anomalies.filter(a => a.campagneId === campagne.id && a.statut !== 'cloturee' && a.statut !== 'validee');
                     const pct = fonctsCampagne.length
                       ? Math.round((fonctsCampagne.filter(f => f.statut !== 'non_testee').length / fonctsCampagne.length) * 100)
                       : 0;
@@ -693,7 +693,7 @@ export function DashboardPage() {
     const mesAnomalies = anomalies.filter(a => a.developpeurId === currentUser.id);
     const nouvelles = mesAnomalies.filter(a => a.statut === 'nouvelle').length;
     const enCours = mesAnomalies.filter(a => a.statut === 'en_cours').length;
-    const resolues = mesAnomalies.filter(a => a.statut === 'resolution_signalee' || a.statut === 'cloturee').length;
+    const resolues = mesAnomalies.filter(a => a.statut === 'resolution_signalee' || a.statut === 'validee' || a.statut === 'cloturee').length;
 
     return (
       <div className="space-y-6">
@@ -751,7 +751,7 @@ export function DashboardPage() {
             <CardContent className="px-5 pb-5">
               <div className="space-y-2">
                 {mesAnomalies
-                  .filter(a => a.statut !== 'cloturee')
+                  .filter(a => a.statut !== 'cloturee' && a.statut !== 'validee')
                   .sort((a, b) => {
                     const order = { critique: 0, haute: 1, moyenne: 2, basse: 3 };
                     return (order[a.priorite as keyof typeof order] ?? 3) - (order[b.priorite as keyof typeof order] ?? 3);

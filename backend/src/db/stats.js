@@ -4,15 +4,18 @@ export async function getGlobalStats(client = null) {
   const c = client || pool;
   const [projects, campaigns, features, anomalies, users] = await Promise.all([
     c.query('SELECT COUNT(*)::int as count FROM projects WHERE is_archived = FALSE'),
-    c.query('SELECT COUNT(*)::int as count FROM campaigns'),
-    c.query('SELECT COUNT(*)::int as count FROM features'),
-    c.query('SELECT COUNT(*)::int as count FROM anomalies'),
+    c.query('SELECT COUNT(*)::int as count FROM campaigns c INNER JOIN projects p ON p.id = c.project_id AND p.is_archived = FALSE'),
+    c.query('SELECT COUNT(*)::int as count FROM features f INNER JOIN campaigns c ON c.id = f.campaign_id INNER JOIN projects p ON p.id = c.project_id AND p.is_archived = FALSE'),
+    c.query('SELECT COUNT(*)::int as count FROM anomalies a INNER JOIN campaigns c ON c.id = a.campaign_id INNER JOIN projects p ON p.id = c.project_id AND p.is_archived = FALSE'),
     c.query('SELECT COUNT(*)::int as count FROM users'),
   ]);
 
-  const anomaliesByStatus = await c.query(
-    'SELECT status, COUNT(*)::int as count FROM anomalies GROUP BY status'
-  );
+  const anomaliesByStatus = (await c.query(
+    `SELECT a.status, COUNT(*)::int as count FROM anomalies a
+     INNER JOIN campaigns c ON c.id = a.campaign_id
+     INNER JOIN projects p ON p.id = c.project_id AND p.is_archived = FALSE
+     GROUP BY a.status`
+  )).rows.map(r => ({ status: EN_TO_FR_STATUS[r.status] || r.status, count: r.count }));
 
   const recentActivity = await c.query(
     `SELECT h.*, u.first_name, u.last_name
@@ -26,25 +29,38 @@ export async function getGlobalStats(client = null) {
     features: features.rows[0].count,
     anomalies: anomalies.rows[0].count,
     users: users.rows[0].count,
-    anomaliesByStatus: anomaliesByStatus.rows,
+    anomaliesByStatus,
     recentActivity: recentActivity.rows,
   };
 }
 
+const EN_TO_FR_STATUS = {
+  new: 'nouvelle',
+  in_progress: 'en_cours',
+  resolution_signaled: 'resolution_signalee',
+  validated: 'validee',
+  rejected: 'nouvelle',
+};
+
 export async function getAnomalyStats(client = null) {
   const c = client || pool;
   const result = await c.query(
-    `SELECT status, COUNT(*)::int as count FROM anomalies GROUP BY status`
+    `SELECT a.status, COUNT(*)::int as count FROM anomalies a
+     INNER JOIN campaigns c ON c.id = a.campaign_id
+     INNER JOIN projects p ON p.id = c.project_id AND p.is_archived = FALSE
+     GROUP BY a.status`
   );
   const total = result.rows.reduce((sum, row) => sum + row.count, 0);
-  const byStatus = Object.fromEntries(result.rows.map(r => [r.status, r.count]));
+  const byStatus = Object.fromEntries(
+    result.rows.map(r => [EN_TO_FR_STATUS[r.status] || r.status, r.count])
+  );
   return { total, byStatus };
 }
 
 export async function getProjectDashboard(projectId, client = null) {
   const c = client || pool;
   const project = await c.query('SELECT * FROM projects WHERE id = $1', [projectId]);
-  if (project.rows.length === 0) return null;
+  if (project.rows.length === 0 || project.rows[0].is_archived) return null;
 
   const campaigns = await c.query(
     'SELECT * FROM campaigns WHERE project_id = $1 ORDER BY created_at DESC',

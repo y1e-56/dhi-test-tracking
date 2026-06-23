@@ -20,7 +20,7 @@ const createSchema = z.object({
 
 router.get('/', authenticate, async (req, res) => {
   const { page, limit, ...filters } = req.query;
-  if (page || limit || filters.recherche || filters.statut || filters.chefTesteurId) {
+  if (page || limit || filters.recherche || filters.statut || filters.chefTesteurId || filters.project_id || filters.projectId) {
     const result = await campaignService.listCampaignsPaginated({
       page: page ? Math.max(1, parseInt(page)) : 1,
       limit: limit ? Math.max(1, Math.min(200, parseInt(limit))) : 20,

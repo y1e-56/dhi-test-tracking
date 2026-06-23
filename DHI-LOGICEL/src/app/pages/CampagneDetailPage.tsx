@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,12 +12,14 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { ArrowLeft, Plus, TestTube, AlertTriangle, CheckCircle2, Clock, User, Play, Flag, X, Users, Trash2 } from 'lucide-react';
-import { Fonctionnalite, Priorite, StatutFonctionnalite, TestCase, HistoriqueAction } from '../types';
+import { ArrowLeft, Plus, TestTube, AlertTriangle, CheckCircle2, Clock, User, Play, Flag, X, Users, Trash2, Search, Loader2 } from 'lucide-react';
+import { Fonctionnalite, Priorite, StatutFonctionnalite, StatutAnomalie, TestCase, HistoriqueAction } from '../types';
+import { useDebounce } from '../hooks/useDebounce';
 import { campaignService } from '../services/campaignService';
 import { testCaseService } from '../services/testCaseService';
 import { dashboardService } from '../services/dashboardService';
 import { toast } from 'sonner';
+import { HistoriqueTimeline } from '../components/HistoriqueTimeline';
 
 export function CampagneDetailPage() {
   const { t } = useTranslation();
@@ -35,6 +37,12 @@ export function CampagneDetailPage() {
   const [ajoutMembreDialogOpen, setAjoutMembreDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('fonctionnalites');
   const [filtreStatut, setFiltreStatut] = useState<StatutFonctionnalite | 'tous'>('tous');
+  const [filtreFonctionnaliteId, setFiltreFonctionnaliteId] = useState<string | null>(null);
+  const [rechercheFonctionnalite, setRechercheFonctionnalite] = useState('');
+  const debouncedRechercheFonctionnalite = useDebounce(rechercheFonctionnalite, 300);
+  const [filtreStatutAnomalie, setFiltreStatutAnomalie] = useState<string>('tous');
+  const [rechercheAnomalie, setRechercheAnomalie] = useState('');
+  const debouncedRechercheAnomalie = useDebounce(rechercheAnomalie, 300);
   const [historiqueActions, setHistoriqueActions] = useState<HistoriqueAction[]>([]);
   const [historiqueLoading, setHistoriqueLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -195,7 +203,15 @@ export function CampagneDetailPage() {
   };
 
   const fonctionnalitesCampagne = fonctionnalites.filter((f: any) => f.campagneId === campagneId);
-  const anomaliesCampagne = anomalies.filter((a: any) => a.campagneId === campagneId);
+  const anomaliesCampagne = anomalies.filter((a: any) => a.campagneId === campagneId && (!filtreFonctionnaliteId || a.fonctionnaliteId === filtreFonctionnaliteId));
+  const anomaliesFiltrees = anomaliesCampagne.filter((a: any) => {
+    if (filtreStatutAnomalie !== 'tous' && a.statut !== filtreStatutAnomalie) return false;
+    if (debouncedRechercheAnomalie) {
+      const q = debouncedRechercheAnomalie.toLowerCase();
+      if (!a.titre?.toLowerCase().includes(q) && !a.description?.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
 
   if (!campagne || !currentUser) {
     return <div className="text-center py-12"><p className="text-gray-500">{t('campagne.detail.not_found')}</p></div>;
@@ -213,21 +229,32 @@ export function CampagneDetailPage() {
   const equipeTesteursDedupliquee = [...new Set(campagne.equipeTesteurs)];
   const equipeDeveloppeursDedupliquee = [...new Set(campagne.equipeDeveloppeurs)];
 
-  // N'afficher que les testeurs/développeurs membres de la campagne
+  // Tous les testeurs/développeurs disponibles (pour le dialogue d'ajout)
   const tousLesTesteurs = users.filter((u: any) => u.role === 'testeur' && equipeTesteursDedupliquee.includes(String(u.id)));
   const tousLesDeveloppeurs = users.filter((u: any) => u.role === 'developpeur' && equipeDeveloppeursDedupliquee.includes(String(u.id)));
+
+  // Tous les utilisateurs de l'app (pour le dialogue d'ajout de membre)
+  const tousLesTesteursApp = users.filter((u: any) => u.role === 'testeur');
+  const tousLesDeveloppeursApp = users.filter((u: any) => u.role === 'developpeur');
 
   // Pour l'affichage de l'équipe actuelle uniquement
   const testeurs = users.filter((u: any) => equipeTesteursDedupliquee.includes(String(u.id)));
   const developpeurs = users.filter((u: any) => equipeDeveloppeursDedupliquee.includes(String(u.id)));
-  const fonctionnalitesFiltrees = fonctionnalitesCampagne.filter((f: any) => filtreStatut === 'tous' ? true : f.statut === filtreStatut);
+  const fonctionnalitesFiltrees = fonctionnalitesCampagne.filter((f: any) => {
+    if (filtreStatut !== 'tous' && f.statut !== filtreStatut) return false;
+    if (debouncedRechercheFonctionnalite) {
+      const q = debouncedRechercheFonctionnalite.toLowerCase();
+      if (!f.nom?.toLowerCase().includes(q) && !f.description?.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
 
   const stats = {
     total: fonctionnalitesCampagne.length,
     nonTestees: fonctionnalitesCampagne.filter((f: any) => f.statut === 'non_testee').length,
     conformes: fonctionnalitesCampagne.filter((f: any) => f.statut === 'conforme').length,
     anomalies: fonctionnalitesCampagne.filter((f: any) => f.statut === 'anomalie').length,
-    anomaliesOuvertes: anomaliesCampagne.filter((a: any) => a.statut !== 'cloturee').length
+    anomaliesOuvertes: anomaliesCampagne.filter((a: any) => a.statut !== 'cloturee' && a.statut !== 'validee').length
   };
 
   const handleOpenDialog = () => {
@@ -402,7 +429,15 @@ export function CampagneDetailPage() {
 
         <TabsContent value="fonctionnalites" className="space-y-4">
           <div className="flex items-center gap-4">
-            <h3 className="font-semibold">{t('campagne.detail.features_tab')}</h3>
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                value={rechercheFonctionnalite}
+                onChange={e => setRechercheFonctionnalite(e.target.value)}
+                placeholder={t('common.search')}
+                className="pl-9 bg-white border-slate-200 h-9"
+              />
+            </div>
             <Select value={filtreStatut} onValueChange={(value: StatutFonctionnalite | 'tous') => setFiltreStatut(value)}>
               <SelectTrigger className="w-48"><SelectValue placeholder={t('campagne.detail.filter_status')} /></SelectTrigger>
               <SelectContent>
@@ -418,7 +453,7 @@ export function CampagneDetailPage() {
               const testeur = users.find((u: any) => u.id === fonctionnalite.testeurAssigneId);
               const statutBadge = getStatutBadge(fonctionnalite.statut);
               return (
-                <Card key={fonctionnalite.id}>
+                <Card key={fonctionnalite.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => { setFiltreFonctionnaliteId(fonctionnalite.id); setActiveTab('anomalies'); }}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
@@ -435,7 +470,7 @@ export function CampagneDetailPage() {
                       </div>
                       {peutGerer && !isArchive && (
                         <Button size="sm" variant="outline"
-                          onClick={() => handleOpenAssignDialog(fonctionnalite.id)}
+                          onClick={(e) => { e.stopPropagation(); handleOpenAssignDialog(fonctionnalite.id); }}
                           disabled={fonctionnalite.statut === 'conforme' || isTerminee}>
                           {t('campagne.detail.assign')}
                         </Button>
@@ -565,8 +600,38 @@ export function CampagneDetailPage() {
         </TabsContent>
 
         <TabsContent value="anomalies" className="space-y-4">
+          {filtreFonctionnaliteId && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-gray-600">{t('campagne.detail.feature_label')}: <strong>{fonctionnalites.find(f => f.id === filtreFonctionnaliteId)?.nom}</strong></span>
+              <Button variant="ghost" size="sm" onClick={() => setFiltreFonctionnaliteId(null)} className="h-6 text-xs">
+                <X className="w-3 h-3 mr-1" />{t('common.reset')}
+              </Button>
+            </div>
+          )}
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                value={rechercheAnomalie}
+                onChange={e => setRechercheAnomalie(e.target.value)}
+                placeholder={t('common.search')}
+                className="pl-9 bg-white border-slate-200 h-9"
+              />
+            </div>
+            <Select value={filtreStatutAnomalie} onValueChange={setFiltreStatutAnomalie}>
+              <SelectTrigger className="w-44"><SelectValue placeholder={t('campagne.detail.filter_status')} /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tous">{t('campagne.detail.all')}</SelectItem>
+                <SelectItem value="nouvelle">{t('statut.nouvelle')}</SelectItem>
+                <SelectItem value="en_cours">{t('statut.en_cours')}</SelectItem>
+                <SelectItem value="resolution_signalee">{t('statut.resolution_signalee')}</SelectItem>
+                <SelectItem value="validee">{t('statut.validee')}</SelectItem>
+                <SelectItem value="cloturee">{t('statut.cloturee')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-3">
-            {anomaliesCampagne.map((anomalie: any) => {
+            {anomaliesFiltrees.map((anomalie: any) => {
               const fonctionnalite = fonctionnalites.find((f: any) => f.id === anomalie.fonctionnaliteId);
               const testeur = users.find((u: any) => u.id === anomalie.testeurId);
               const developpeur = users.find((u: any) => u.id === anomalie.developpeurId);
@@ -597,7 +662,7 @@ export function CampagneDetailPage() {
               );
             })}
           </div>
-          {anomaliesCampagne.length === 0 && (
+          {anomaliesFiltrees.length === 0 && (
             <Card><CardContent className="py-12 text-center"><AlertTriangle className="w-12 h-12 text-gray-300 mx-auto mb-4" /><p className="text-gray-500">{t('common.no_anomalies')}</p></CardContent></Card>
           )}
         </TabsContent>
@@ -661,30 +726,9 @@ export function CampagneDetailPage() {
             </CardHeader>
             <CardContent className="px-5 pb-5">
               {historiqueLoading ? (
-                <p className="text-sm text-slate-400 text-center py-4">Chargement...</p>
-              ) : historiqueActions.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-4">{t('anomalie.detail.no_history')}</p>
+                <p className="text-sm text-slate-400 text-center py-4">{t('common.loading')}</p>
               ) : (
-                <div className="space-y-3">
-                  {historiqueActions.map((action, idx) => {
-                    const auteur = users.find(u => u.id === action.userId);
-                    return (
-                      <div key={action.id} className="relative pl-5">
-                        {idx < historiqueActions.length - 1 && (
-                          <div className="absolute left-[7px] top-4 bottom-0 w-px bg-slate-200" />
-                        )}
-                        <div className="absolute left-0 top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white bg-indigo-400 shadow-sm" />
-                        <p className="text-sm font-semibold text-slate-800">{action.action}</p>
-                        {action.commentaire && (
-                          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{action.commentaire}</p>
-                        )}
-                        <p className="text-[10px] font-mono text-slate-400 mt-1">
-                          {auteur?.prenom} {auteur?.nom} · {new Date(action.date).toLocaleString('fr-FR')}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
+                <HistoriqueTimeline historique={historiqueActions} users={users} />
               )}
             </CardContent>
           </Card>
@@ -764,8 +808,8 @@ export function CampagneDetailPage() {
               <Select value={nouveauMembre.userId || undefined} onValueChange={(value) => setNouveauMembre({ ...nouveauMembre, userId: value })}>
                 <SelectTrigger><SelectValue placeholder={t('campagne.detail.select_member')} /></SelectTrigger>
                 <SelectContent>
-                  {(nouveauMembre.type === 'testeur' ? tousLesTesteurs : tousLesDeveloppeurs)
-                    .filter((u: any) => !(nouveauMembre.type === 'testeur' ? equipeTesteursDedupliquee : equipeDeveloppeursDedupliquee).includes(u.id))
+                  {(nouveauMembre.type === 'testeur' ? tousLesTesteursApp : tousLesDeveloppeursApp)
+                    .filter((u: any) => !(nouveauMembre.type === 'testeur' ? equipeTesteursDedupliquee : equipeDeveloppeursDedupliquee).includes(String(u.id)))
                     .map((user: any) => (
                       <SelectItem key={user.id} value={user.id}>{user.prenom} {user.nom}</SelectItem>
                     ))}

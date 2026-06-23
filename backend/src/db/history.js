@@ -34,12 +34,26 @@ export async function list(filters = {}, client = null) {
     params.push(filters.campagneId);
   }
   if (filters.typeAction) {
+    const ACTION_TYPE_FR_TO_EN = {
+      creation: 'created',
+      modification: 'updated',
+      suppression: 'deleted',
+      statut: 'status_changed',
+      assignation: 'assigned',
+    };
     conditions.push(`h.action_type = $${idx++}`);
-    params.push(filters.typeAction);
+    params.push(ACTION_TYPE_FR_TO_EN[filters.typeAction] || filters.typeAction);
   }
   if (filters.typeEntite) {
+    const ENTITY_TYPE_FR_TO_EN = {
+      utilisateur: 'user',
+      projet: 'project',
+      campagne: 'campaign',
+      fonctionnalite: 'feature',
+      anomalie: 'anomaly',
+    };
     conditions.push(`h.entity_type = $${idx++}`);
-    params.push(filters.typeEntite);
+    params.push(ENTITY_TYPE_FR_TO_EN[filters.typeEntite] || filters.typeEntite);
   }
   if (filters.entityId) {
     conditions.push(`h.entity_id = $${idx++}`);

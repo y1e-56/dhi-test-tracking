@@ -338,7 +338,7 @@ export function ProjetsPage() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {paginatedProjets.map((projet) => (
-              <Card key={projet.id} className="hover:shadow-md transition-shadow">
+              <Card key={projet.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/campagnes?projetId=${projet.id}`)}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">

@@ -11,10 +11,11 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { CheckCircle2, XCircle, Clock, AlertTriangle, Sparkles, UserCheck } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, AlertTriangle, Sparkles, UserCheck, Search } from 'lucide-react';
 import { StatutFonctionnalite, Anomalie, TestCase } from '../types';
 import { suggerePriorite, suggereDeveloppeur } from '../services/aiService';
 import { testCaseService } from '../services/testCaseService';
+import { useDebounce } from '../hooks/useDebounce';
 
 export function TesteurTachesPage() {
   const { t } = useTranslation();
@@ -41,6 +42,12 @@ export function TesteurTachesPage() {
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [priorite, setPriorite] = useState<'basse' | 'moyenne' | 'haute' | 'critique'>('moyenne');
   
+  // États pour les filtres
+  const [filtreStatut, setFiltreStatut] = useState<string>('tous');
+  const [filtreCampagne, setFiltreCampagne] = useState<string>('tous');
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 300);
+  
   // États pour les suggestions IA
   const [suggestionPriorite, setSuggestionPriorite] = useState<'basse' | 'moyenne' | 'haute' | 'critique' | null>(null);
   const [suggestionDeveloppeur, setSuggestionDeveloppeur] = useState<string | null>(null);
@@ -63,6 +70,26 @@ export function TesteurTachesPage() {
     ? fonctionnalites
     : fonctionnalites.filter(f => f.testeurAssigneId === currentUser.id);
   const developpeurs = users.filter(u => u.role === 'developpeur');
+
+  const mesTachesFiltrees = mesTaches.filter(f => {
+    if (filtreStatut !== 'tous' && f.statut !== filtreStatut) return false;
+    if (filtreCampagne !== 'tous' && f.campagneId !== filtreCampagne) return false;
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
+      if (!f.nom?.toLowerCase().includes(q) && !f.description?.toLowerCase().includes(q) && !f.module?.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Grouper les tâches filtrées par campagne
+  const tachesParCampagne = mesTachesFiltrees.reduce((acc, f) => {
+    const campagneId = f.campagneId;
+    if (!acc[campagneId]) acc[campagneId] = [];
+    acc[campagneId].push(f);
+    return acc;
+  }, {} as Record<string, typeof mesTachesFiltrees>);
+
+  const campagnesOrdonnees = Object.keys(tachesParCampagne).sort();
 
   // Effet pour suggérer la priorité quand le titre ou la description changent
   useEffect(() => {
@@ -205,7 +232,7 @@ export function TesteurTachesPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFiltreStatut('tous')}>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-600">{t('testeur.tasks.total')}</CardTitle>
           </CardHeader>
@@ -213,7 +240,7 @@ export function TesteurTachesPage() {
             <div className="text-2xl font-bold">{mesTaches.length}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFiltreStatut('non_testee')}>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-600">{t('testeur.tasks.not_tested')}</CardTitle>
           </CardHeader>
@@ -223,7 +250,7 @@ export function TesteurTachesPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFiltreStatut('conforme')}>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-600">{t('testeur.tasks.compliant')}</CardTitle>
           </CardHeader>
@@ -233,7 +260,7 @@ export function TesteurTachesPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFiltreStatut('anomalie')}>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-600">{t('testeur.tasks.anomalies')}</CardTitle>
           </CardHeader>
@@ -245,11 +272,57 @@ export function TesteurTachesPage() {
         </Card>
       </div>
 
-      <div className="space-y-3">
-        {mesTaches.map((fonctionnalite) => {
-          const campagne = campagnes.find(c => c.id === fonctionnalite.campagneId);
-          const projet = projets.find(p => p.id === campagne?.projetId);
-          const statutBadge = getStatutBadge(fonctionnalite.statut);
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder={t('common.search')}
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={filtreStatut} onValueChange={setFiltreStatut}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder={t('campagne.detail.filter_status')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tous">{t('common.all')}</SelectItem>
+            <SelectItem value="non_testee">{t('testeur.tasks.not_tested')}</SelectItem>
+            <SelectItem value="conforme">{t('testeur.tasks.compliant')}</SelectItem>
+            <SelectItem value="anomalie">{t('testeur.tasks.anomalies')}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filtreCampagne} onValueChange={setFiltreCampagne}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder={t('testeur.tasks.campagne')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tous">{t('common.all')}</SelectItem>
+            {campagnes.map(c => (
+              <SelectItem key={c.id} value={c.id}>{c.nom}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-8">
+        {campagnesOrdonnees.map(campagneId => {
+          const campagne = campagnes.find(c => c.id === campagneId);
+          const taches = tachesParCampagne[campagneId];
+          return (
+            <div key={campagneId}>
+              <div className="flex items-center gap-2 mb-3">
+                <h3 className="text-lg font-semibold text-slate-800">{campagne?.nom || campagneId}</h3>
+                <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{taches.length}</span>
+              </div>
+              <div className="space-y-3">
+                {taches.map((fonctionnalite) => {
+                  const projet = projets.find(p => p.id === campagne?.projetId);
+                  const statutBadge = getStatutBadge(fonctionnalite.statut);
+                  const derniereAnomalie = anomalies
+                    .filter(a => a.fonctionnaliteId === fonctionnalite.id)
+                    .sort((a, b) => new Date(b.dateCreation).getTime() - new Date(a.dateCreation).getTime())[0];
 
           return (
             <Card key={fonctionnalite.id}>
@@ -279,40 +352,54 @@ export function TesteurTachesPage() {
                             {t('testeur.tasks.assigned_on')} {new Date(fonctionnalite.dateAssignation).toLocaleDateString('fr-FR')}
                           </p>
                         )}
+                        {derniereAnomalie && (
+                          <button
+                            onClick={() => navigate(`/anomalies/${derniereAnomalie.id}`)}
+                            className="text-xs text-indigo-500 hover:text-indigo-700 font-medium mt-1"
+                          >
+                            {t('testeur.tasks.view_anomaly_history')}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-green-600 border-green-600 hover:bg-green-50"
-                      onClick={() => handleOpenDialogStatut(fonctionnalite.id, 'conforme')}
-                      disabled={fonctionnalite.statut === 'conforme' || isAdmin}
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-1" />
-                      {t('testeur.tasks.mark_compliant')}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-red-600 border-red-600 hover:bg-red-50"
-                      onClick={() => handleOpenDialogStatut(fonctionnalite.id, 'anomalie')}
-                      disabled={isAdmin || fonctionnalite.statut === 'conforme'}
-                    >
-                      <AlertTriangle className="w-4 h-4 mr-1" />
-                      {t('testeur.tasks.report_anomaly')}
-                    </Button>
-                  </div>
+                  {fonctionnalite.statut !== 'conforme' && (
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-green-600 border-green-600 hover:bg-green-50"
+                        onClick={() => handleOpenDialogStatut(fonctionnalite.id, 'conforme')}
+                        disabled={isAdmin}
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-1" />
+                        {t('testeur.tasks.mark_compliant')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 border-red-600 hover:bg-red-50"
+                        onClick={() => handleOpenDialogStatut(fonctionnalite.id, 'anomalie')}
+                        disabled={isAdmin}
+                      >
+                        <AlertTriangle className="w-4 h-4 mr-1" />
+                        {t('testeur.tasks.report_anomaly')}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           );
         })}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {mesTaches.length === 0 && (
+      {mesTachesFiltrees.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center">
             <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />

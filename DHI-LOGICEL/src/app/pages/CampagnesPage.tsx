@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -12,7 +12,7 @@ import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Checkbox } from '../components/ui/checkbox';
-import { Loader2, Plus, TestTube, Users, Calendar, Search } from 'lucide-react';
+import { Loader2, Plus, TestTube, Users, Calendar, Search, X } from 'lucide-react';
 import { Campagne } from '../types';
 import { campaignService } from '../services/campaignService';
 import { useDebounce } from '../hooks/useDebounce';
@@ -24,6 +24,8 @@ export function CampagnesPage() {
   const { currentUser, users } = useAuth();
   const { projets, ajouterCampagne, modifierCampagne } = useData();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const projetIdUrl = searchParams.get('projetId');
 
   const [paginatedCampagnes, setPaginatedCampagnes] = useState<Campagne[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +37,7 @@ export function CampagnesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 300);
   const [filtreArchive, setFiltreArchive] = useState(false);
+  const [projetFiltre, setProjetFiltre] = useState<string>(projetIdUrl || '');
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCampagne, setEditingCampagne] = useState<Campagne | null>(null);
@@ -65,6 +68,7 @@ export function CampagnesPage() {
         limit,
         recherche: debouncedSearch || undefined,
         statut: filtreArchive ? 'archived' : undefined,
+        projetId: projetFiltre || undefined,
       });
       setPaginatedCampagnes(result.data);
       setTotal(result.pagination.total);
@@ -72,10 +76,10 @@ export function CampagnesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, debouncedSearch, filtreArchive]);
+  }, [page, limit, debouncedSearch, filtreArchive, projetFiltre]);
 
   useEffect(() => { fetchCampagnes(); }, [fetchCampagnes]);
-  useEffect(() => { setPage(1); }, [debouncedSearch, filtreArchive]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, filtreArchive, projetFiltre]);
 
   const isAdmin = currentUser?.role === 'admin';
 
@@ -424,6 +428,15 @@ export function CampagnesPage() {
           </Button>
         </div>
       </div>
+
+      {projetFiltre && (
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-gray-600">{t('campagne.list.project')}: <strong>{projets.find(p => p.id === projetFiltre)?.nom}</strong></span>
+          <Button variant="ghost" size="sm" onClick={() => { setProjetFiltre(''); setPage(1); }} className="h-6 text-xs">
+            <X className="w-3 h-3 mr-1" />{t('common.reset')}
+          </Button>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">

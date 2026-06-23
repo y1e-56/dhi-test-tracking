@@ -6,12 +6,14 @@ import { useNavigate } from 'react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
+import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
-import { AlertTriangle, Clock, CheckCircle2, Code, Play } from 'lucide-react';
+import { AlertTriangle, Clock, CheckCircle2, Code, Play, Search } from 'lucide-react';
 import { StatutAnomalie } from '../types';
+import { useDebounce } from '../hooks/useDebounce';
 
 export function DeveloppeurAnomaliesPage() {
   const { t } = useTranslation();
@@ -20,6 +22,9 @@ export function DeveloppeurAnomaliesPage() {
   const { anomalies, fonctionnalites, campagnes, projets, changerStatutAnomalie, signalerResolution } = useData();
   const navigate = useNavigate();
   const [filtreStatut, setFiltreStatut] = useState<StatutAnomalie | 'tous'>('tous');
+  const [filtreCampagne, setFiltreCampagne] = useState<string>('tous');
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 300);
   const [dialogResolutionOpen, setDialogResolutionOpen] = useState(false);
   const [anomalieSelectionnee, setAnomalieSelectionnee] = useState<string | null>(null);
   const [commentaireResolution, setCommentaireResolution] = useState('');
@@ -57,9 +62,26 @@ export function DeveloppeurAnomaliesPage() {
     : anomalies.filter(a => a.developpeurId === currentUser.id);
   
   const anomaliesFiltrees = mesAnomalies.filter(a => {
-    if (filtreStatut === 'tous') return true;
-    return a.statut === filtreStatut;
+    if (filtreStatut !== 'tous') {
+      const correspondCloturee = filtreStatut === 'cloturee' && a.statut === 'validee';
+      if (a.statut !== filtreStatut && !correspondCloturee) return false;
+    }
+    if (filtreCampagne !== 'tous' && a.campagneId !== filtreCampagne) return false;
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
+      if (!a.titre?.toLowerCase().includes(q) && !a.description?.toLowerCase().includes(q)) return false;
+    }
+    return true;
   });
+
+  const anomaliesParCampagne = anomaliesFiltrees.reduce((acc, a) => {
+    const cId = a.campagneId;
+    if (!acc[cId]) acc[cId] = [];
+    acc[cId].push(a);
+    return acc;
+  }, {} as Record<string, typeof anomaliesFiltrees>);
+
+  const campagnesOrdonnees = Object.keys(anomaliesParCampagne).sort();
 
   const badgeConfigDev: Record<StatutAnomalie, { labelKey: string; className: string }> = {
     nouvelle: { labelKey: 'statut.nouvelle', className: 'bg-red-100 text-red-700' },
@@ -107,7 +129,7 @@ export function DeveloppeurAnomaliesPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setFiltreStatut('tous'); setSearchTerm(''); }}>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-600">{t('developpeur.anomalies.total')}</CardTitle>
           </CardHeader>
@@ -115,7 +137,7 @@ export function DeveloppeurAnomaliesPage() {
             <div className="text-2xl font-bold">{mesAnomalies.length}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFiltreStatut('nouvelle')}>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-600">{t('developpeur.anomalies.new')}</CardTitle>
           </CardHeader>
@@ -125,7 +147,7 @@ export function DeveloppeurAnomaliesPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFiltreStatut('en_cours')}>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-600">{t('developpeur.anomalies.in_progress')}</CardTitle>
           </CardHeader>
@@ -135,7 +157,7 @@ export function DeveloppeurAnomaliesPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFiltreStatut('resolution_signalee')}>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-600">{t('developpeur.anomalies.resolved')}</CardTitle>
           </CardHeader>
@@ -145,20 +167,28 @@ export function DeveloppeurAnomaliesPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFiltreStatut('cloturee')}>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-600">{t('developpeur.anomalies.closed')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-600">
-              {mesAnomalies.filter(a => a.statut === 'cloturee').length}
+              {mesAnomalies.filter(a => a.statut === 'cloturee' || a.statut === 'validee').length}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="flex items-center gap-4">
-        <label className="text-sm font-medium">{t('developpeur.anomalies.filter_by_status')}</label>
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder={t('common.search')}
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
         <Select value={filtreStatut} onValueChange={(value: any) => setFiltreStatut(value)}>
           <SelectTrigger className="w-48">
             <SelectValue placeholder={t('developpeur.anomalies.choose_status')} />
@@ -171,21 +201,41 @@ export function DeveloppeurAnomaliesPage() {
             <SelectItem value="cloturee">{t('statut.cloturee')}</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={filtreCampagne} onValueChange={setFiltreCampagne}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder={t('developpeur.anomalies.campagne')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tous">{t('developpeur.anomalies.all')}</SelectItem>
+            {campagnes.map(c => (
+              <SelectItem key={c.id} value={c.id}>{c.nom}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      <div className="space-y-3">
-        {anomaliesFiltrees.map((anomalie) => {
-          const fonctionnalite = fonctionnalites.find(f => f.id === anomalie.fonctionnaliteId);
-          const campagne = campagnes.find(c => c.id === anomalie.campagneId);
-          const projet = projets.find(p => p.id === campagne?.projetId);
-          const testeur = users.find(u => u.id === anomalie.testeurId);
-          const statutBadge = getStatutBadge(anomalie.statut);
-
+      <div className="space-y-8">
+        {campagnesOrdonnees.map(campagneId => {
+          const campagne = campagnes.find(c => c.id === campagneId);
+          const anomaliesCampagne = anomaliesParCampagne[campagneId];
           return (
-            <Card 
-              key={anomalie.id} 
-              className="hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/anomalies/${anomalie.id}`)}
+            <div key={campagneId}>
+              <div className="flex items-center gap-2 mb-3">
+                <h3 className="text-lg font-semibold text-slate-800">{campagne?.nom || campagneId}</h3>
+                <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{anomaliesCampagne.length}</span>
+              </div>
+              <div className="space-y-3">
+                {anomaliesCampagne.map((anomalie) => {
+                  const fonctionnalite = fonctionnalites.find(f => f.id === anomalie.fonctionnaliteId);
+                  const projet = projets.find(p => p.id === campagne?.projetId);
+                  const testeur = users.find(u => u.id === anomalie.testeurId);
+                  const statutBadge = getStatutBadge(anomalie.statut);
+
+                  return (
+                    <Card 
+                      key={anomalie.id} 
+                      className="hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => navigate(`/anomalies/${anomalie.id}`)}
             >
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
@@ -270,6 +320,10 @@ export function DeveloppeurAnomaliesPage() {
                 </div>
               </CardContent>
             </Card>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </div>

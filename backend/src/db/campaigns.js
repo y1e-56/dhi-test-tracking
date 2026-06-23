@@ -4,12 +4,12 @@ import { paginate } from './helpers/paginate.js';
 export async function list(projectId, client = null) {
   const c = client || pool;
   const params = [];
-  let query = 'SELECT * FROM campaigns';
+  let query = 'SELECT c.* FROM campaigns c';
   if (projectId) {
-    query += ' WHERE project_id = $1';
+    query += ' WHERE c.project_id = $1';
     params.push(projectId);
   }
-  query += ' ORDER BY created_at DESC';
+  query += ' ORDER BY c.created_at DESC';
   const result = await c.query(query, params);
   return attachTestLeadIds(result.rows, c);
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,7 +9,10 @@ import { Badge } from '../components/ui/badge';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { ArrowLeft, Bug, User, Calendar, CheckCircle2, Timer, AlertTriangle } from 'lucide-react';
-import { StatutAnomalie } from '../types';
+import { StatutAnomalie, HistoriqueAction } from '../types';
+import { api } from '../services/api';
+import { mapHistoriqueFromBackend } from '../utils/mappers';
+import { HistoriqueTimeline } from '../components/HistoriqueTimeline';
 
 const prioriteConfig: Record<string, { labelKey: string; cls: string; dot: string }> = {
   critique: { labelKey: 'priorite.critique', cls: 'bg-red-100 text-red-700 border border-red-200', dot: 'bg-red-500' },
@@ -31,11 +34,19 @@ export function AnomalieDetailPage() {
   const { anomalieId } = useParams<{ anomalieId: string }>();
   const { currentUser, users } = useAuth();
   const {
-    anomalies, fonctionnalites, campagnes, projets, historiqueActions,
+    anomalies, fonctionnalites, campagnes, projets,
     changerStatutAnomalie, signalerResolution, validerCloture
   } = useData();
   const navigate = useNavigate();
   const [commentaireResolution, setCommentaireResolution] = useState('');
+  const [historique, setHistorique] = useState<HistoriqueAction[]>([]);
+
+  useEffect(() => {
+    if (!anomalieId) return;
+    api.get(`/anomalies/${anomalieId}/history`)
+      .then(res => setHistorique((res.data || []).map(mapHistoriqueFromBackend)))
+      .catch(err => console.error('[AnomalieDetailPage] Échec du chargement de l\'historique:', err));
+  }, [anomalieId]);
 
   const anomalie = anomalies.find(a => a.id === anomalieId);
   const fonctionnalite = fonctionnalites.find(f => f.id === anomalie?.fonctionnaliteId);
@@ -43,9 +54,6 @@ export function AnomalieDetailPage() {
   const projet = projets.find(p => p.id === campagne?.projetId);
   const testeur = users.find(u => u.id === anomalie?.testeurId);
   const developpeur = users.find(u => u.id === anomalie?.developpeurId);
-  const historique = historiqueActions
-    .filter(h => h.anomalieId === anomalieId)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   if (!anomalie || !currentUser) {
     return (
@@ -135,6 +143,13 @@ export function AnomalieDetailPage() {
                     <p className="text-sm font-semibold text-slate-700">{item.value || '—'}</p>
                   </div>
                 ))}
+              </div>
+
+              <div className="mt-5 pt-5 border-t border-slate-100">
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
+                  {t('anomalie.detail.history', { count: historique.length })}
+                </p>
+                <HistoriqueTimeline historique={historique} users={users} maxVisible={5} />
               </div>
             </CardContent>
           </Card>
@@ -293,40 +308,6 @@ export function AnomalieDetailPage() {
                       {new Date(anomalie.dateValidation).toLocaleDateString('fr-FR')}
                     </p>
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-3 pt-5 px-5">
-              <CardTitle className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                {t('anomalie.detail.history', { count: historique.length })}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-5 pb-5">
-              {historique.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-4">{t('anomalie.detail.no_history')}</p>
-              ) : (
-                <div className="space-y-3">
-                  {historique.map((action, idx) => {
-                    const auteur = users.find(u => u.id === action.userId);
-                    return (
-                      <div key={action.id} className="relative pl-5">
-                        {idx < historique.length - 1 && (
-                          <div className="absolute left-[7px] top-4 bottom-0 w-px bg-slate-200" />
-                        )}
-                        <div className="absolute left-0 top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white bg-indigo-400 shadow-sm" />
-                        <p className="text-sm font-semibold text-slate-800">{action.action}</p>
-                        {action.commentaire && (
-                          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{action.commentaire}</p>
-                        )}
-                        <p className="text-[10px] font-mono text-slate-400 mt-1">
-                          {auteur?.prenom} {auteur?.nom} · {new Date(action.date).toLocaleString('fr-FR')}
-                        </p>
-                      </div>
-                    );
-                  })}
                 </div>
               )}
             </CardContent>

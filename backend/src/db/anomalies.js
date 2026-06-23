@@ -28,8 +28,15 @@ export async function list(filters = {}, client = null) {
     params.push(filters.testCaseId);
   }
   if (filters.statut) {
+    const STATUS_FR_TO_EN = {
+      nouvelle: 'new',
+      en_cours: 'in_progress',
+      resolution_signalee: 'resolution_signaled',
+      validee: 'validated',
+      cloturee: 'validated',
+    };
     conditions.push(`a.status = $${idx++}`);
-    params.push(filters.statut);
+    params.push(STATUS_FR_TO_EN[filters.statut] || filters.statut);
   }
   if (filters.projetId) {
     conditions.push(`camp.project_id = $${idx++}`);
@@ -53,8 +60,8 @@ export async function list(filters = {}, client = null) {
 
   const joins = `
     LEFT JOIN features feat ON feat.id = a.feature_id
-    LEFT JOIN campaigns camp ON camp.id = a.campaign_id
-    LEFT JOIN projects proj ON proj.id = camp.project_id
+    INNER JOIN campaigns camp ON camp.id = a.campaign_id
+    INNER JOIN projects proj ON proj.id = camp.project_id
     LEFT JOIN users reporter ON reporter.id = a.reported_by
     LEFT JOIN users assignee ON assignee.id = a.assigned_to
   `;

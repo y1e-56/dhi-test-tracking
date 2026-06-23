@@ -280,7 +280,7 @@ export function ReportingPage() {
       nouvelles: ac.filter(a => a.statut === 'nouvelle').length,
       enCours: ac.filter(a => a.statut === 'en_cours').length,
       resolues: ac.filter(a => a.statut === 'resolution_signalee').length,
-      cloturees: ac.filter(a => a.statut === 'cloturee').length,
+      cloturees: ac.filter(a => a.statut === 'cloturee' || a.statut === 'validee').length,
       critiques: ac.filter(a => a.priorite === 'critique').length,
       hautes: ac.filter(a => a.priorite === 'haute').length,
       moyennes: ac.filter(a => a.priorite === 'moyenne').length,
