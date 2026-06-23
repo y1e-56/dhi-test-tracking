@@ -59,14 +59,14 @@ export function Layout({ children }: { children: ReactNode }) {
   const allNavLinks = [
     { path: '/dashboard', label: t('nav.dashboard'), icon: Home, roles: ['admin', 'chef_testeur', 'testeur', 'developpeur'] },
     { path: '/projets', label: t('nav.projects'), icon: FolderKanban, roles: ['admin', 'chef_testeur'] },
-    { path: '/admin/utilisateurs', label: t('nav.users'), icon: Users, roles: ['admin'] },
-    { path: '/admin/history', label: t('nav.history'), icon: BarChart3, roles: ['admin'] },
-    { path: '/admin/anomalies', label: t('nav.all_anomalies'), icon: Bug, roles: ['admin'] },
-    { path: '/admin/assignation', label: t('nav.assignment'), icon: TestTube, roles: ['admin'] },
     { path: '/campagnes', label: t('nav.campaigns'), icon: TestTube, roles: ['admin', 'chef_testeur'] },
     { path: '/testeur/taches', label: t('nav.my_tasks'), icon: TestTube, roles: ['admin', 'testeur'] },
     { path: '/developpeur/anomalies', label: t('nav.my_anomalies'), icon: Bug, roles: ['developpeur'] },
+    { path: '/admin/assignation', label: t('nav.assignment'), icon: TestTube, roles: ['admin'] },
+    { path: '/admin/anomalies', label: t('nav.all_anomalies'), icon: Bug, roles: ['admin'] },
     { path: '/reporting', label: t('nav.reporting'), icon: BarChart3, roles: ['admin', 'chef_testeur'] },
+    { path: '/admin/history', label: t('nav.history'), icon: BarChart3, roles: ['admin'] },
+    { path: '/admin/utilisateurs', label: t('nav.users'), icon: Users, roles: ['admin'] },
   ];
 
   const navLinks = allNavLinks.filter(l => l.roles.includes(currentUser.role));

@@ -35,9 +35,9 @@ services:
       - key: CORS_ORIGIN
         value: dev
       - key: CORS_ORIGINS
-        value: https://dhi-test-tracking.onrender.com
+        value: https://dhi-test-tracking-app.onrender.com
       - key: APP_URL
-        value: https://dhi-test-tracking.onrender.com
+        value: https://dhi-test-tracking-app.onrender.com
       - key: PORT
         value: "10000"
 
