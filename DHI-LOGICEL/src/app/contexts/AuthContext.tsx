@@ -46,20 +46,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
+    const token = localStorage.getItem('token');
+    if (savedUser && token) {
       const parsed = JSON.parse(savedUser);
       // Ancienne nomenclature — forcer la reconnexion
       if (parsed.role === 'test_lead') {
         localStorage.removeItem('currentUser');
+        localStorage.removeItem('token');
       } else {
         setCurrentUser(parsed);
+        // Charger les utilisateurs une seule fois au montage, seulement si connecté
+        if (!usersLoaded) {
+          refreshUsers();
+          setUsersLoaded(true);
+        }
       }
-    }
-    
-    // Charger les utilisateurs une seule fois au montage
-    if (!usersLoaded) {
-      refreshUsers();
-      setUsersLoaded(true);
     }
   }, []);
 
