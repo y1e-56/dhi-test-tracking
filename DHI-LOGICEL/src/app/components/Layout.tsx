@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n/i18n';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
-import { useNavigate, useLocation } from 'react-router';
+import { useNavigate, useLocation, Outlet } from 'react-router';
 import {
   Bell, LogOut, Menu, Home, FolderKanban, TestTube,
   BarChart3, ChevronRight, Bug, Users, Sparkles, Languages
@@ -21,8 +20,9 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { AIChatBox } from './AIChatBox';
+import { ErrorBoundary } from './ErrorBoundary';
 
-export function Layout({ children }: { children: ReactNode }) {
+export function Layout() {
   const { t } = useTranslation();
   const { currentUser, logout } = useAuth();
   const { notifications, marquerNotificationLue } = useData();
@@ -32,7 +32,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [chatBoxOpen, setChatBoxOpen] = useState(false);
   const breadcrumbItems = useBreadcrumbs();
 
-  if (!currentUser) return <>{children}</>;
+  if (!currentUser) return null;
 
   const notificationsNonLues = notifications.filter(n => n.userId === currentUser.id && !n.lue);
 
@@ -62,7 +62,6 @@ export function Layout({ children }: { children: ReactNode }) {
     { path: '/campagnes', label: t('nav.campaigns'), icon: TestTube, roles: ['admin', 'chef_testeur'] },
     { path: '/testeur/taches', label: t('nav.my_tasks'), icon: TestTube, roles: ['admin', 'testeur'] },
     { path: '/developpeur/anomalies', label: t('nav.my_anomalies'), icon: Bug, roles: ['developpeur'] },
-    { path: '/admin/assignation', label: t('nav.assignment'), icon: TestTube, roles: ['admin'] },
     { path: '/admin/anomalies', label: t('nav.all_anomalies'), icon: Bug, roles: ['admin'] },
     { path: '/reporting', label: t('nav.reporting'), icon: BarChart3, roles: ['admin', 'chef_testeur'] },
     { path: '/admin/history', label: t('nav.history'), icon: BarChart3, roles: ['admin'] },
@@ -284,7 +283,9 @@ export function Layout({ children }: { children: ReactNode }) {
 
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto px-4 lg:px-6 py-8">
-            {children}
+            <ErrorBoundary key={location.pathname}>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
       </div>

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Input } from '../components/ui/input';
-import { History, Clock, User, Search, CheckCircle, AlertTriangle, FileText, Loader2, ExternalLink, Bug, Users, UserPlus, LayoutDashboard } from 'lucide-react';
+import { History, Clock, User, Search, CheckCircle, AlertTriangle, FileText, Loader2, ExternalLink, Bug, Users, LayoutDashboard } from 'lucide-react';
 import { HistoriqueAction } from '../types';
 import { useDebounce } from '../hooks/useDebounce';
 import { Pagination } from '../components/ui/pagination';
@@ -50,7 +50,6 @@ const ENTITY_TYPE_TO_ROUTE: Record<string, string> = {
   projet: '/projets/',
   campagne: '/campagnes/',
   anomalie: '/anomalies/',
-  fonctionnalite: '/admin/assignation/',
   utilisateur: '/admin/utilisateurs/',
 };
 
@@ -175,22 +174,6 @@ export function AdminHistoryPage() {
                 </div>
                 <div className="w-10 h-10 bg-purple-50 rounded-2xl flex items-center justify-center flex-shrink-0">
                   <Users className="w-5 h-5 text-purple-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </button>
-        <button onClick={() => navigate('/admin/assignation')} className="text-left">
-          <Card className="border-0 shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow hover:scale-[1.02] active:scale-[0.98]">
-            <div className="h-1 bg-sky-500" />
-            <CardContent className="pt-5 pb-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">{t('admin.history.go_assignments')}</p>
-                  <p className="text-xs text-slate-400 mt-2 font-medium">{t('admin.history.manage_assignments')}</p>
-                </div>
-                <div className="w-10 h-10 bg-sky-50 rounded-2xl flex items-center justify-center flex-shrink-0">
-                  <UserPlus className="w-5 h-5 text-sky-600" />
                 </div>
               </div>
             </CardContent>
