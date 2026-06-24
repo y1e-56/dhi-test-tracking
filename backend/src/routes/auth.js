@@ -1,10 +1,19 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import * as authService from '../services/authService.js';
 import { authenticate } from '../middleware/auth.js';
 import bus from '../lib/eventBus.js';
 
 const router = Router();
+
+const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Trop de tentatives depuis cette adresse. Réessayez plus tard.' },
+});
 
 const registerSchema = z.object({
   email: z.string().email('Email invalide'),
@@ -19,14 +28,14 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Mot de passe requis'),
 });
 
-router.post('/register', async (req, res) => {
+router.post('/register', authRateLimiter, async (req, res) => {
   const data = registerSchema.parse(req.body);
   const user = await authService.register(data.email, data.password, data.first_name, data.last_name, data.role);
   bus.emit('user:created', { user, password: data.password });
   res.status(201).json({ user });
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', authRateLimiter, async (req, res) => {
   const data = loginSchema.parse(req.body);
   const result = await authService.login(data.email, data.password);
   const ip = req.ip || req.headers['x-forwarded-for'] || '';

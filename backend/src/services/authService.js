@@ -6,6 +6,7 @@ import * as db from '../db/index.js';
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION_MINUTES = 15;
+const MAX_LOCK_DURATION_MINUTES = 24 * 60;
 
 function toPublic(user) {
   return {
@@ -47,9 +48,13 @@ export async function login(email, password) {
   if (!valid) {
     const attempts = user.failed_login_attempts + 1;
     if (attempts >= MAX_FAILED_ATTEMPTS) {
-      const lockedUntil = new Date(Date.now() + LOCK_DURATION_MINUTES * 60 * 1000);
+      const durationMinutes = Math.min(
+        LOCK_DURATION_MINUTES * 2 ** (user.lock_count || 0),
+        MAX_LOCK_DURATION_MINUTES
+      );
+      const lockedUntil = new Date(Date.now() + durationMinutes * 60 * 1000);
       await db.users.lockUntil(user.id, lockedUntil, attempts);
-      throw new AppError('Trop de tentatives. Compte verrouillé pour 15 minutes.', 423);
+      throw new AppError(`Trop de tentatives. Compte verrouillé pour ${durationMinutes} minutes.`, 423);
     }
     await db.users.incrementFailedAttempts(user.id, attempts);
     throw new AppError('Email ou mot de passe incorrect', 401);

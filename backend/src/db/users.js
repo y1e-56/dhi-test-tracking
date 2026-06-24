@@ -105,12 +105,15 @@ export async function incrementFailedAttempts(id, attempts, client = null) {
 
 export async function lockUntil(id, lockedUntil, attempts, client = null) {
   const c = client || pool;
-  await c.query('UPDATE users SET failed_login_attempts = $1, locked_until = $2 WHERE id = $3', [attempts, lockedUntil, id]);
+  await c.query(
+    'UPDATE users SET failed_login_attempts = $1, locked_until = $2, lock_count = lock_count + 1 WHERE id = $3',
+    [attempts, lockedUntil, id]
+  );
 }
 
 export async function resetFailedAttempts(id, client = null) {
   const c = client || pool;
-  await c.query("UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = $1", [id]);
+  await c.query("UPDATE users SET failed_login_attempts = 0, locked_until = NULL, lock_count = 0 WHERE id = $1", [id]);
 }
 
 export async function updatePassword(id, passwordHash, client = null) {
@@ -126,7 +129,7 @@ export async function block(id, lockedUntil, client = null) {
 
 export async function unblock(id, client = null) {
   const c = client || pool;
-  const result = await c.query("UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = $1 RETURNING id", [id]);
+  const result = await c.query("UPDATE users SET failed_login_attempts = 0, locked_until = NULL, lock_count = 0 WHERE id = $1 RETURNING id", [id]);
   return result.rows[0] || null;
 }
 
