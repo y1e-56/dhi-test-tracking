@@ -94,9 +94,7 @@ export function Layout() {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-3 px-5 h-16 border-b border-white/[0.08] flex-shrink-0 bg-gradient-to-b from-white/[0.05] to-transparent">
-        <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-500/30">
-          <TestTube className="w-4.5 h-4.5 text-white" />
-        </div>
+        <img src="/logo.svg" alt="DHI" className="w-9 h-9 rounded-xl flex-shrink-0 shadow-lg shadow-indigo-500/30" />
         <div>
           <div className="font-bold text-white text-sm tracking-tight">{t('app.title')}</div>
           <div className="text-white/40 text-[10px] font-mono tracking-widest">{t('app.subtitle')}</div>

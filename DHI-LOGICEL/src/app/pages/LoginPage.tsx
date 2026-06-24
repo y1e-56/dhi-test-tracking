@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { TestTube, ShieldCheck, Bell, BarChart3, Eye, EyeOff, AlertCircle, Languages } from 'lucide-react';
+import { ShieldCheck, Bell, BarChart3, Eye, EyeOff, AlertCircle, Languages } from 'lucide-react';
 
 export function LoginPage() {
   useTranslation();
@@ -66,9 +66,7 @@ export function LoginPage() {
         />
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-16">
-            <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center">
-              <TestTube className="w-5 h-5 text-white" />
-            </div>
+            <img src="/logo.svg" alt="DHI" className="w-10 h-10 rounded-xl" />
             <div>
               <div className="font-bold text-white text-lg tracking-tight">{t('app.title')}</div>
               <div className="text-white/40 text-[10px] font-mono tracking-widest">{t('app.subtitle')}</div>
@@ -128,9 +126,7 @@ export function LoginPage() {
         </button>
         <div className="w-full max-w-sm">
           <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
-              <TestTube className="w-4 h-4 text-white" />
-            </div>
+            <img src="/logo.svg" alt="DHI" className="w-8 h-8 rounded-lg" />
             <span className="font-bold text-slate-800">{t('app.title')}</span>
           </div>
 

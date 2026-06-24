@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="dhi-bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6366f1" />
+      <stop offset="1" stop-color="#4338ca" />
+    </linearGradient>
+  </defs>
+
+  <rect width="64" height="64" rx="14" fill="url(#dhi-bg)" />
+
+  <!-- single test tube, tilted -->
+  <g transform="rotate(-18 30 32)">
+    <!-- liquid fill -->
+    <path d="M23 30c0 5 3.5 9 8 9s8-4 8-9v-1H23z" fill="#a5b4fc" />
+    <!-- tube outline -->
+    <path d="M23 14v16c0 5 3.5 9 8 9s8-4 8-9V14" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- rim -->
+    <path d="M20 14h22" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+    <!-- bubbles -->
+    <circle cx="29" cy="22" r="1.6" fill="#ffffff" />
+    <circle cx="34" cy="26" r="1.2" fill="#ffffff" />
+  </g>
+
+  <!-- check badge -->
+  <circle cx="46" cy="46" r="11" fill="#22c55e" stroke="#4338ca" stroke-width="2.5" />
+  <path d="M41.5 46l3 3 6-6.5" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+</svg>
