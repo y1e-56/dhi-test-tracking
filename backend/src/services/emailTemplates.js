@@ -75,6 +75,19 @@ export function anomalyRejectedEmail({ userFirstName, anomalyDescription, tester
   `);
 }
 
+export function anomalyValidatedEmail({ userFirstName, anomalyDescription, campaignName, linkUrl }) {
+  return layout('Anomalie résolue', `
+    <p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.5">Bonjour <strong>${userFirstName}</strong>,</p>
+    <p style="margin:0 0 8px;font-size:15px;color:#334155;line-height:1.5">
+      Une anomalie a été résolue et validée sur la campagne <em>${campaignName}</em>&nbsp;:
+    </p>
+    <blockquote style="margin:0 0 16px;padding:12px 16px;background:#f0fdf4;border-left:3px solid #22c55e;font-size:14px;color:#166534;border-radius:4px">
+      ${anomalyDescription}
+    </blockquote>
+    ${button(linkUrl, 'Voir l\'anomalie')}
+  `);
+}
+
 export function featureConformeEmail({ userFirstName, featureName, campaignName, linkUrl }) {
   return layout('Fonctionnalité conforme', `
     <p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.5">Bonjour <strong>${userFirstName}</strong>,</p>

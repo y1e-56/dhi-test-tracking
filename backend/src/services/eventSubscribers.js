@@ -6,6 +6,7 @@ import {
   anomalyAssignedEmail,
   resolutionSignaledEmail,
   anomalyRejectedEmail,
+  anomalyValidatedEmail,
   featureConformeEmail,
   projectCreatedEmail,
   campaignCreatedEmail,
@@ -88,6 +89,39 @@ export function setupEventSubscribers(io) {
       }
     } catch (e) {
       console.error('[email] Erreur envoi anomaly:created', e);
+    }
+  });
+
+  bus.on('anomaly:validated', async ({ anomaly, campaign_name, test_lead_id }) => {
+    try {
+      const notification = await notificationService.createNotification({
+        notified_user_id: test_lead_id,
+        anomaly_id: anomaly.id,
+        notification_type: 'anomaly_resolved',
+        description: `[${campaign_name}] L'anomalie "${(anomaly.description || '').slice(0, 80)}" a été résolue et validée`,
+        link_url: `/anomalies/${anomaly.id}`,
+      });
+      if (io) emitNotification(io, test_lead_id, notification);
+    } catch (e) {
+      console.error('[events] Erreur notification anomaly:validated', e);
+    }
+
+    try {
+      const lead = await db.users.findById(test_lead_id);
+      if (lead?.email) {
+        await sendEmail({
+          to: lead.email,
+          subject: `Anomalie résolue — #${anomaly.id}`,
+          html: anomalyValidatedEmail({
+            userFirstName: lead.first_name,
+            anomalyDescription: anomaly.description || '',
+            campaignName: campaign_name || '',
+            linkUrl: `${process.env.APP_URL || 'http://localhost:5173'}/anomalies/${anomaly.id}`,
+          }),
+        });
+      }
+    } catch (e) {
+      console.error('[email] Erreur envoi anomaly:validated', e);
     }
   });
 

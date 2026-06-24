@@ -73,6 +73,20 @@ export async function updateAnomaly(id, data, userId = null) {
       bus.emit('anomaly:rejected', { anomaly: updated, reported_by: updated.reported_by, user_id: userId });
     }
 
+    if (data.status === 'validated') {
+      try {
+        const feature = await db.features.findById(updated.feature_id);
+        const campaign = feature ? await db.campaigns.findById(feature.campaign_id) : null;
+        if (campaign && campaign.test_leads && campaign.test_leads.length > 0) {
+          for (const leadId of campaign.test_leads) {
+            bus.emit('anomaly:validated', { anomaly: updated, campaign_name: campaign.name, test_lead_id: leadId });
+          }
+        }
+      } catch (e) {
+        console.error('Erreur notification anomaly:validated', e);
+      }
+    }
+
     if (data.status) {
       bus.emit('anomaly:status_changed', { anomaly: updated, user_id: userId, new_status: data.status });
     }
