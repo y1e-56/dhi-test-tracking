@@ -46,4 +46,14 @@ export const userService = {
   async restore(id: string): Promise<void> {
     await api.patch(`/auth/users/${id}/restore`);
   },
+
+  async resetPassword(id: string): Promise<{ message: string }> {
+    const response = await api.patch(`/auth/users/${id}/reset-password`);
+    return response.data;
+  },
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const response = await api.post('/auth/forgot-password', { email });
+    return response.data;
+  },
 };

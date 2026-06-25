@@ -28,6 +28,10 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Mot de passe requis'),
 });
 
+const forgotPasswordSchema = z.object({
+  email: z.string().email('Email invalide'),
+});
+
 router.post('/register', authRateLimiter, async (req, res) => {
   const data = registerSchema.parse(req.body);
   const user = await authService.register(data.email, data.password, data.first_name, data.last_name, data.role);
@@ -41,6 +45,12 @@ router.post('/login', authRateLimiter, async (req, res) => {
   const ip = req.ip || req.headers['x-forwarded-for'] || '';
   bus.emit('user:logged_in', { user: result.user, ip });
   res.json(result);
+});
+
+router.post('/forgot-password', authRateLimiter, async (req, res) => {
+  const data = forgotPasswordSchema.parse(req.body);
+  await authService.forgotPassword(data.email);
+  res.json({ message: 'Si ce compte existe, votre administrateur a été averti de votre demande.' });
 });
 
 router.get('/profile', authenticate, async (req, res) => {
@@ -100,6 +110,14 @@ router.patch('/users/:id/soft-delete', authenticate, async (req, res) => {
 router.patch('/users/:id/restore', authenticate, async (req, res) => {
   await authService.restoreUser(Number(req.params.id));
   res.json({ message: 'Utilisateur restauré' });
+});
+
+router.patch('/users/:id/reset-password', authenticate, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Seul un administrateur peut réinitialiser un mot de passe' });
+  }
+  const result = await authService.resetPasswordByAdmin(Number(req.params.id));
+  res.json({ message: `Mot de passe réinitialisé et envoyé à ${result.email}` });
 });
 
 export default router;

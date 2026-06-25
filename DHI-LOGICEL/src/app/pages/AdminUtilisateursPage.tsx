@@ -9,7 +9,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { Users, ShieldOff, ShieldCheck, Plus, Search, UserCog, Trash2, RotateCcw, Loader2, ExternalLink } from 'lucide-react';
+import { Users, ShieldOff, ShieldCheck, Plus, Search, UserCog, Trash2, RotateCcw, Loader2, ExternalLink, KeyRound } from 'lucide-react';
 import { User, UserRole } from '../types';
 import { userService } from '../services/userService';
 import { useDebounce } from '../hooks/useDebounce';
@@ -39,7 +39,7 @@ const roleOptions: { value: UserRole; labelKey: string }[] = [
 
 export function AdminUtilisateursPage() {
   const { t } = useTranslation();
-  const { currentUser, users, bloquerUtilisateur, debloquerUtilisateur, creerUtilisateur, supprimerUtilisateur, restaurerUtilisateur } = useAuth();
+  const { currentUser, users, bloquerUtilisateur, debloquerUtilisateur, creerUtilisateur, supprimerUtilisateur, restaurerUtilisateur, reinitialiserMotDePasse } = useAuth();
   const navigate = useNavigate();
 
   const [paginatedUsers, setPaginatedUsers] = useState<User[]>([]);
@@ -168,6 +168,12 @@ export function AdminUtilisateursPage() {
     restaurerUtilisateur(userId);
     toast.success(t('admin.users.restored'));
     fetchUsers();
+  };
+
+  const handleResetPassword = (userId: string, userName: string) => {
+    if (confirm(t('admin.users.reset_password_confirm', { name: userName }))) {
+      reinitialiserMotDePasse(userId);
+    }
   };
 
   return (
@@ -471,6 +477,15 @@ export function AdminUtilisateursPage() {
                                   {t('admin.users.block')}
                                 </Button>
                               )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleResetPassword(user.id, `${user.prenom} ${user.nom}`)}
+                                className="gap-1.5 border-indigo-200 text-indigo-600 hover:bg-indigo-50 h-8 text-xs"
+                                title={t('admin.users.reset_password')}
+                              >
+                                <KeyRound className="w-3.5 h-3.5" />
+                              </Button>
                               <Button
                                 size="sm"
                                 variant="outline"

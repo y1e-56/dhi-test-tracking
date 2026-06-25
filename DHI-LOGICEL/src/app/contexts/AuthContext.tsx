@@ -17,6 +17,8 @@ interface AuthContextType {
   creerUtilisateur: (user: Omit<User, 'id' | 'tentativesEchouees'> & { password: string }) => Promise<void>;
   supprimerUtilisateur: (id: string) => Promise<void>;
   restaurerUtilisateur: (id: string) => Promise<void>;
+  reinitialiserMotDePasse: (id: string) => Promise<void>;
+  motDePasseOublie: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -149,6 +151,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const reinitialiserMotDePasse = async (id: string) => {
+    try {
+      const result = await userService.resetPassword(id);
+      toast.success(result.message || 'Mot de passe réinitialisé');
+    } catch (e) {
+      toast.error('Erreur lors de la réinitialisation : ' + getErrorMessage(e as any));
+    }
+  };
+
+  const motDePasseOublie = async (email: string) => {
+    try {
+      const result = await userService.forgotPassword(email);
+      toast.success(result.message || 'Votre administrateur a été averti.');
+    } catch (e) {
+      toast.error('Erreur lors de la demande : ' + getErrorMessage(e as any));
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -162,6 +182,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         creerUtilisateur,
         supprimerUtilisateur,
         restaurerUtilisateur,
+        reinitialiserMotDePasse,
+        motDePasseOublie,
       }}
     >
       {children}

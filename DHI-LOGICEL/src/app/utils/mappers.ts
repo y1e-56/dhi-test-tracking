@@ -257,8 +257,10 @@ const NOTIF_TYPE_EN_TO_FR: Record<string, Notification['type']> = {
   resolution_signaled: 'resolution',
   reopened: 'anomalie',
   feature_conforme: 'validation',
+  anomaly_resolved: 'validation',
   task_assigned: 'assignation',
   member_added: 'information',
+  password_forgot: 'information',
 };
 
 export const mapNotificationFromBackend = (n: any): Notification => ({
@@ -277,6 +279,10 @@ export const mapNotificationFromBackend = (n: any): Notification => ({
     ? 'Tâche assignée'
     : n.notification_type === 'member_added'
     ? 'Membre ajouté'
+    : n.notification_type === 'anomaly_resolved'
+    ? 'Anomalie résolue'
+    : n.notification_type === 'password_forgot'
+    ? 'Mot de passe oublié'
     : 'Notification',
   message: n.anomaly_description || n.description || '',
   lue: !!n.is_read,

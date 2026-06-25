@@ -98,6 +98,35 @@ export function featureConformeEmail({ userFirstName, featureName, campaignName,
   `);
 }
 
+export function passwordForgotAdminEmail({ adminFirstName, userFullName, userEmail, linkUrl }) {
+  return layout('Mot de passe oublié', `
+    <p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.5">Bonjour <strong>${adminFirstName}</strong>,</p>
+    <p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.5">
+      <strong>${userFullName}</strong> (${userEmail}) a signalé avoir oublié son mot de passe sur DHI Test Tracking.
+    </p>
+    <p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.5">
+      Vous pouvez réinitialiser son mot de passe depuis la page d'administration des utilisateurs.
+    </p>
+    ${button(linkUrl, 'Gérer les utilisateurs')}
+  `);
+}
+
+export function passwordResetByAdminEmail({ userFirstName, tempPassword, linkUrl }) {
+  return layout('Mot de passe réinitialisé', `
+    <p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.5">Bonjour <strong>${userFirstName}</strong>,</p>
+    <p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.5">
+      Votre mot de passe DHI Test Tracking a été réinitialisé par un administrateur. Voici votre mot de passe temporaire&nbsp;:
+    </p>
+    <blockquote style="margin:0 0 16px;padding:12px 16px;background:#eff6ff;border-left:3px solid #4f46e5;font-size:16px;font-weight:700;color:#1e3a8a;border-radius:4px;font-family:monospace">
+      ${tempPassword}
+    </blockquote>
+    <p style="margin:0 0 16px;font-size:14px;color:#64748b;line-height:1.5">
+      Pour votre sécurité, nous vous recommandons de le modifier dès votre prochaine connexion depuis votre profil.
+    </p>
+    ${button(linkUrl, 'Se connecter')}
+  `);
+}
+
 export function projectCreatedEmail({ userFirstName, projectName, linkUrl }) {
   return layout('Nouveau projet créé', `
     <p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.5">Bonjour <strong>${userFirstName}</strong>,</p>

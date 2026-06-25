@@ -12,6 +12,8 @@ import {
   campaignCreatedEmail,
   loginNotificationEmail,
   userCreatedEmail,
+  passwordForgotAdminEmail,
+  passwordResetByAdminEmail,
 } from './emailTemplates.js';
 import * as db from '../db/index.js';
 import { emitNotification, emitDataChanged, emitCampaignCreated, emitCampaignUpdated, emitCampaignDeleted } from '../socket.js';
@@ -694,6 +696,61 @@ export function setupEventSubscribers(io) {
       });
     } catch (e) {
       console.error('[email] Erreur envoi user:logged_in', e);
+    }
+  });
+
+  // ── Mot de passe oublié : notification des administrateurs ──
+
+  bus.on('user:password_forgot', async ({ user, admins }) => {
+    for (const admin of admins || []) {
+      try {
+        const notification = await notificationService.createNotification({
+          notified_user_id: admin.id,
+          anomaly_id: null,
+          notification_type: 'password_forgot',
+          description: `${user.first_name} ${user.last_name} (${user.email}) a signalé avoir oublié son mot de passe`,
+          link_url: '/admin/utilisateurs',
+        });
+        if (io) emitNotification(io, admin.id, notification);
+      } catch (e) {
+        console.error('[events] Erreur notification user:password_forgot', e);
+      }
+
+      try {
+        if (admin.email) {
+          await sendEmail({
+            to: admin.email,
+            subject: `Mot de passe oublié — ${user.first_name} ${user.last_name}`,
+            html: passwordForgotAdminEmail({
+              adminFirstName: admin.first_name,
+              userFullName: `${user.first_name} ${user.last_name}`,
+              userEmail: user.email,
+              linkUrl: `${process.env.APP_URL || 'http://localhost:5173'}/admin/utilisateurs`,
+            }),
+          });
+        }
+      } catch (e) {
+        console.error('[email] Erreur envoi user:password_forgot', e);
+      }
+    }
+  });
+
+  // ── Mot de passe réinitialisé par un administrateur ──────
+
+  bus.on('user:password_reset_by_admin', async ({ user, tempPassword }) => {
+    if (!user?.email) return;
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Votre mot de passe a été réinitialisé',
+        html: passwordResetByAdminEmail({
+          userFirstName: user.first_name,
+          tempPassword,
+          linkUrl: process.env.APP_URL || 'http://localhost:5173',
+        }),
+      });
+    } catch (e) {
+      console.error('[email] Erreur envoi user:password_reset_by_admin', e);
     }
   });
 }

@@ -5,7 +5,9 @@ import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { ShieldCheck, Bell, BarChart3, Eye, EyeOff, AlertCircle, Languages } from 'lucide-react';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { Button } from '../components/ui/button';
+import { ShieldCheck, Bell, BarChart3, Eye, EyeOff, AlertCircle, Languages, KeyRound, LifeBuoy } from 'lucide-react';
 
 export function LoginPage() {
   useTranslation();
@@ -15,8 +17,29 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, motDePasseOublie } = useAuth();
   const navigate = useNavigate();
+
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+
+  const handleForgotSubmit = async () => {
+    if (!forgotEmail) return;
+    setForgotLoading(true);
+    await motDePasseOublie(forgotEmail);
+    setForgotLoading(false);
+    setForgotSent(true);
+  };
+
+  const closeForgotDialog = (open: boolean) => {
+    setForgotOpen(open);
+    if (!open) {
+      setForgotEmail('');
+      setForgotSent(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,6 +203,15 @@ export function LoginPage() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => { setForgotEmail(email); setForgotOpen(true); }}
+                  className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+                >
+                  {t('login.forgot_password')}
+                </button>
+              </div>
             </div>
 
             <button
@@ -226,8 +258,68 @@ export function LoginPage() {
               {t('login.demo_hint')}
             </p>
           </div>
+
+          <div className="flex items-center justify-center gap-1.5 mt-6 text-xs text-slate-400">
+            <LifeBuoy className="w-3.5 h-3.5" />
+            <button
+              type="button"
+              onClick={() => { setForgotEmail(email); setForgotOpen(true); }}
+              className="hover:text-indigo-600 transition-colors font-medium"
+            >
+              {t('login.contact_support')}
+            </button>
+          </div>
         </div>
       </div>
+
+      <Dialog open={forgotOpen} onOpenChange={closeForgotDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-indigo-600" />
+              {t('login.forgot_password_title')}
+            </DialogTitle>
+          </DialogHeader>
+          {forgotSent ? (
+            <p className="text-sm text-slate-600 py-2">{t('login.forgot_password_sent')}</p>
+          ) : (
+            <div className="space-y-3 py-2">
+              <p className="text-sm text-slate-500">{t('login.forgot_password_desc')}</p>
+              <div className="space-y-1.5">
+                <Label htmlFor="forgot-email" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  {t('login.email_label')}
+                </Label>
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  placeholder={t('login.email_placeholder')}
+                  value={forgotEmail}
+                  onChange={e => setForgotEmail(e.target.value)}
+                  className="h-10 bg-white border-slate-200"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            {forgotSent ? (
+              <Button onClick={() => closeForgotDialog(false)} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                {t('common.close')}
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => closeForgotDialog(false)}>{t('common.cancel')}</Button>
+                <Button
+                  disabled={!forgotEmail || forgotLoading}
+                  onClick={handleForgotSubmit}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                >
+                  {forgotLoading ? t('app.loading') : t('login.forgot_password_submit')}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

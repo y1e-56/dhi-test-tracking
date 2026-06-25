@@ -1,7 +1,9 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { AppError } from '../middleware/errorHandler.js';
 import * as db from '../db/index.js';
+import bus from '../lib/eventBus.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 const MAX_FAILED_ATTEMPTS = 5;
@@ -126,4 +128,25 @@ export async function changePassword(userId, currentPassword, newPassword) {
 
   const password_hash = await bcrypt.hash(newPassword, 10);
   await db.users.updatePassword(userId, password_hash);
+}
+
+export async function forgotPassword(email) {
+  const user = await db.users.findByEmail(email);
+  if (user && !user.date_suppression) {
+    const admins = await db.users.listByRole('admin');
+    bus.emit('user:password_forgot', { user: toPublic(user), admins });
+  }
+  // Réponse toujours générique : on ne révèle jamais si l'email existe en base.
+}
+
+export async function resetPasswordByAdmin(userId) {
+  const user = await db.users.findById(userId);
+  if (!user) throw new AppError('Utilisateur non trouvé', 404);
+
+  const tempPassword = crypto.randomBytes(6).toString('base64url');
+  const password_hash = await bcrypt.hash(tempPassword, 10);
+  await db.users.updatePassword(userId, password_hash);
+
+  bus.emit('user:password_reset_by_admin', { user: toPublic(user), tempPassword });
+  return { email: user.email };
 }
