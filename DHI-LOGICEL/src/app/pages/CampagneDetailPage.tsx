@@ -96,6 +96,9 @@ export function CampagneDetailPage() {
   const projet = projets.find((p: any) => p.id === campagne?.projetId);
   const isTerminee = campagne?.statut === 'terminee';
   const isArchive = campagne?.statut === 'archive';
+  const isEnPreparation = campagne?.statut === 'en_preparation';
+  // Une campagne terminée ou archivée passe en lecture seule : plus aucune action de modification.
+  const readOnly = isTerminee || isArchive;
 
   const handleChangerStatutCampagne = (statut: 'en_cours' | 'terminee') => {
     if (!campagneId) return;
@@ -104,6 +107,10 @@ export function CampagneDetailPage() {
 
   const handleAjouterMembre = async () => {
     if (!campagneId || !nouveauMembre.userId || !campagne) return;
+    if (campagne.statut === 'terminee' || campagne.statut === 'archive') {
+      toast.error(t('campagne.detail.read_only_error'));
+      return;
+    }
     try {
       if (nouveauMembre.type === 'testeur') {
         const dedup = [...new Set(campagne.equipeTesteurs)];
@@ -125,6 +132,10 @@ export function CampagneDetailPage() {
 
   const handleRetirerMembre = async (userId: string, type: 'testeur' | 'developpeur') => {
     if (!campagneId || !campagne) return;
+    if (campagne.statut === 'terminee' || campagne.statut === 'archive') {
+      toast.error(t('campagne.detail.read_only_error'));
+      return;
+    }
     try {
       if (type === 'testeur') {
         await modifierCampagne(campagneId, { equipeTesteurs: campagne.equipeTesteurs.filter((id: string) => id !== userId) });
@@ -138,6 +149,10 @@ export function CampagneDetailPage() {
 
   const handleSupprimerCampagne = async () => {
     if (!campagneId) return;
+    if (campagne?.statut === 'terminee' || campagne?.statut === 'archive') {
+      toast.error(t('campagne.detail.read_only_error'));
+      return;
+    }
     try {
       await campaignService.delete(campagneId);
       navigate('/campagnes');
@@ -149,6 +164,10 @@ export function CampagneDetailPage() {
   const handleAjouterTestCase = async () => {
     if (!selectedFonctionnalite || !newTestCase.nom.trim()) {
       toast.error(t('campagne.detail.toast.testcase_name_required'));
+      return;
+    }
+    if (campagne?.statut === 'terminee' || campagne?.statut === 'archive') {
+      toast.error(t('campagne.detail.read_only_error'));
       return;
     }
     try {
@@ -171,6 +190,10 @@ export function CampagneDetailPage() {
 
   const handleSupprimerTestCase = async (testCaseId: string) => {
     if (!selectedFonctionnalite) return;
+    if (campagne?.statut === 'terminee' || campagne?.statut === 'archive') {
+      toast.error(t('campagne.detail.read_only_error'));
+      return;
+    }
     try {
       await testCaseService.delete(testCaseId);
       const cases = await testCaseService.list({ featureId: selectedFonctionnalite });
@@ -189,6 +212,10 @@ export function CampagneDetailPage() {
 
   const handleAssignerFonctionnalite = async () => {
     if (!assignData.fonctionnaliteId || !assignData.testeurAssigneId) return;
+    if (campagne?.statut === 'en_preparation') {
+      toast.error(t('campagne.detail.not_started_error'));
+      return;
+    }
     try {
       await modifierFonctionnalite(assignData.fonctionnaliteId, {
         testeurAssigneId: assignData.testeurAssigneId,
@@ -264,6 +291,10 @@ export function CampagneDetailPage() {
 
   const handleAjouterFonctionnalite = async () => {
     if (!formData.nom.trim() || !formData.testeurAssigneId || !campagneId) return;
+    if (campagne?.statut === 'en_preparation') {
+      toast.error(t('campagne.detail.not_started_error'));
+      return;
+    }
     try {
       await ajouterFonctionnalite({
         id: `f${Date.now()}`,
@@ -329,11 +360,11 @@ export function CampagneDetailPage() {
             <Flag className="w-4 h-4" />{t('campagne.detail.end')}
           </Button>
         )}
-        {peutGerer && !isArchive && (
+        {peutGerer && !readOnly && (
           <>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={handleOpenDialog}>
+                <Button onClick={handleOpenDialog} disabled={isEnPreparation} title={isEnPreparation ? t('campagne.detail.not_started_error') : undefined}>
                   <Plus className="w-4 h-4 mr-2" />{t('campagne.detail.assign_task')}
                 </Button>
               </DialogTrigger>
@@ -468,10 +499,11 @@ export function CampagneDetailPage() {
                           <span><strong>{t('campagne.detail.tester_label')}:</strong> {testeur?.prenom} {testeur?.nom || t('campagne.detail.not_assigned')}</span>
                         </div>
                       </div>
-                      {peutGerer && !isArchive && (
+                      {peutGerer && !readOnly && (
                         <Button size="sm" variant="outline"
                           onClick={(e) => { e.stopPropagation(); handleOpenAssignDialog(fonctionnalite.id); }}
-                          disabled={fonctionnalite.statut === 'conforme' || isTerminee}>
+                          disabled={fonctionnalite.statut === 'conforme' || isTerminee || isEnPreparation}
+                          title={isEnPreparation ? t('campagne.detail.not_started_error') : undefined}>
                           {t('campagne.detail.assign')}
                         </Button>
                       )}
@@ -504,7 +536,9 @@ export function CampagneDetailPage() {
               <div className="space-y-4">
                 <Dialog open={testCasesDialog} onOpenChange={setTestCasesDialog}>
                   <DialogTrigger asChild>
-                    <Button className="gap-2"><Plus className="w-4 h-4" />{t('campagne.detail.create_testcase')}</Button>
+                    <Button className="gap-2" disabled={readOnly} title={readOnly ? t('campagne.detail.read_only_error') : undefined}>
+                      <Plus className="w-4 h-4" />{t('campagne.detail.create_testcase')}
+                    </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
@@ -581,7 +615,7 @@ export function CampagneDetailPage() {
                               </div>
                             )}
                           </div>
-                          {peutGerer && !isArchive && (
+                          {peutGerer && !readOnly && (
                             <Button size="sm" variant="ghost" onClick={() => handleSupprimerTestCase(tc.id)}>
                               <Trash2 className="w-4 h-4 text-red-500" />
                             </Button>
@@ -672,7 +706,7 @@ export function CampagneDetailPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-3">
                 <CardTitle className="text-base">{t('campagne.detail.tester_team')}</CardTitle>
-                {peutGerer && !isArchive && <Button size="sm" variant="outline" onClick={() => setAjoutMembreDialogOpen(true)}><Plus className="w-4 h-4 mr-1" />{t('campagne.detail.add')}</Button>}
+                {peutGerer && !readOnly && <Button size="sm" variant="outline" onClick={() => setAjoutMembreDialogOpen(true)}><Plus className="w-4 h-4 mr-1" />{t('campagne.detail.add')}</Button>}
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
@@ -685,7 +719,7 @@ export function CampagneDetailPage() {
                           <p className="text-xs text-gray-500">{testeur.email}</p>
                         </div>
                       </div>
-                      {peutGerer && !isArchive && <Button size="sm" variant="ghost" onClick={() => handleRetirerMembre(testeur.id, 'testeur')}><X className="w-4 h-4" /></Button>}
+                      {peutGerer && !readOnly && <Button size="sm" variant="ghost" onClick={() => handleRetirerMembre(testeur.id, 'testeur')}><X className="w-4 h-4" /></Button>}
                     </div>
                   ))}
                   {testeurs.length === 0 && <p className="text-sm text-gray-500 text-center py-4">{t('campagne.detail.no_tester')}</p>}
@@ -695,7 +729,7 @@ export function CampagneDetailPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-3">
                 <CardTitle className="text-base">{t('campagne.detail.dev_team')}</CardTitle>
-                {peutGerer && !isArchive && <Button size="sm" variant="outline" onClick={() => setAjoutMembreDialogOpen(true)}><Plus className="w-4 h-4 mr-1" />{t('campagne.detail.add')}</Button>}
+                {peutGerer && !readOnly && <Button size="sm" variant="outline" onClick={() => setAjoutMembreDialogOpen(true)}><Plus className="w-4 h-4 mr-1" />{t('campagne.detail.add')}</Button>}
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
@@ -708,7 +742,7 @@ export function CampagneDetailPage() {
                           <p className="text-xs text-gray-500">{dev.email}</p>
                         </div>
                       </div>
-                      {peutGerer && !isArchive && <Button size="sm" variant="ghost" onClick={() => handleRetirerMembre(dev.id, 'developpeur')}><X className="w-4 h-4" /></Button>}
+                      {peutGerer && !readOnly && <Button size="sm" variant="ghost" onClick={() => handleRetirerMembre(dev.id, 'developpeur')}><X className="w-4 h-4" /></Button>}
                     </div>
                   ))}
                   {developpeurs.length === 0 && <p className="text-sm text-gray-500 text-center py-4">{t('campagne.detail.no_dev')}</p>}

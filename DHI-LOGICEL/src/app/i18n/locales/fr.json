@@ -236,6 +236,8 @@
   "campagne.detail.start": "Démarrer",
   "campagne.detail.end": "Terminer",
   "campagne.detail.assign_task": "Assigner une tâche",
+  "campagne.detail.not_started_error": "Démarrez la campagne (bouton « Commencer ») avant de pouvoir assigner des tâches.",
+  "campagne.detail.read_only_error": "Cette campagne est terminée ou archivée : aucune modification n'est plus possible.",
   "campagne.detail.assign_title": "Assigner une fonctionnalité",
   "campagne.detail.assign_desc": "Créer et assigner une nouvelle tâche de test",
   "campagne.detail.feature_name": "Nom de la fonctionnalité *",

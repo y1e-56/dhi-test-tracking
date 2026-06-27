@@ -236,6 +236,8 @@
   "campagne.detail.start": "Start",
   "campagne.detail.end": "Complete",
   "campagne.detail.assign_task": "Assign a Task",
+  "campagne.detail.not_started_error": "Start the campaign (\"Start\" button) before you can assign tasks.",
+  "campagne.detail.read_only_error": "This campaign is finished or archived: no changes are allowed anymore.",
   "campagne.detail.assign_title": "Assign a feature",
   "campagne.detail.assign_desc": "Create and assign a new test task",
   "campagne.detail.feature_name": "Feature Name *",
