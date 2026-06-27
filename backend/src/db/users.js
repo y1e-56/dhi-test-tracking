@@ -45,7 +45,7 @@ export async function update(id, data, client = null) {
 
 export async function list(client = null) {
   const c = client || pool;
-  const result = await c.query("SELECT id, email, first_name, last_name, role, created_at, locked_until, failed_login_attempts, date_suppression FROM users WHERE date_suppression IS NULL ORDER BY id");
+  const result = await c.query("SELECT id, email, first_name, last_name, role, created_at, locked_until, failed_login_attempts, date_suppression, password_reset_requested_at FROM users WHERE date_suppression IS NULL ORDER BY id");
   return result.rows;
 }
 
@@ -75,7 +75,7 @@ export async function listPaginated(filters = {}, client = null) {
     conditions.push(`u.date_suppression IS NOT NULL`);
   }
 
-  const select = `u.id, u.email, u.first_name, u.last_name, u.role, u.created_at, u.locked_until, u.failed_login_attempts, u.date_suppression`;
+  const select = `u.id, u.email, u.first_name, u.last_name, u.role, u.created_at, u.locked_until, u.failed_login_attempts, u.date_suppression, u.password_reset_requested_at`;
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const from = `FROM users u`;
 
@@ -119,6 +119,16 @@ export async function resetFailedAttempts(id, client = null) {
 export async function updatePassword(id, passwordHash, client = null) {
   const c = client || pool;
   await c.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, id]);
+}
+
+export async function markPasswordResetRequested(id, client = null) {
+  const c = client || pool;
+  await c.query('UPDATE users SET password_reset_requested_at = NOW() WHERE id = $1', [id]);
+}
+
+export async function clearPasswordResetRequest(id, client = null) {
+  const c = client || pool;
+  await c.query('UPDATE users SET password_reset_requested_at = NULL WHERE id = $1', [id]);
 }
 
 export async function block(id, lockedUntil, client = null) {

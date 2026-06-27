@@ -324,6 +324,7 @@
   "admin.users.deleted_toast": "Utilisateur supprimé",
   "admin.users.reset_password": "Réinitialiser le mot de passe",
   "admin.users.reset_password_confirm": "Réinitialiser le mot de passe de {{name}} ? Un nouveau mot de passe temporaire lui sera envoyé par email.",
+  "admin.users.badge_password_forgot": "Mot de passe oublié",
   "campagne.detail.tester_label": "Testeur",
   "campagne.detail.delete_error": "Erreur :",
   "campagne.detail.delete_impossible": "Impossible de supprimer la campagne",

@@ -114,6 +114,8 @@ export const mapUserFromBackend = (u: any): User => ({
   password: '', // jamais retourné par le backend
   tentativesEchouees: u.failed_login_attempts || 0,
   bloqueJusqua: u.locked_until ? new Date(u.locked_until) : undefined,
+  dateSuppression: u.date_suppression || undefined,
+  motDePasseOublieDemandeLe: u.password_reset_requested_at || undefined,
 });
 
 export const mapUserToBackend = (u: Partial<User> & { password?: string }) => ({

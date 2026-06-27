@@ -8,6 +8,16 @@ type EventHandler = (...args: any[]) => void;
 
 let socket: Socket | null = null;
 
+// Filet de sécurité, enregistré une seule fois : si le navigateur signale un
+// retour du réseau alors que le socket n'a pas réussi à se reconnecter seul,
+// on relance la connexion explicitement.
+window.addEventListener('online', () => {
+  if (socket && !socket.connected) {
+    console.log('[socketService] Réseau de retour, tentative de reconnexion...');
+    socket.connect();
+  }
+});
+
 export const socketService = {
   connect(userId: string | number, token?: string, options?: { autoJoinUserRoom?: boolean }) {
     if (socket?.connected) {
@@ -24,7 +34,10 @@ export const socketService = {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5
+      // Pas de plafond : une coupure réseau temporaire ne doit jamais laisser
+      // l'app figée sur des données périmées (notifications, anomalies...)
+      // sans jamais se reconnecter automatiquement.
+      reconnectionAttempts: Infinity
     });
 
     socket.on('connect', () => {

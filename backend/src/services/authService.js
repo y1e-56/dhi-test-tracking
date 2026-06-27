@@ -133,6 +133,7 @@ export async function changePassword(userId, currentPassword, newPassword) {
 export async function forgotPassword(email) {
   const user = await db.users.findByEmail(email);
   if (user && !user.date_suppression) {
+    await db.users.markPasswordResetRequested(user.id);
     const admins = await db.users.listByRole('admin');
     bus.emit('user:password_forgot', { user: toPublic(user), admins });
   }
@@ -142,10 +143,14 @@ export async function forgotPassword(email) {
 export async function resetPasswordByAdmin(userId) {
   const user = await db.users.findById(userId);
   if (!user) throw new AppError('Utilisateur non trouvé', 404);
+  if (!user.password_reset_requested_at) {
+    throw new AppError('Aucune demande de mot de passe oublié en attente pour cet utilisateur', 400);
+  }
 
   const tempPassword = crypto.randomBytes(6).toString('base64url');
   const password_hash = await bcrypt.hash(tempPassword, 10);
   await db.users.updatePassword(userId, password_hash);
+  await db.users.clearPasswordResetRequest(userId);
 
   bus.emit('user:password_reset_by_admin', { user: toPublic(user), tempPassword });
   return { email: user.email };

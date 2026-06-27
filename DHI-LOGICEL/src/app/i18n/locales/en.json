@@ -324,6 +324,7 @@
   "admin.users.deleted_toast": "User deleted",
   "admin.users.reset_password": "Reset password",
   "admin.users.reset_password_confirm": "Reset {{name}}'s password? A new temporary password will be emailed to them.",
+  "admin.users.badge_password_forgot": "Forgot password",
   "campagne.detail.tester_label": "Tester",
   "campagne.detail.delete_error": "Error:",
   "campagne.detail.delete_impossible": "Cannot delete campaign",

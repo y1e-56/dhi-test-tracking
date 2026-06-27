@@ -170,9 +170,10 @@ export function AdminUtilisateursPage() {
     fetchUsers();
   };
 
-  const handleResetPassword = (userId: string, userName: string) => {
+  const handleResetPassword = async (userId: string, userName: string) => {
     if (confirm(t('admin.users.reset_password_confirm', { name: userName }))) {
-      reinitialiserMotDePasse(userId);
+      await reinitialiserMotDePasse(userId);
+      fetchUsers();
     }
   };
 
@@ -416,6 +417,11 @@ export function AdminUtilisateursPage() {
                             {t('admin.users.badge_blocked')}
                           </Badge>
                         )}
+                        {!supprime && user.motDePasseOublieDemandeLe && (
+                          <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] px-1.5 py-0 border">
+                            {t('admin.users.badge_password_forgot')}
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 mt-0.5">
                         <span className="text-xs text-slate-400 font-mono truncate">{user.email}</span>
@@ -477,15 +483,17 @@ export function AdminUtilisateursPage() {
                                   {t('admin.users.block')}
                                 </Button>
                               )}
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleResetPassword(user.id, `${user.prenom} ${user.nom}`)}
-                                className="gap-1.5 border-indigo-200 text-indigo-600 hover:bg-indigo-50 h-8 text-xs"
-                                title={t('admin.users.reset_password')}
-                              >
-                                <KeyRound className="w-3.5 h-3.5" />
-                              </Button>
+                              {user.motDePasseOublieDemandeLe && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleResetPassword(user.id, `${user.prenom} ${user.nom}`)}
+                                  className="gap-1.5 border-amber-200 text-amber-700 hover:bg-amber-50 h-8 text-xs"
+                                  title={t('admin.users.reset_password')}
+                                >
+                                  <KeyRound className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 variant="outline"
