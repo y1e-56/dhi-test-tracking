@@ -49,7 +49,7 @@ async function seed() {
         ('testeur@test.fr', $4, 'Testeur', 'Principal', 'tester'),
         ('dev@test.fr', $5, 'Developpeur', 'Senior', 'developer')
       RETURNING id, email, role
-    `, [hash('admin123'), hash('chef123'), hash('chef123'), hash('testeur123'), hash('dev123')]);
+    `, [hash('Admin@DHI2026'), hash('Chef@DHI2026'), hash('Chef@DHI2026'), hash('Testeur@DHI2026'), hash('Dev@DHI2026')]);
 
     const adminId = users.rows[0].id;
     const chefId = users.rows[1].id;
@@ -78,7 +78,7 @@ async function seed() {
         ($1, 'Campagne Scénarios Métier', 'Valider les parcours utilisateur critiques', 'scenario', '2025-03-01', '2025-04-15', 'in_progress'),
         ($2, 'Campagne Mobile PUSH', 'Tester les notifications push et la synchronisation', 'combination', '2025-04-01', '2025-05-30', 'planning')
       RETURNING id
-    `, [project1Id, project1Id, project2Id]);
+    `, [project1Id, project2Id]);
 
     const camp1Id = campaigns.rows[0].id;
     const camp2Id = campaigns.rows[1].id;
@@ -137,10 +137,11 @@ async function seed() {
 
     console.log('Seed completed successfully');
     console.log('Demo accounts:');
-    console.log('  admin@test.fr / admin123');
-    console.log('  chef@test.fr / chef123');
-    console.log('  testeur@test.fr / testeur123');
-    console.log('  dev@test.fr / dev123');
+    console.log('  admin@test.fr    / Admin@DHI2026');
+    console.log('  chef@test.fr     / Chef@DHI2026');
+    console.log('  chef2@test.fr    / Chef@DHI2026');
+    console.log('  testeur@test.fr  / Testeur@DHI2026');
+    console.log('  dev@test.fr      / Dev@DHI2026');
 
   } catch (err) {
     console.error('Seed failed:', err);

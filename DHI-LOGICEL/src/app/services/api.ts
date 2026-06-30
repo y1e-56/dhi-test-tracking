@@ -17,23 +17,15 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, config.data || '');
     return config;
   },
-  (error) => {
-    console.error('[API] Erreur requête:', error);
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Intercepteur de réponse : gestion globale des erreurs (401 = déconnexion auto)
 api.interceptors.response.use(
-  (response) => {
-    console.log(`[API] Réponse ${response.status}:`, response.data);
-    return response;
-  },
+  (response) => response,
   (error: AxiosError) => {
-    console.error(`[API] Erreur ${error.response?.status}:`, error.response?.data || error.message);
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('currentUser');

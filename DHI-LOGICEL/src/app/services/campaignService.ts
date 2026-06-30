@@ -22,9 +22,7 @@ export const campaignService = {
 
   async getAll(): Promise<Campagne[]> {
     try {
-      console.log('[campaignService] GET /campaigns');
       const response = await api.get('/campaigns');
-      console.log('[campaignService] Réponse campagnes:', response.data);
       return response.data.map(mapCampagneFromBackend);
     } catch (e) {
       console.error('[campaignService] Erreur getAll:', e);
@@ -50,9 +48,7 @@ export const campaignService = {
   async create(campagne: Partial<Campagne>): Promise<Campagne> {
     try {
       const payload = mapCampagneToBackend(campagne);
-      console.log('[campaignService] POST /campaigns avec payload:', payload);
       const response = await api.post('/campaigns', payload);
-      console.log('[campaignService] Réponse création:', response.data);
       return mapCampagneFromBackend(response.data.campaign);
     } catch (e) {
       console.error('[campaignService] Erreur create:', e);
@@ -63,9 +59,7 @@ export const campaignService = {
   async update(id: string, campagne: Partial<Campagne>): Promise<Campagne> {
     try {
       const payload = mapCampagneToBackend(campagne);
-      console.log('[campaignService] PUT /campaigns/' + id + ' avec payload:', payload);
       const response = await api.put(`/campaigns/${id}`, payload);
-      console.log('[campaignService] Réponse modification:', response.data);
       return mapCampagneFromBackend(response.data.campaign);
     } catch (e) {
       console.error('[campaignService] Erreur update:', e);
@@ -75,9 +69,7 @@ export const campaignService = {
 
   async delete(id: string): Promise<void> {
     try {
-      console.log('[campaignService] DELETE /campaigns/' + id);
       await api.delete(`/campaigns/${id}`);
-      console.log('[campaignService] Campagne supprimée');
     } catch (e) {
       console.error('[campaignService] Erreur delete:', e);
       throw e;

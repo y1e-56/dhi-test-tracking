@@ -13,7 +13,6 @@ let socket: Socket | null = null;
 // on relance la connexion explicitement.
 window.addEventListener('online', () => {
   if (socket && !socket.connected) {
-    console.log('[socketService] Réseau de retour, tentative de reconnexion...');
     socket.connect();
   }
 });
@@ -21,11 +20,9 @@ window.addEventListener('online', () => {
 export const socketService = {
   connect(userId: string | number, token?: string, options?: { autoJoinUserRoom?: boolean }) {
     if (socket?.connected) {
-      console.log('[socketService] Déjà connecté');
       return socket;
     }
 
-    console.log('[socketService] Connexion au serveur Socket.IO...');
     const resolvedToken = token ?? localStorage.getItem('token') ?? undefined;
 
     socket = io(SOCKET_URL, {
@@ -41,15 +38,12 @@ export const socketService = {
     });
 
     socket.on('connect', () => {
-      console.log('[socketService] Connecté au serveur Socket.IO');
       if (options?.autoJoinUserRoom !== false) {
         socket?.emit('join-user', userId);
       }
     });
 
-    socket.on('disconnect', () => {
-      console.log('[socketService] Déconnecté du serveur Socket.IO');
-    });
+    socket.on('disconnect', () => {});
 
     socket.on('connect_error', (error: any) => {
       console.error('[socketService] Erreur de connexion:', error);
@@ -60,7 +54,6 @@ export const socketService = {
 
   disconnect() {
     if (socket) {
-      console.log('[socketService] Déconnexion du serveur Socket.IO');
       socket.disconnect();
       socket = null;
     }
@@ -72,14 +65,12 @@ export const socketService = {
 
   joinCampaign(campaignId: string | number) {
     if (socket) {
-      console.log('[socketService] Rejoindre campaign-' + campaignId);
       socket.emit('join-campaign', campaignId);
     }
   },
 
   leaveCampaign(campaignId: string | number) {
     if (socket) {
-      console.log('[socketService] Quitter campaign-' + campaignId);
       socket.emit('leave-campaign', campaignId);
     }
   },

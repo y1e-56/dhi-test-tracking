@@ -34,11 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Charger les utilisateurs depuis l'API
   const refreshUsers = useCallback(async () => {
     try {
-      console.log('[AuthContext] Chargement des utilisateurs...');
       const data = await userService.getAll();
-      console.log('[AuthContext] Utilisateurs chargés:', data);
       const unique = uniqueById(data);
-      console.log('[AuthContext] Utilisateurs uniques:', unique);
       setUsers(unique);
     } catch (e) {
       console.error('[AuthContext] Erreur refreshUsers:', e);

@@ -163,18 +163,13 @@ export function CampagnesPage() {
     }
 
     try {
-      console.log('[CampagnesPage] Soumission formulaire campagne:', formData);
       if (editingCampagne) {
-        console.log('[CampagnesPage] Modification campagne', editingCampagne.id);
         await modifierCampagne(editingCampagne.id, formData);
-        console.log('[CampagnesPage] Campagne modifiée avec succès');
       } else {
-        console.log('[CampagnesPage] Création nouvelle campagne');
         await ajouterCampagne({
           ...formData,
           statut: 'en_preparation' as const
         });
-        console.log('[CampagnesPage] Campagne créée via contexte');
       }
 
       setDialogOpen(false);
