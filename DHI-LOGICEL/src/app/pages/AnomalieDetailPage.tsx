@@ -8,7 +8,7 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { ArrowLeft, Bug, User, Calendar, CheckCircle2, Timer, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Bug, User, Calendar, CheckCircle2, Timer, AlertTriangle, ChevronDown } from 'lucide-react';
 import { StatutAnomalie, HistoriqueAction } from '../types';
 import { api } from '../services/api';
 import { mapHistoriqueFromBackend } from '../utils/mappers';
@@ -40,6 +40,8 @@ export function AnomalieDetailPage() {
   const navigate = useNavigate();
   const [commentaireResolution, setCommentaireResolution] = useState('');
   const [historique, setHistorique] = useState<HistoriqueAction[]>([]);
+  const [descriptionOuverte, setDescriptionOuverte] = useState(true);
+  const [historiqueOuvert, setHistoriqueOuvert] = useState(true);
 
   useEffect(() => {
     if (!anomalieId) return;
@@ -125,10 +127,20 @@ export function AnomalieDetailPage() {
               </div>
 
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">{t('anomalie.detail.description')}</p>
-                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-slate-50 rounded-lg p-4">
-                  {anomalie.description}
-                </p>
+                <button
+                  onClick={() => setDescriptionOuverte(o => !o)}
+                  className="flex items-center justify-between w-full text-left mb-2 group"
+                >
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400 group-hover:text-slate-600 transition-colors">
+                    {t('anomalie.detail.description')}
+                  </p>
+                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${descriptionOuverte ? 'rotate-180' : ''}`} />
+                </button>
+                {descriptionOuverte && (
+                  <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-slate-50 rounded-lg p-4">
+                    {anomalie.description}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3 mt-5">
@@ -146,10 +158,18 @@ export function AnomalieDetailPage() {
               </div>
 
               <div className="mt-5 pt-5 border-t border-slate-100">
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
-                  {t('anomalie.detail.history', { count: historique.length })}
-                </p>
-                <HistoriqueTimeline historique={historique} users={users} maxVisible={5} />
+                <button
+                  onClick={() => setHistoriqueOuvert(o => !o)}
+                  className="flex items-center justify-between w-full text-left mb-3 group"
+                >
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400 group-hover:text-slate-600 transition-colors">
+                    {t('anomalie.detail.history', { count: historique.length })}
+                  </p>
+                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${historiqueOuvert ? 'rotate-180' : ''}`} />
+                </button>
+                {historiqueOuvert && (
+                  <HistoriqueTimeline historique={historique} users={users} maxVisible={5} />
+                )}
               </div>
             </CardContent>
           </Card>
