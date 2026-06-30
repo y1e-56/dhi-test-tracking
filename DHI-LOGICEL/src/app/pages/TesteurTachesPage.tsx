@@ -62,6 +62,15 @@ export function TesteurTachesPage() {
       return next;
     });
 
+  // Accordéon : IDs des groupes campagne repliés (ouvert par défaut)
+  const [campagnesRepliees, setCampagnesRepliees] = useState<Set<string>>(new Set());
+  const toggleCampagne = (id: string) =>
+    setCampagnesRepliees(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
   const isFormAnomalieValide =
     nouveauStatut !== 'anomalie' ||
     (!!titreAnomalie && !!descriptionAnomalie && !!developpeurSelectionne);
@@ -319,13 +328,20 @@ export function TesteurTachesPage() {
         {campagnesOrdonnees.map(campagneId => {
           const campagne = campagnes.find(c => c.id === campagneId);
           const taches = tachesParCampagne[campagneId];
+          const estRepliee = campagnesRepliees.has(campagneId);
           return (
             <div key={campagneId}>
-              <div className="flex items-center gap-2 mb-3">
-                <h3 className="text-lg font-semibold text-slate-800">{campagne?.nom || campagneId}</h3>
+              <button
+                onClick={() => toggleCampagne(campagneId)}
+                className="flex items-center gap-2 mb-3 group w-full text-left"
+              >
+                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${estRepliee ? '-rotate-90' : ''}`} />
+                <h3 className="text-lg font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                  {campagne?.nom || campagneId}
+                </h3>
                 <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{taches.length}</span>
-              </div>
-              <div className="space-y-3">
+              </button>
+              {!estRepliee && <div className="space-y-3">
                 {taches.map((fonctionnalite) => {
                   const projet = projets.find(p => p.id === campagne?.projetId);
                   const statutBadge = getStatutBadge(fonctionnalite.statut);
@@ -415,7 +431,7 @@ export function TesteurTachesPage() {
             </Card>
           );
         })}
-              </div>
+              </div>}
             </div>
           );
         })}
