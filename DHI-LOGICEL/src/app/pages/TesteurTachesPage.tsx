@@ -11,7 +11,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { CheckCircle2, XCircle, Clock, AlertTriangle, Sparkles, UserCheck, Search } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, AlertTriangle, Sparkles, UserCheck, Search, ChevronDown } from 'lucide-react';
 import { StatutFonctionnalite, Anomalie, TestCase } from '../types';
 import { suggerePriorite, suggereDeveloppeur } from '../services/aiService';
 import { testCaseService } from '../services/testCaseService';
@@ -52,6 +52,15 @@ export function TesteurTachesPage() {
   const [suggestionPriorite, setSuggestionPriorite] = useState<'basse' | 'moyenne' | 'haute' | 'critique' | null>(null);
   const [suggestionDeveloppeur, setSuggestionDeveloppeur] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Accordéon : IDs des cartes tâches dont la description est visible
+  const [tachesOuvertes, setTachesOuvertes] = useState<Set<string>>(new Set());
+  const toggleTache = (id: string) =>
+    setTachesOuvertes(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   const isFormAnomalieValide =
     nouveauStatut !== 'anomalie' ||
@@ -332,33 +341,46 @@ export function TesteurTachesPage() {
                     <div className="flex items-start gap-3">
                       {getStatutIcon(fonctionnalite.statut)}
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium">{fonctionnalite.nom}</h3>
-                          <Badge className={statutBadge.className}>
-                            {statutBadge.label}
-                          </Badge>
-                          <Badge className={getPrioriteBadge(fonctionnalite.priorite)}>
-                            {fonctionnalite.priorite}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-2">{fonctionnalite.description}</p>
-                        <div className="flex gap-4 text-xs text-gray-500">
-                          <span><strong>{t('testeur.tasks.module')}:</strong> {fonctionnalite.module}</span>
-                          <span><strong>{t('testeur.tasks.campagne')}:</strong> {campagne?.nom}</span>
-                          <span><strong>{t('testeur.tasks.projet')}:</strong> {projet?.nom}</span>
-                        </div>
-                        {fonctionnalite.dateAssignation && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            {t('testeur.tasks.assigned_on')} {new Date(fonctionnalite.dateAssignation).toLocaleDateString('fr-FR')}
-                          </p>
-                        )}
-                        {derniereAnomalie && (
-                          <button
-                            onClick={() => navigate(`/anomalies/${derniereAnomalie.id}`)}
-                            className="text-xs text-indigo-500 hover:text-indigo-700 font-medium mt-1"
-                          >
-                            {t('testeur.tasks.view_anomaly_history')}
-                          </button>
+                        {/* En-tête cliquable pour replier/déplier */}
+                        <button
+                          onClick={() => toggleTache(fonctionnalite.id)}
+                          className="flex items-center justify-between w-full text-left group mb-1"
+                        >
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium">{fonctionnalite.nom}</h3>
+                            <Badge className={statutBadge.className}>
+                              {statutBadge.label}
+                            </Badge>
+                            <Badge className={getPrioriteBadge(fonctionnalite.priorite)}>
+                              {fonctionnalite.priorite}
+                            </Badge>
+                          </div>
+                          <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0 ${tachesOuvertes.has(fonctionnalite.id) ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {/* Contenu déroulable */}
+                        {tachesOuvertes.has(fonctionnalite.id) && (
+                          <>
+                            <p className="text-sm text-gray-600 mb-2">{fonctionnalite.description}</p>
+                            <div className="flex gap-4 text-xs text-gray-500">
+                              <span><strong>{t('testeur.tasks.module')}:</strong> {fonctionnalite.module}</span>
+                              <span><strong>{t('testeur.tasks.campagne')}:</strong> {campagne?.nom}</span>
+                              <span><strong>{t('testeur.tasks.projet')}:</strong> {projet?.nom}</span>
+                            </div>
+                            {fonctionnalite.dateAssignation && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                {t('testeur.tasks.assigned_on')} {new Date(fonctionnalite.dateAssignation).toLocaleDateString('fr-FR')}
+                              </p>
+                            )}
+                            {derniereAnomalie && (
+                              <button
+                                onClick={() => navigate(`/anomalies/${derniereAnomalie.id}`)}
+                                className="text-xs text-indigo-500 hover:text-indigo-700 font-medium mt-1"
+                              >
+                                {t('testeur.tasks.view_anomaly_history')}
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>

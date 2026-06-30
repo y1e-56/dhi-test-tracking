@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Input } from '../components/ui/input';
-import { History, Clock, User, Search, CheckCircle, AlertTriangle, FileText, Loader2, ExternalLink, Bug, Users, LayoutDashboard } from 'lucide-react';
+import { History, Clock, User, Search, CheckCircle, AlertTriangle, FileText, Loader2, ExternalLink, Bug, Users, LayoutDashboard, ChevronDown } from 'lucide-react';
 import { HistoriqueAction } from '../types';
 import { useDebounce } from '../hooks/useDebounce';
 import { Pagination } from '../components/ui/pagination';
@@ -85,6 +85,15 @@ export function AdminHistoryPage() {
   const [filterEntity, setFilterEntity] = useState<string>('tous');
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 300);
+
+  // Accordéon : IDs des entrées d'historique ouvertes
+  const [entreeOuverte, setEntreeOuverte] = useState<Set<string>>(new Set());
+  const toggleEntree = (id: string) =>
+    setEntreeOuverte(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   const fetchHistory = useCallback(async () => {
     setLoading(true);
@@ -256,43 +265,62 @@ export function AdminHistoryPage() {
                 const route = ENTITY_TYPE_TO_ROUTE[entry.entity];
                 const canNavigate = route && entry.entityId;
 
+                const isOpen = entreeOuverte.has(entry.id);
+
                 return (
                   <div
                     key={entry.id}
-                    className="flex items-start gap-4 p-4 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-colors"
+                    className="rounded-xl border border-slate-100 hover:border-slate-200 transition-colors"
                   >
-                    <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <EntityIcon className="w-5 h-5 text-slate-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-sm font-semibold text-slate-800">{entry.action}</span>
-                        <Badge className={`text-[10px] px-1.5 py-0 border ${typeBadge.className}`}>
-                          {typeBadge.label}
-                        </Badge>
+                    {/* En-tête cliquable */}
+                    <button
+                      onClick={() => toggleEntree(entry.id)}
+                      className="flex items-center gap-4 p-4 w-full text-left group"
+                    >
+                      <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <EntityIcon className="w-5 h-5 text-slate-500" />
                       </div>
-                      <p className="text-sm text-slate-600 mb-1">{entry.entityName}</p>
-                      <p className="text-xs text-slate-400">{entry.details}</p>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
-                        <span className="flex items-center gap-1">
-                          <User className="w-3 h-3" />
-                          {entry.userName}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {new Date(entry.timestamp).toLocaleString('fr-FR')}
-                        </span>
-                        {canNavigate && (
-                          <button
-                            onClick={() => navigate(`${route}${entry.entityId}`)}
-                            className="flex items-center gap-1 text-indigo-500 hover:text-indigo-700 transition-colors"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                            <span>{entry.entity}</span>
-                          </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-slate-800">{entry.action}</span>
+                          <Badge className={`text-[10px] px-1.5 py-0 border ${typeBadge.className}`}>
+                            {typeBadge.label}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5 truncate">
+                          <User className="w-3 h-3 inline mr-1" />
+                          {entry.userName} · {new Date(entry.timestamp).toLocaleString('fr-FR')}
+                        </p>
+                      </div>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* Détails déroulables */}
+                    {isOpen && (
+                      <div className="px-4 pb-4 pt-0 border-t border-slate-100 ml-14">
+                        {entry.entityName && (
+                          <p className="text-sm text-slate-600 mt-3 mb-2">{entry.entityName}</p>
                         )}
+                        {entry.details && (
+                          <p className="text-xs text-slate-400 mb-2">{entry.details}</p>
+                        )}
+                        <div className="flex items-center gap-3 text-xs text-slate-400">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {new Date(entry.timestamp).toLocaleString('fr-FR')}
+                          </span>
+                          {canNavigate && (
+                            <button
+                              onClick={e => { e.stopPropagation(); navigate(`${route}${entry.entityId}`); }}
+                              className="flex items-center gap-1 text-indigo-500 hover:text-indigo-700 transition-colors"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              <span>{t('admin.history.view')} {entry.entity}</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 );
               })}
