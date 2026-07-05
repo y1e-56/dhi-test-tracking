@@ -659,20 +659,62 @@ export function setupEventSubscribers(io) {
   // ── Email création de compte ────────────────────────────
 
   bus.on('user:created', async ({ user, password }) => {
-    if (!user?.email) return;
+    // Email de bienvenue au nouvel utilisateur
+    if (user?.email) {
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: 'Votre compte DHI Test Tracking',
+          html: userCreatedEmail({
+            userFirstName: user.first_name,
+            email: user.email,
+            password,
+            linkUrl: process.env.APP_URL || 'http://localhost:5173',
+          }),
+        });
+      } catch (e) {
+        console.error('[email] Erreur envoi user:created (utilisateur)', e);
+      }
+    }
+
+    // Notification in-app + email à tous les admins
     try {
-      await sendEmail({
-        to: user.email,
-        subject: 'Votre compte DHI Test Tracking',
-        html: userCreatedEmail({
-          userFirstName: user.first_name,
-          email: user.email,
-          password,
-          linkUrl: process.env.APP_URL || 'http://localhost:5173',
-        }),
-      });
+      const admins = await db.users.listByRole('admin');
+      const roleLabels = { admin: 'Administrateur', chef_testeur: 'Chef testeur', tester: 'Testeur', developer: 'Développeur' };
+      const roleLabel = roleLabels[user.role] || user.role;
+      for (const admin of admins) {
+        if (admin.id === user.id) continue;
+        try {
+          const notification = await notificationService.createNotification({
+            notified_user_id: admin.id,
+            anomaly_id: null,
+            notification_type: 'member_added',
+            description: `Nouveau compte créé : ${user.first_name} ${user.last_name} (${roleLabel})`,
+            link_url: '/admin/utilisateurs',
+          });
+          if (io) emitNotification(io, admin.id, notification);
+        } catch (e) {
+          console.error('[events] Erreur notification user:created admin', e);
+        }
+        if (admin.email) {
+          try {
+            await sendEmail({
+              to: admin.email,
+              subject: `Nouveau compte — ${user.first_name} ${user.last_name}`,
+              html: userCreatedEmail({
+                userFirstName: admin.first_name,
+                email: user.email,
+                password: `[confidentiel — envoyé à ${user.email}]`,
+                linkUrl: `${process.env.APP_URL || 'http://localhost:5173'}/admin/utilisateurs`,
+              }),
+            });
+          } catch (e) {
+            console.error('[email] Erreur envoi user:created admin', e);
+          }
+        }
+      }
     } catch (e) {
-      console.error('[email] Erreur envoi user:created', e);
+      console.error('[events] Erreur notifications admins user:created', e);
     }
   });
 

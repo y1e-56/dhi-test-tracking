@@ -6,7 +6,7 @@ import { useData } from '../contexts/DataContext';
 import { useNavigate, useLocation, Outlet } from 'react-router';
 import {
   Bell, LogOut, Menu, Home, FolderKanban, TestTube,
-  BarChart3, ChevronRight, Bug, Users, Sparkles, Languages
+  BarChart3, ChevronRight, Bug, Users, Sparkles, Languages, KeyRound
 } from 'lucide-react';
 import { Breadcrumbs } from './ui/Breadcrumbs';
 import { useBreadcrumbs } from '../hooks/useBreadcrumbs';
@@ -19,8 +19,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from './ui/dialog';
 import { AIChatBox } from './AIChatBox';
 import { ErrorBoundary } from './ErrorBoundary';
+import { authService } from '../services/authService';
+import { toast } from 'sonner';
 
 export function Layout() {
   const { t } = useTranslation();
@@ -30,6 +39,9 @@ export function Layout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatBoxOpen, setChatBoxOpen] = useState(false);
+  const [changePwdOpen, setChangePwdOpen] = useState(false);
+  const [pwdForm, setPwdForm] = useState({ current: '', next: '', confirm: '' });
+  const [pwdLoading, setPwdLoading] = useState(false);
   const breadcrumbItems = useBreadcrumbs();
 
   if (!currentUser) return null;
@@ -76,6 +88,29 @@ export function Layout() {
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const handleChangePwd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pwdForm.next !== pwdForm.confirm) {
+      toast.error('Les nouveaux mots de passe ne correspondent pas');
+      return;
+    }
+    if (pwdForm.next.length < 6) {
+      toast.error('Le nouveau mot de passe doit faire au moins 6 caractères');
+      return;
+    }
+    setPwdLoading(true);
+    try {
+      await authService.changePassword(pwdForm.current, pwdForm.next);
+      toast.success('Mot de passe modifié avec succès');
+      setChangePwdOpen(false);
+      setPwdForm({ current: '', next: '', confirm: '' });
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Mot de passe actuel incorrect');
+    } finally {
+      setPwdLoading(false);
+    }
   };
 
   const handleNotificationClick = (notification: { id: string; lienUrl?: string }) => {
@@ -164,6 +199,13 @@ export function Layout() {
             <div className="text-white text-xs font-semibold truncate">{currentUser.prenom} {currentUser.nom}</div>
             <div className="text-white/40 text-[10px] truncate">{getRoleLabel(currentUser.role)}</div>
           </div>
+          <button
+            onClick={() => setChangePwdOpen(true)}
+            className="text-white/30 hover:text-white/80 hover:bg-white/[0.1] transition-all p-1.5 rounded-lg flex-shrink-0"
+            title="Changer le mot de passe"
+          >
+            <KeyRound className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={handleLogout}
             className="text-white/30 hover:text-white/80 hover:bg-white/[0.1] transition-all p-1.5 rounded-lg flex-shrink-0"
@@ -269,6 +311,13 @@ export function Layout() {
                 <div className="text-[10px] text-slate-500">{getRoleLabel(currentUser.role)}</div>
               </div>
               <button
+                onClick={() => setChangePwdOpen(true)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+                title="Changer le mot de passe"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+              </button>
+              <button
                 onClick={handleLogout}
                 className="ml-1 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
                 title={t('layout.logout')}
@@ -287,6 +336,68 @@ export function Layout() {
           </div>
         </main>
       </div>
+
+      <Dialog open={changePwdOpen} onOpenChange={setChangePwdOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-indigo-500" />
+              Changer le mot de passe
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleChangePwd} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">Mot de passe actuel</label>
+              <input
+                type="password"
+                value={pwdForm.current}
+                onChange={e => setPwdForm(f => ({ ...f, current: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                required
+                autoComplete="current-password"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">Nouveau mot de passe</label>
+              <input
+                type="password"
+                value={pwdForm.next}
+                onChange={e => setPwdForm(f => ({ ...f, next: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                required
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">Confirmer le nouveau mot de passe</label>
+              <input
+                type="password"
+                value={pwdForm.confirm}
+                onChange={e => setPwdForm(f => ({ ...f, confirm: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                required
+                autoComplete="new-password"
+              />
+            </div>
+            <DialogFooter className="pt-2">
+              <button
+                type="button"
+                onClick={() => { setChangePwdOpen(false); setPwdForm({ current: '', next: '', confirm: '' }); }}
+                className="px-4 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition-all"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                disabled={pwdLoading}
+                className="px-4 py-2 rounded-lg text-sm bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-all"
+              >
+                {pwdLoading ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <AIChatBox open={chatBoxOpen} onClose={() => setChatBoxOpen(false)} />
     </div>
