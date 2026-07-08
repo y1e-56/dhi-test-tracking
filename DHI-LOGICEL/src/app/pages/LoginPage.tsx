@@ -62,10 +62,10 @@ export function LoginPage() {
   };
 
   const demoAccounts = [
-    { role: t('role.admin'), email: 'admin@test.fr', password: 'admin123', color: 'bg-purple-500' },
-    { role: t('role.test_lead'), email: 'chef@test.fr', password: 'chef123', color: 'bg-sky-500' },
-    { role: t('role.tester'), email: 'testeur@test.fr', password: 'testeur123', color: 'bg-emerald-500' },
-    { role: t('role.developer'), email: 'dev@test.fr', password: 'dev123', color: 'bg-amber-500' },
+    { role: t('role.admin'), email: 'admin@test.fr', password: 'Admin@DHI2026', color: 'bg-purple-500' },
+    { role: t('role.test_lead'), email: 'chef@test.fr', password: 'Chef@DHI2026', color: 'bg-sky-500' },
+    { role: t('role.tester'), email: 'testeur@test.fr', password: 'Testeur@DHI2026', color: 'bg-emerald-500' },
+    { role: t('role.developer'), email: 'dev@test.fr', password: 'Dev@DHI2026', color: 'bg-amber-500' },
   ];
 
   const features = [
