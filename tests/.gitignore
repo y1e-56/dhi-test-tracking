@@ -1,0 +1,7 @@
+test-results/
+playwright-report/
+blob-report/
+reports/
+reports/screenshots/
+*.png
+ux-audit-data.json
