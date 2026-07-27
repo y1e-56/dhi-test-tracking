@@ -143,6 +143,10 @@ export async function updateCampaign(id, data) {
 
     bus.emit('campaign:updated', { campaign: campaignWithMembers, campaign_id: id, user_id: null });
 
+    if (data.status === 'completed') {
+      bus.emit('campaign:completed', { campaign: campaignWithMembers });
+    }
+
     return campaignWithMembers;
   });
 }

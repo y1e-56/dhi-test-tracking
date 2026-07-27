@@ -4,9 +4,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import http from 'http';
+import swaggerUi from 'swagger-ui-express';
 import { initDb } from './config/database.js';
 import pgPool from './config/database.js';
 import routes from './routes/index.js';
+import swaggerSpec from './config/swagger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { initializeSocket } from './socket.js';
 import { setupEventSubscribers } from './services/eventSubscribers.js';
@@ -30,7 +32,10 @@ setupEventSubscribers(io);
 // Initialiser le transport SMTP pour les emails
 initMailTransport();
 
-app.use(helmet());
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api-docs')) return next();
+  helmet()(req, res, next);
+});
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
@@ -49,6 +54,13 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+
+app.use('/api-docs', helmet({ contentSecurityPolicy: false }), swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customSiteTitle: 'DHI Test Tracking API Docs',
+}));
+app.get('/api-docs.json', (_req, res) => {
+  res.json(swaggerSpec);
+});
 
 app.use('/api', routes);
 

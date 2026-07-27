@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n/i18n';
 import { useAuth } from '../contexts/AuthContext';
@@ -6,8 +6,10 @@ import { useData } from '../contexts/DataContext';
 import { useNavigate, useLocation, Outlet } from 'react-router';
 import {
   Bell, LogOut, Menu, Home, FolderKanban, TestTube,
-  BarChart3, ChevronRight, Bug, Users, Sparkles, Languages, KeyRound
+  BarChart3, ChevronRight, Bug, Users, Sparkles, Languages, KeyRound, Eye, EyeOff, Search,
+  ClipboardList, FileText, Settings, Shield, Clock
 } from 'lucide-react';
+import { CommandPalette } from './CommandPalette';
 import { Breadcrumbs } from './ui/Breadcrumbs';
 import { useBreadcrumbs } from '../hooks/useBreadcrumbs';
 import { Badge } from './ui/badge';
@@ -41,8 +43,42 @@ export function Layout() {
   const [chatBoxOpen, setChatBoxOpen] = useState(false);
   const [changePwdOpen, setChangePwdOpen] = useState(false);
   const [pwdForm, setPwdForm] = useState({ current: '', next: '', confirm: '' });
+  const [pwdVisible, setPwdVisible] = useState({ current: false, next: false, confirm: false });
   const [pwdLoading, setPwdLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [recentOpen, setRecentOpen] = useState(false);
+  const [recentPages, setRecentPages] = useState<{ path: string; label: string; time: number }[]>([]);
   const breadcrumbItems = useBreadcrumbs();
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(prev => !prev);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('dhi_recent_pages');
+    if (stored) {
+      try { setRecentPages(JSON.parse(stored)); } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    if (location.pathname === '/' || location.pathname === '/dashboard') return;
+    const label = breadcrumbItems.length > 0 ? breadcrumbItems[breadcrumbItems.length - 1].label : location.pathname;
+    const entry = { path: location.pathname, label, time: Date.now() };
+    setRecentPages(prev => {
+      const filtered = prev.filter(p => p.path !== location.pathname);
+      const updated = [entry, ...filtered].slice(0, 8);
+      localStorage.setItem('dhi_recent_pages', JSON.stringify(updated));
+      return updated;
+    });
+  }, [location.pathname]);
 
   if (!currentUser) return null;
 
@@ -68,19 +104,56 @@ export function Layout() {
     return accents[role] || 'bg-slate-500';
   };
 
-  const allNavLinks = [
-    { path: '/dashboard', label: t('nav.dashboard'), icon: Home, roles: ['admin', 'chef_testeur', 'testeur', 'developpeur'] },
-    { path: '/projets', label: t('nav.projects'), icon: FolderKanban, roles: ['admin', 'chef_testeur'] },
-    { path: '/campagnes', label: t('nav.campaigns'), icon: TestTube, roles: ['admin', 'chef_testeur'] },
-    { path: '/testeur/taches', label: t('nav.my_tasks'), icon: TestTube, roles: ['admin', 'testeur'] },
-    { path: '/developpeur/anomalies', label: t('nav.my_anomalies'), icon: Bug, roles: ['developpeur'] },
-    { path: '/admin/anomalies', label: t('nav.all_anomalies'), icon: Bug, roles: ['admin'] },
-    { path: '/reporting', label: t('nav.reporting'), icon: BarChart3, roles: ['admin', 'chef_testeur'] },
-    { path: '/admin/history', label: t('nav.history'), icon: BarChart3, roles: ['admin'] },
-    { path: '/admin/utilisateurs', label: t('nav.users'), icon: Users, roles: ['admin'] },
+  interface NavItem {
+    path: string;
+    label: string;
+    icon: typeof Home;
+    roles: string[];
+  }
+
+  interface NavSection {
+    label: string;
+    items: NavItem[];
+  }
+
+  const allNavSections: NavSection[] = [
+    {
+      label: '',
+      items: [
+        { path: '/dashboard', label: t('nav.dashboard'), icon: Home, roles: ['admin', 'chef_testeur', 'testeur', 'developpeur'] },
+      ],
+    },
+    {
+      label: t('nav.section_projects'),
+      items: [
+        { path: '/projets', label: t('nav.projects'), icon: FolderKanban, roles: ['admin', 'chef_testeur'] },
+        { path: '/campagnes', label: t('nav.campaigns'), icon: ClipboardList, roles: ['admin', 'chef_testeur'] },
+      ],
+    },
+    {
+      label: t('nav.section_my_work'),
+      items: [
+        { path: '/testeur/taches', label: t('nav.my_tasks'), icon: TestTube, roles: ['admin', 'testeur'] },
+        { path: '/developpeur/anomalies', label: t('nav.my_anomalies'), icon: Bug, roles: ['developpeur'] },
+      ],
+    },
+    {
+      label: t('nav.section_admin'),
+      items: [
+        { path: '/admin/anomalies', label: t('nav.all_anomalies'), icon: Shield, roles: ['admin'] },
+        { path: '/admin/utilisateurs', label: t('nav.users'), icon: Users, roles: ['admin'] },
+        { path: '/admin/history', label: t('nav.history'), icon: FileText, roles: ['admin'] },
+        { path: '/reporting', label: t('nav.reporting'), icon: BarChart3, roles: ['admin', 'chef_testeur'] },
+      ],
+    },
   ];
 
-  const navLinks = allNavLinks.filter(l => l.roles.includes(currentUser.role));
+  const navSections = allNavSections
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => item.roles.includes(currentUser.role)),
+    }))
+    .filter(section => section.items.length > 0);
 
   const isActive = (path: string) =>
     location.pathname === path || (path !== '/dashboard' && location.pathname.startsWith(path));
@@ -137,27 +210,35 @@ export function Layout() {
       </div>
 
       <nav className="flex-1 px-2.5 py-4 overflow-y-auto">
-        <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest px-3 mb-3">{t('layout.menu')}</p>
-        <div className="space-y-1">
-          {navLinks.map(link => {
-            const Icon = link.icon;
-            const active = isActive(link.path);
-            return (
-              <button
-                key={link.path}
-                onClick={() => { navigate(link.path); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 text-left group ${
-                  active
-                    ? 'bg-gradient-to-r from-indigo-500/25 to-indigo-500/10 text-white font-semibold shadow-lg shadow-indigo-500/10 border border-indigo-500/20'
-                    : 'text-white/60 hover:bg-white/[0.06] hover:text-white/90'
-                }`}
-              >
-                <Icon className={`w-4 h-4 flex-shrink-0 transition-colors ${active ? 'text-indigo-300' : 'group-hover:text-white/80'}`} />
-                <span className="flex-1 truncate">{link.label}</span>
-                {active && <ChevronRight className="w-3.5 h-3.5 text-indigo-300 flex-shrink-0" />}
-              </button>
-            );
-          })}
+        <div className="space-y-4">
+          {navSections.map((section, sectionIdx) => (
+            <div key={sectionIdx}>
+              {section.label && (
+                <p className="text-white/25 text-[10px] font-bold uppercase tracking-widest px-3 mb-2">{section.label}</p>
+              )}
+              <div className="space-y-0.5">
+                {section.items.map(link => {
+                  const Icon = link.icon;
+                  const active = isActive(link.path);
+                  return (
+                    <button
+                      key={link.path}
+                      onClick={() => { navigate(link.path); setSidebarOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 text-left group ${
+                        active
+                          ? 'bg-gradient-to-r from-indigo-500/25 to-indigo-500/10 text-white font-semibold shadow-lg shadow-indigo-500/10 border border-indigo-500/20'
+                          : 'text-white/60 hover:bg-white/[0.06] hover:text-white/90'
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 flex-shrink-0 transition-colors ${active ? 'text-indigo-300' : 'group-hover:text-white/80'}`} />
+                      <span className="flex-1 truncate">{link.label}</span>
+                      {active && <ChevronRight className="w-3.5 h-3.5 text-indigo-300 flex-shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </nav>
 
@@ -238,19 +319,56 @@ export function Layout() {
 
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <header className="flex-shrink-0 h-16 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 flex items-center justify-between px-4 lg:px-6 shadow-sm">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 min-w-0">
             <button
-              className="lg:hidden p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all"
+              className="lg:hidden p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all flex-shrink-0"
               onClick={() => setSidebarOpen(true)}
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="hidden sm:block">
+            <div className="min-w-0 overflow-hidden">
               <Breadcrumbs items={breadcrumbItems} />
             </div>
           </div>
 
           <div className="flex items-center gap-1">
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all text-sm"
+            >
+              <Search className="w-4 h-4" />
+              <span className="hidden md:inline">{t('search.placeholder')}</span>
+              <kbd className="hidden md:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-slate-100 rounded border border-slate-200">
+                ⌘K
+              </kbd>
+            </button>
+
+            {recentPages.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all">
+                    <Clock className="w-4 h-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64 shadow-lg">
+                  <DropdownMenuLabel className="text-xs font-semibold text-slate-500">
+                    {t('search.recent')}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {recentPages.slice(0, 5).map((page, i) => (
+                    <DropdownMenuItem
+                      key={`${page.path}-${i}`}
+                      onClick={() => { navigate(page.path); setRecentOpen(false); }}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <Clock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                      <span className="truncate text-sm">{page.label}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="relative p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all">
@@ -337,7 +455,7 @@ export function Layout() {
         </main>
       </div>
 
-      <Dialog open={changePwdOpen} onOpenChange={setChangePwdOpen}>
+      <Dialog open={changePwdOpen} onOpenChange={v => { setChangePwdOpen(v); if (!v) { setPwdForm({ current: '', next: '', confirm: '' }); setPwdVisible({ current: false, next: false, confirm: false }); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -348,41 +466,56 @@ export function Layout() {
           <form onSubmit={handleChangePwd} className="space-y-4 py-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-700">Mot de passe actuel</label>
-              <input
-                type="password"
-                value={pwdForm.current}
-                onChange={e => setPwdForm(f => ({ ...f, current: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                required
-                autoComplete="current-password"
-              />
+              <div className="relative">
+                <input
+                  type={pwdVisible.current ? 'text' : 'password'}
+                  value={pwdForm.current}
+                  onChange={e => setPwdForm(f => ({ ...f, current: e.target.value }))}
+                  className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  required
+                  autoComplete="current-password"
+                />
+                <button type="button" tabIndex={-1} onClick={() => setPwdVisible(v => ({ ...v, current: !v.current }))} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  {pwdVisible.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-700">Nouveau mot de passe</label>
-              <input
-                type="password"
-                value={pwdForm.next}
-                onChange={e => setPwdForm(f => ({ ...f, next: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                required
-                autoComplete="new-password"
-              />
+              <div className="relative">
+                <input
+                  type={pwdVisible.next ? 'text' : 'password'}
+                  value={pwdForm.next}
+                  onChange={e => setPwdForm(f => ({ ...f, next: e.target.value }))}
+                  className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  required
+                  autoComplete="new-password"
+                />
+                <button type="button" tabIndex={-1} onClick={() => setPwdVisible(v => ({ ...v, next: !v.next }))} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  {pwdVisible.next ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-700">Confirmer le nouveau mot de passe</label>
-              <input
-                type="password"
-                value={pwdForm.confirm}
-                onChange={e => setPwdForm(f => ({ ...f, confirm: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                required
-                autoComplete="new-password"
-              />
+              <div className="relative">
+                <input
+                  type={pwdVisible.confirm ? 'text' : 'password'}
+                  value={pwdForm.confirm}
+                  onChange={e => setPwdForm(f => ({ ...f, confirm: e.target.value }))}
+                  className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  required
+                  autoComplete="new-password"
+                />
+                <button type="button" tabIndex={-1} onClick={() => setPwdVisible(v => ({ ...v, confirm: !v.confirm }))} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  {pwdVisible.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
             <DialogFooter className="pt-2">
               <button
                 type="button"
-                onClick={() => { setChangePwdOpen(false); setPwdForm({ current: '', next: '', confirm: '' }); }}
+                onClick={() => { setChangePwdOpen(false); setPwdForm({ current: '', next: '', confirm: '' }); setPwdVisible({ current: false, next: false, confirm: false }); }}
                 className="px-4 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition-all"
               >
                 Annuler
@@ -400,6 +533,7 @@ export function Layout() {
       </Dialog>
 
       <AIChatBox open={chatBoxOpen} onClose={() => setChatBoxOpen(false)} />
+      <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
   );
 }

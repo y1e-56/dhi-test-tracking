@@ -187,3 +187,16 @@ export function loginNotificationEmail({ userFirstName, date, time, ip }) {
     </p>
   `);
 }
+
+export function campaignCompletedEmail({ adminFirstName, campaignName, projectName, linkUrl }) {
+  return layout('Campagne terminée', `
+    <p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.5">Bonjour <strong>${adminFirstName}</strong>,</p>
+    <p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.5">
+      La campagne <strong>« ${campaignName} »</strong> du projet <em>${projectName}</em> vient d'être marquée comme <strong style="color:#16a34a">terminée</strong>.
+    </p>
+    <p style="margin:0 0 16px;font-size:14px;color:#64748b;line-height:1.5">
+      Vous pouvez consulter le rapport de campagne et les statistiques depuis l'application.
+    </p>
+    ${button(linkUrl, 'Voir la campagne')}
+  `);
+}

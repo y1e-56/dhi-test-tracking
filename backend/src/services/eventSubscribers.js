@@ -10,6 +10,7 @@ import {
   featureConformeEmail,
   projectCreatedEmail,
   campaignCreatedEmail,
+  campaignCompletedEmail,
   loginNotificationEmail,
   userCreatedEmail,
   passwordForgotAdminEmail,
@@ -297,6 +298,50 @@ export function setupEventSubscribers(io) {
 
   bus.on('campaign:updated', async ({ campaign }) => {
     if (io) { emitCampaignUpdated(io, campaign); emitDataChanged(io, 'campaigns'); }
+  });
+
+  bus.on('campaign:completed', async ({ campaign }) => {
+    try {
+      const admins = await db.users.listByRole('admin');
+      const projectName = campaign.project_name || `Projet #${campaign.project_id}`;
+      const linkUrl = `${process.env.APP_URL || 'http://localhost:5173'}/campagnes/${campaign.id}`;
+
+      for (const admin of admins) {
+        // Notification in-app
+        try {
+          const notification = await notificationService.createNotification({
+            notified_user_id: admin.id,
+            anomaly_id: null,
+            notification_type: 'campaign_completed',
+            description: `La campagne « ${campaign.name} » (${projectName}) a été marquée comme terminée`,
+            link_url: `/campagnes/${campaign.id}`,
+          });
+          if (io) emitNotification(io, admin.id, notification);
+        } catch (e) {
+          console.error('[events] Erreur notification campaign:completed admin', e);
+        }
+
+        // Email
+        if (admin.email) {
+          try {
+            await sendEmail({
+              to: admin.email,
+              subject: `Campagne terminée — ${campaign.name}`,
+              html: campaignCompletedEmail({
+                adminFirstName: admin.first_name,
+                campaignName: campaign.name,
+                projectName,
+                linkUrl,
+              }),
+            });
+          } catch (e) {
+            console.error('[email] Erreur envoi campaign:completed admin', e);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[events] Erreur campaign:completed', e);
+    }
   });
 
   bus.on('campaign:deleted', async ({ campaign_id }) => {

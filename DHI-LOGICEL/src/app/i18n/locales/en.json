@@ -28,6 +28,9 @@
   "nav.my_tasks": "My Tasks",
   "nav.my_anomalies": "My Anomalies",
   "nav.reporting": "Reporting",
+  "nav.section_projects": "Projects",
+  "nav.section_my_work": "My Work",
+  "nav.section_admin": "Administration",
   "role.admin": "Administrator",
   "role.test_lead": "Test Lead",
   "role.tester": "Tester",
@@ -697,5 +700,16 @@
   "campagne.list.status_planned": "In preparation",
   "campagne.list.status_in_progress": "In progress",
   "campagne.list.status_completed": "Completed",
-  "campagne.list.status_archived": "Archived"
+  "campagne.list.status_archived": "Archived",
+  "search.title": "Global Search",
+  "search.description": "Search for a project, campaign, anomaly or user",
+  "search.placeholder": "Type to search...",
+  "search.no_results": "No results found",
+  "search.navigation": "Quick Navigation",
+  "search.projects": "Projects",
+  "search.campaigns": "Campaigns",
+  "search.features": "Features",
+  "search.anomalies": "Anomalies",
+  "search.users": "Users",
+  "search.recent": "Recently visited"
 }

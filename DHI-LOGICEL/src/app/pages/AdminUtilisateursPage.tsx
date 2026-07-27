@@ -9,9 +9,10 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { Users, ShieldOff, ShieldCheck, Plus, Search, UserCog, Trash2, RotateCcw, Loader2, ExternalLink, KeyRound } from 'lucide-react';
+import { Users, ShieldOff, ShieldCheck, Plus, Search, UserCog, Trash2, RotateCcw, Loader2, ExternalLink, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { User, UserRole } from '../types';
 import { userService } from '../services/userService';
+import { socketService } from '../services/socketService';
 import { useDebounce } from '../hooks/useDebounce';
 import { Pagination } from '../components/ui/pagination';
 import { toast } from 'sonner';
@@ -57,6 +58,7 @@ export function AdminUtilisateursPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newUser, setNewUser] = useState<{ prenom: string; nom: string; email: string; role: UserRole | ''; password: string }>({ prenom: '', nom: '', email: '', role: '', password: '' });
   const [errors, setErrors] = useState({ prenom: '', nom: '', email: '', password: '', role: '' });
+  const [showPassword, setShowPassword] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -79,6 +81,15 @@ export function AdminUtilisateursPage() {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
   useEffect(() => { setPage(1); }, [filtreRole, debouncedSearch, filtreStatut]);
+
+  // Mise à jour temps réel via WebSocket
+  useEffect(() => {
+    const handler = (data: { entity: string }) => {
+      if (data.entity === 'users') fetchUsers();
+    };
+    socketService.onDataChanged(handler);
+    return () => socketService.offDataChanged(handler);
+  }, [fetchUsers]);
 
   useEffect(() => {
     if (dialogOpen) {
@@ -147,25 +158,25 @@ export function AdminUtilisateursPage() {
 
   const handleBlocage = async (userId: string, bloquer: boolean) => {
     if (bloquer) {
-      bloquerUtilisateur(userId);
+      await bloquerUtilisateur(userId);
       toast.success(t('admin.users.blocked_toast'));
     } else {
-      debloquerUtilisateur(userId);
+      await debloquerUtilisateur(userId);
       toast.success(t('admin.users.unblocked_toast'));
     }
     fetchUsers();
   };
 
-  const handleSuppression = (userId: string, userName: string) => {
+  const handleSuppression = async (userId: string, userName: string) => {
     if (confirm(t('admin.users.delete_confirm', { name: userName }))) {
-      supprimerUtilisateur(userId);
+      await supprimerUtilisateur(userId);
       toast.success(t('admin.users.deleted_toast'));
       fetchUsers();
     }
   };
 
-  const handleRestore = (userId: string) => {
-    restaurerUtilisateur(userId);
+  const handleRestore = async (userId: string) => {
+    await restaurerUtilisateur(userId);
     toast.success(t('admin.users.restored'));
     fetchUsers();
   };
@@ -231,13 +242,23 @@ export function AdminUtilisateursPage() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('common.password')} *</Label>
-                <Input
-                  type="password"
-                  value={newUser.password}
-                  onChange={e => { setNewUser({ ...newUser, password: e.target.value }); if (errors.password) setErrors({ ...errors, password: '' }); }}
-                  placeholder="••••••••"
-                  className={`bg-white ${errors.password ? 'border-red-500' : 'border-slate-200'}`}
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={newUser.password}
+                    onChange={e => { setNewUser({ ...newUser, password: e.target.value }); if (errors.password) setErrors({ ...errors, password: '' }); }}
+                    placeholder="••••••••"
+                    className={`bg-white pr-10 ${errors.password ? 'border-red-500' : 'border-slate-200'}`}
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowPassword(v => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
                 {errors.password && <p className="text-xs text-red-500">{errors.password}</p>}
               </div>
               <div className="space-y-1.5">
