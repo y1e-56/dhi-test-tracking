@@ -32,6 +32,7 @@ export function CampagneProvider({ children }: { children: ReactNode }) {
       await refreshCampagnes();
       toast.success('Campagne créée avec succès');
     } catch (e) {
+      if ((e as any)?.response?.status === 409) throw e;
       toast.error(getErrorMessage(e as any));
     }
   };
@@ -42,6 +43,7 @@ export function CampagneProvider({ children }: { children: ReactNode }) {
       await refreshCampagnes();
       toast.success('Campagne modifiée avec succès');
     } catch (e) {
+      if ((e as any)?.response?.status === 409) throw e;
       toast.error(getErrorMessage(e as any));
     }
   };

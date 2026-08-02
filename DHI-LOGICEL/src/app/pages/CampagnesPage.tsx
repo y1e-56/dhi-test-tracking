@@ -15,6 +15,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Loader2, Plus, TestTube, Users, Calendar, Search, X } from 'lucide-react';
 import { Campagne } from '../types';
 import { campaignService } from '../services/campaignService';
+import { getErrorMessage } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { Pagination } from '../components/ui/pagination';
 import { toast } from 'sonner';
@@ -175,7 +176,11 @@ export function CampagnesPage() {
       setDialogOpen(false);
       setErrors({ nom: '', projetId: '', chefTesteurIds: '', dateDebut: '', dateFin: '' });
       fetchCampagnes();
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.response?.status === 409) {
+        setErrors(prev => ({ ...prev, nom: getErrorMessage(error) }));
+        return;
+      }
       console.error('[CampagnesPage] Erreur:', error);
       toast.error(t('campagne.list.error_save'));
     }

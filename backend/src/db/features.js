@@ -117,6 +117,17 @@ export async function create(data, client = null) {
   return result.rows[0];
 }
 
+export async function findByName(campaignId, name, excludeId = null, client = null) {
+  const c = client || pool;
+  const result = await c.query(
+    `SELECT id FROM features
+     WHERE campaign_id = $1 AND LOWER(name) = LOWER($2) AND ($3::int IS NULL OR id <> $3)
+     LIMIT 1`,
+    [campaignId, name, excludeId]
+  );
+  return result.rows[0] || null;
+}
+
 export async function update(id, data, client = null) {
   const c = client || pool;
   const allowedFields = ['name', 'description', 'priority', 'status', 'module'];

@@ -18,6 +18,10 @@ export async function getTestCase(id) {
 export async function createTestCase(data) {
   const feature = await db.testCases.getCampaignIdByFeature(data.feature_id);
   if (!feature) throw new AppError('Fonctionnalité non trouvée', 404);
+
+  const existing = await db.testCases.findByName(data.feature_id, data.name);
+  if (existing) throw new AppError('Un cas de test avec ce nom existe déjà pour cette fonctionnalité', 409);
+
   const testCase = await db.testCases.create(data, feature.campaign_id);
   bus.emit('testCase:created', { testCase, feature_id: data.feature_id });
   return testCase;

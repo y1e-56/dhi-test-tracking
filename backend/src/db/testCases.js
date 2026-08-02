@@ -18,6 +18,17 @@ export async function findById(id, client = null) {
   return result.rows[0] || null;
 }
 
+export async function findByName(featureId, name, excludeId = null, client = null) {
+  const c = client || pool;
+  const result = await c.query(
+    `SELECT id FROM test_cases
+     WHERE feature_id = $1 AND LOWER(name) = LOWER($2) AND ($3::int IS NULL OR id <> $3)
+     LIMIT 1`,
+    [featureId, name, excludeId]
+  );
+  return result.rows[0] || null;
+}
+
 export async function create(data, campaignId, client = null) {
   const c = client || pool;
   const result = await c.query(

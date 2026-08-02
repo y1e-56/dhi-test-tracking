@@ -30,6 +30,9 @@ export async function getFeature(id) {
 }
 
 export async function createFeature(data) {
+  const existing = await db.features.findByName(data.campaign_id, data.name);
+  if (existing) throw new AppError('Une fonctionnalité avec ce nom existe déjà dans cette campagne', 409);
+
   const result = await withTransaction(async (client) => {
     const feature = await db.features.create(data, client);
     const generatedTestCases = await testCaseService.generateForFeature(feature, client);
@@ -49,6 +52,12 @@ export async function createFeature(data) {
 
 export async function updateFeature(id, data) {
   try {
+    if (data.name !== undefined) {
+      const current = await db.features.findById(id);
+      if (!current) throw new AppError('Fonctionnalité non trouvée', 404);
+      const existing = await db.features.findByName(current.campaign_id, data.name, id);
+      if (existing) throw new AppError('Une fonctionnalité avec ce nom existe déjà dans cette campagne', 409);
+    }
     const feature = await db.features.update(id, data);
     if (!feature) throw new AppError('Fonctionnalité non trouvée', 404);
     bus.emit('feature:updated', { feature });

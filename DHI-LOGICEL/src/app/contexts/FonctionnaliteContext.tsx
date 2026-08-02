@@ -50,6 +50,7 @@ export function FonctionnaliteProvider({ children }: { children: ReactNode }) {
       setFonctionnalites(prev => [...prev, createdWithAssign]);
       toast.success('Fonctionnalité ajoutée avec succès');
     } catch (e) {
+      if ((e as any)?.response?.status === 409) throw e;
       toast.error(getErrorMessage(e as any));
     }
   };
@@ -98,6 +99,7 @@ export function FonctionnaliteProvider({ children }: { children: ReactNode }) {
       }
       toast.success('Fonctionnalité modifiée avec succès');
     } catch (e) {
+      if ((e as any)?.response?.status === 409) throw e;
       toast.error(getErrorMessage(e as any));
     }
   };

@@ -15,6 +15,7 @@ import { Loader2, Plus, Archive, Edit, FolderKanban, Trash2, Calendar, UserCog, 
 import { Checkbox } from '../components/ui/checkbox';
 import { Projet } from '../types';
 import { projectService } from '../services/projectService';
+import { getErrorMessage } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { Pagination } from '../components/ui/pagination';
 import { toast } from 'sonner';
@@ -158,7 +159,11 @@ export function ProjetsPage() {
       setDialogOpen(false);
       setFormData({ nom: '', description: '', dateDebut: '', dateFin: '', chefTesteurIds: [] });
       fetchProjets();
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.response?.status === 409) {
+        setErrors(prev => ({ ...prev, nom: getErrorMessage(error) }));
+        return;
+      }
       console.error('Erreur:', error);
       toast.error('Erreur lors de la sauvegarde du projet');
     }

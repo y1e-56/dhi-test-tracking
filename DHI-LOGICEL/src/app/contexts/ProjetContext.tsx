@@ -34,6 +34,7 @@ export function ProjetProvider({ children }: { children: ReactNode }) {
       await refreshProjets();
       toast.success('Projet créé avec succès');
     } catch (e) {
+      if ((e as any)?.response?.status === 409) throw e;
       toast.error(getErrorMessage(e as any));
     }
   };
@@ -44,6 +45,7 @@ export function ProjetProvider({ children }: { children: ReactNode }) {
       await refreshProjets();
       toast.success('Projet modifié avec succès');
     } catch (e) {
+      if ((e as any)?.response?.status === 409) throw e;
       toast.error(getErrorMessage(e as any));
     }
   };

@@ -68,6 +68,9 @@ export async function getCampaignWithMembers(id, client = null) {
 export async function createCampaign(data) {
   console.log('[campaignService] createCampaign avec data:', data);
   
+  const existing = await db.campaigns.findByName(data.project_id, data.name);
+  if (existing) throw new AppError('Une campagne avec ce nom existe déjà dans ce projet', 409);
+
   return withTransaction(async (client) => {
     const campaign = await db.campaigns.create(data, client);
     console.log('[campaignService] Campagne créée:', campaign);
@@ -104,6 +107,13 @@ export async function updateCampaign(id, data) {
 
   if (!hasScalarFields && !hasTestLeadIds && !data.testers && !data.developers) {
     throw new AppError('Aucune donnée à mettre à jour', 400);
+  }
+
+  if (data.name !== undefined) {
+    const current = await db.campaigns.findById(id);
+    if (!current) throw new AppError('Campagne non trouvée', 404);
+    const existing = await db.campaigns.findByName(current.project_id, data.name, id);
+    if (existing) throw new AppError('Une campagne avec ce nom existe déjà dans ce projet', 409);
   }
 
   return withTransaction(async (client) => {

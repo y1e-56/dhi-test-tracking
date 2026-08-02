@@ -15,6 +15,7 @@ import { Plus, TestTube, Search, FileText } from 'lucide-react';
 import { Fonctionnalite, Priorite, StatutFonctionnalite } from '../types';
 import { useDebounce } from '../hooks/useDebounce';
 import { featureService } from '../services/featureService';
+import { getErrorMessage } from '../services/api';
 import { toast } from 'sonner';
 
 interface FeaturesTabProps {
@@ -38,6 +39,7 @@ export function FeaturesTab({ campagneId, peutGerer, readOnly, isEnPreparation, 
     testeurAssigneId: '', developpeurAssigneId: '',
     priorite: 'moyenne' as Priorite
   });
+  const [erreurNom, setErreurNom] = useState('');
 
   const fonctionnalitesCampagne = fonctionnalites.filter((f: any) => f.campagneId === campagneId);
   const fonctionnalitesFiltrees = fonctionnalitesCampagne.filter((f: any) => {
@@ -86,8 +88,13 @@ export function FeaturesTab({ campagneId, peutGerer, readOnly, isEnPreparation, 
         dateAssignation: new Date().toISOString()
       } as Fonctionnalite);
       setFormData({ nom: '', description: '', module: '', testeurAssigneId: '', developpeurAssigneId: '', priorite: 'moyenne' });
+      setErreurNom('');
       setDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.response?.status === 409) {
+        setErreurNom(getErrorMessage(error));
+        return;
+      }
       console.error('Erreur:', error);
     }
   };
@@ -124,7 +131,7 @@ export function FeaturesTab({ campagneId, peutGerer, readOnly, isEnPreparation, 
           </SelectContent>
         </Select>
         {peutGerer && !readOnly && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (open) setErreurNom(''); }}>
             <DialogTrigger asChild>
               <Button disabled={isEnPreparation}><Plus className="w-4 h-4 mr-2" />{t('campagne.detail.assign_task')}</Button>
             </DialogTrigger>
@@ -136,7 +143,10 @@ export function FeaturesTab({ campagneId, peutGerer, readOnly, isEnPreparation, 
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>{t('campagne.detail.feature_name')}</Label>
-                  <Input value={formData.nom} onChange={e => setFormData({ ...formData, nom: e.target.value })} placeholder={t('campagne.detail.feature_name_placeholder')} autoFocus />
+                  <Input value={formData.nom} onChange={e => { setFormData({ ...formData, nom: e.target.value }); setErreurNom(''); }} placeholder={t('campagne.detail.feature_name_placeholder')} autoFocus />
+                  {erreurNom && (
+                    <p className="text-sm font-medium text-destructive">{erreurNom}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>{t('campagne.detail.module')}</Label>

@@ -20,6 +20,7 @@ import { testCaseService } from '../services/testCaseService';
 import { featureService } from '../services/featureService';
 import { dashboardService } from '../services/dashboardService';
 import { toast } from 'sonner';
+import { getErrorMessage } from '../services/api';
 import { HistoriqueTimeline } from '../components/HistoriqueTimeline';
 
 export function CampagneDetailPage() {
@@ -62,6 +63,8 @@ export function CampagneDetailPage() {
   const [selectedFonctionnalite, setSelectedFonctionnalite] = useState<string | null>(null);
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [newTestCase, setNewTestCase] = useState({ nom: '', steps: '', expectedResult: '', priority: 'moyenne' as Priorite });
+  const [erreurNomFonctionnalite, setErreurNomFonctionnalite] = useState('');
+  const [erreurNomTestCase, setErreurNomTestCase] = useState('');
 
   // Charger les cas de test quand une fonctionnalité est sélectionnée
   useEffect(() => {
@@ -180,10 +183,15 @@ export function CampagneDetailPage() {
         priority: newTestCase.priority
       });
       setNewTestCase({ nom: '', steps: '', expectedResult: '', priority: 'moyenne' });
+      setErreurNomTestCase('');
       const cases = await testCaseService.list({ featureId: selectedFonctionnalite });
       setTestCases(cases);
       toast.success(t('campagne.detail.toast.testcase_created'));
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.response?.status === 409) {
+        setErreurNomTestCase(getErrorMessage(error));
+        return;
+      }
       toast.error(t('campagne.detail.toast.testcase_error'));
       console.error(error);
     }
@@ -304,6 +312,7 @@ export function CampagneDetailPage() {
 
   const handleOpenDialog = () => {
     setFormData({ nom: '', description: '', module: '', testeurAssigneId: '', developpeurAssigneId: '', priorite: 'moyenne' as Priorite });
+    setErreurNomFonctionnalite('');
     setDialogOpen(true);
   };
 
@@ -342,8 +351,13 @@ export function CampagneDetailPage() {
         dateAssignation: new Date().toISOString()
       } as Fonctionnalite);
       setFormData({ nom: '', description: '', module: '', testeurAssigneId: '', developpeurAssigneId: '', priorite: 'moyenne' as Priorite });
+      setErreurNomFonctionnalite('');
       setDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.response?.status === 409) {
+        setErreurNomFonctionnalite(getErrorMessage(error));
+        return;
+      }
       console.error('Erreur lors de l\'ajout:', error);
     }
   };
@@ -412,10 +426,13 @@ export function CampagneDetailPage() {
                     <Input 
                       id="nom" 
                       value={formData.nom} 
-                      onChange={(e) => setFormData({ ...formData, nom: e.target.value })} 
+                      onChange={(e) => { setFormData({ ...formData, nom: e.target.value }); setErreurNomFonctionnalite(''); }} 
                       placeholder={t('campagne.detail.feature_name_placeholder')}
                       autoFocus
                     />
+                    {erreurNomFonctionnalite && (
+                      <p className="text-sm font-medium text-destructive">{erreurNomFonctionnalite}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="module">{t('campagne.detail.module')}</Label>
@@ -597,8 +614,11 @@ export function CampagneDetailPage() {
                           <Input
                             placeholder={t('campagne.detail.testcase_name_placeholder')}
                             value={newTestCase.nom}
-                            onChange={(e) => setNewTestCase({ ...newTestCase, nom: e.target.value })}
+                            onChange={(e) => { setNewTestCase({ ...newTestCase, nom: e.target.value }); setErreurNomTestCase(''); }}
                           />
+                          {erreurNomTestCase && (
+                            <p className="text-sm font-medium text-destructive">{erreurNomTestCase}</p>
+                          )}
                         </div>
                         <div className="space-y-2">
                           <Label>{t('campagne.detail.test_steps')}</Label>

@@ -71,6 +71,17 @@ export async function findById(id, client = null) {
   return rows[0] || null;
 }
 
+export async function findByName(projectId, name, excludeId = null, client = null) {
+  const c = client || pool;
+  const result = await c.query(
+    `SELECT id FROM campaigns
+     WHERE project_id = $1 AND LOWER(name) = LOWER($2) AND ($3::int IS NULL OR id <> $3)
+     LIMIT 1`,
+    [projectId, name, excludeId]
+  );
+  return result.rows[0] || null;
+}
+
 export async function create(data, client = null) {
   const c = client || pool;
   const result = await c.query(

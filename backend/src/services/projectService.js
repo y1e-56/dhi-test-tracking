@@ -25,6 +25,9 @@ export async function getProject(id) {
 }
 
 export async function createProject(data) {
+  const existing = await db.projects.findByName(data.name);
+  if (existing) throw new AppError('Un projet avec ce nom existe déjà', 409);
+
   const project = await db.projects.create(data);
   bus.emit('project:created', { project, user_id: data.created_by || null });
   return project;
@@ -36,6 +39,10 @@ export async function setProjectTestLeads(projectId, testLeadIds) {
 
 export async function updateProject(id, data) {
   try {
+    if (data.name !== undefined) {
+      const existing = await db.projects.findByName(data.name, id);
+      if (existing) throw new AppError('Un projet avec ce nom existe déjà', 409);
+    }
     const project = await db.projects.update(id, data);
     if (!project) throw new AppError('Projet non trouvé', 404);
     bus.emit('project:updated', { project, project_id: id, user_id: null });
