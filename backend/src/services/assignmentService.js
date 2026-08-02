@@ -1,12 +1,31 @@
 import { AppError } from '../middleware/errorHandler.js';
 import bus from '../lib/eventBus.js';
 import * as db from '../db/index.js';
+import * as testCaseService from './testCaseService.js';
 
 async function checkFeatureNotConforme(featureId) {
   const feature = await db.features.findById(featureId);
   if (!feature) throw new AppError('Fonctionnalité non trouvée', 404);
   if (feature.status === 'conforme') {
     throw new AppError('Impossible d\'assigner une fonctionnalité déjà marquée conforme', 400);
+  }
+}
+
+// Génère automatiquement les cas de test de la fonctionnalité si elle n'en possède encore aucun
+async function generateTestCasesIfMissing(featureId) {
+  try {
+    const existing = await db.testCases.list(featureId, undefined);
+    if (existing.length > 0) return 0;
+    const feature = await db.features.findById(featureId);
+    if (!feature) return 0;
+    const created = await testCaseService.generateForFeature(feature);
+    if (created.length > 0) {
+      console.log(`[assignmentService] ${created.length} cas de test générés pour la fonctionnalité ${featureId}`);
+    }
+    return created.length;
+  } catch (e) {
+    console.error('[assignmentService] Erreur génération cas de test:', e);
+    return 0;
   }
 }
 
@@ -22,6 +41,8 @@ export async function createAssignment(featureId, assignedTo, userId = null) {
     const campaign = await db.campaigns.findById(feature.campaign_id).catch(() => null);
     if (campaign) campaignName = campaign.name;
   }
+
+  await generateTestCasesIfMissing(featureId);
 
   bus.emit('assignment:created', { assigned_to: assignedTo, feature_name: featureName, feature_id: featureId, campaign_name: campaignName, user_id: userId });
 
@@ -52,6 +73,8 @@ export async function updateAssignment(id, data, userId = null) {
         const campaign = await db.campaigns.findById(feature.campaign_id).catch(() => null);
         if (campaign) campaignName = campaign.name;
       }
+
+      await generateTestCasesIfMissing(assignment.feature_id);
 
       bus.emit('assignment:reassigned', { assigned_to: data.assigned_to, feature_name: featureName, feature_id: assignment.feature_id, campaign_name: campaignName, user_id: userId });
     }

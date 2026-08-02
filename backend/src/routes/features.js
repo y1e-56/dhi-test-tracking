@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import fs from 'fs';
+import path from 'path';
 import * as featureService from '../services/featureService.js';
 import { authenticate } from '../middleware/auth.js';
+import { uploadFeatureAttachment } from '../config/upload.js';
+import { generateFeatureDocument } from '../services/featureDocumentService.js';
 import bus from '../lib/eventBus.js';
 
 const router = Router();
@@ -11,6 +15,7 @@ const createSchema = z.object({
   name: z.string().min(1, 'Nom requis'),
   description: z.string().optional(),
   priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  module: z.string().optional(),
 });
 
 /**
@@ -125,9 +130,9 @@ router.get('/:id', authenticate, async (req, res) => {
  */
 router.post('/', authenticate, async (req, res) => {
   const data = createSchema.parse(req.body);
-  const feature = await featureService.createFeature(data);
+  const result = await featureService.createFeature(data);
   bus.emit('data:changed', { entity: 'features' });
-  res.status(201).json({ feature });
+  res.status(201).json(result);
 });
 
 /**
@@ -225,6 +230,149 @@ router.delete('/:id', authenticate, async (req, res) => {
   await featureService.deleteFeature(Number(req.params.id));
   bus.emit('data:changed', { entity: 'features' });
   res.status(204).send();
+});
+
+/**
+ * @swagger
+ * /features/{id}/attachment:
+ *   post:
+ *     tags: [Features]
+ *     summary: Attacher un document référentiel de test (PDF ou Word) à une fonctionnalité
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file]
+ *             properties:
+ *               file: { type: string, format: binary }
+ *     responses:
+ *       200:
+ *         description: Document attaché
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 feature: { $ref: '#/components/schemas/Feature' }
+ *       400: { description: Format non autorisé (PDF, .doc, .docx) ou fichier > 10 Mo }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ */
+router.post('/:id/attachment', authenticate, uploadFeatureAttachment.single('file'), async (req, res) => {
+  const featureId = Number(req.params.id);
+  if (!req.file) {
+    return res.status(400).json({ message: 'Aucun fichier reçu' });
+  }
+  const feature = await featureService.setFeatureAttachment(featureId, {
+    path: req.file.path,
+    name: req.file.originalname,
+    type: req.file.mimetype,
+    size: req.file.size,
+  });
+  bus.emit('data:changed', { entity: 'features' });
+  res.json({ feature });
+});
+
+/**
+ * @swagger
+ * /features/{id}/attachment/generate:
+ *   post:
+ *     tags: [Features]
+ *     summary: Générer automatiquement le document PDF des cas de test d'une fonctionnalité
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Document régénéré
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 feature: { $ref: '#/components/schemas/Feature' }
+ *       404: { description: Fonctionnalité ou cas de test introuvable }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
+router.post('/:id/attachment/generate', authenticate, async (req, res) => {
+  const featureId = Number(req.params.id);
+  const feature = await generateFeatureDocument(featureId);
+  if (!feature) {
+    return res.status(404).json({ message: 'Aucun cas de test pour générer le document' });
+  }
+  bus.emit('data:changed', { entity: 'features' });
+  res.json({ feature });
+});
+
+/**
+ * @swagger
+ * /features/{id}/attachment:
+ *   get:
+ *     tags: [Features]
+ *     summary: Télécharger le document référentiel de test d'une fonctionnalité
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Fichier téléchargé
+ *         content:
+ *           application/octet-stream:
+ *             schema: { type: string, format: binary }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ */
+router.get('/:id/attachment', authenticate, async (req, res) => {
+  const feature = await featureService.getFeature(Number(req.params.id));
+  if (!feature?.attachment_path || !fs.existsSync(feature.attachment_path)) {
+    return res.status(404).json({ message: 'Aucun document attaché à cette fonctionnalité' });
+  }
+  const ext = path.extname(feature.attachment_name || feature.attachment_path).toLowerCase();
+  const mime = ext === '.pdf' ? 'application/pdf'
+    : ext === '.doc' ? 'application/msword'
+    : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  res.setHeader('Content-Type', mime);
+  res.download(feature.attachment_path, feature.attachment_name || 'document' + ext);
+});
+
+/**
+ * @swagger
+ * /features/{id}/attachment:
+ *   delete:
+ *     tags: [Features]
+ *     summary: Supprimer le document référentiel de test d'une fonctionnalité
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Document supprimé
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 feature: { $ref: '#/components/schemas/Feature' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ */
+router.delete('/:id/attachment', authenticate, async (req, res) => {
+  const feature = await featureService.clearFeatureAttachment(Number(req.params.id));
+  bus.emit('data:changed', { entity: 'features' });
+  res.json({ feature });
 });
 
 /**

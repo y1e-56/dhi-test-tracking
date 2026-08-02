@@ -117,7 +117,7 @@ export function CampagnesPage() {
         description: '',
         dateDebut: '',
         dateFin: '',
-        chefTesteurIds: [],
+        chefTesteurIds: [currentUser.id],
         equipeTesteurs: [],
         equipeDeveloppeurs: []
       });
@@ -253,8 +253,8 @@ export function CampagnesPage() {
                 <Label htmlFor="projetId">{t('campagne.list.project')}</Label>
                 <Select value={formData.projetId || undefined} onValueChange={(value) => {
                   const projet = projets.find(p => p.id === value);
-                  const chefsAuto = projet?.chefTesteurIds || [];
-                  setFormData({ ...formData, projetId: value, chefTesteurIds: editingCampagne ? formData.chefTesteurIds : chefsAuto });
+                  const chefsProjet = [...new Set([...(projet?.chefTesteurIds || []), currentUser.id])];
+                  setFormData({ ...formData, projetId: value, chefTesteurIds: editingCampagne ? formData.chefTesteurIds : chefsProjet });
                   if (errors.projetId) setErrors({ ...errors, projetId: '' });
                 }} onClear={() => setFormData({ ...formData, projetId: '' })}>
                   <SelectTrigger className={errors.projetId ? 'border-red-500 focus:border-red-500' : ''}>
@@ -285,21 +285,29 @@ export function CampagnesPage() {
               <div className="space-y-3">
                 <Label>{t('campagne.list.test_leads')}</Label>
                 <div className="border rounded-lg p-3 space-y-2 max-h-40 overflow-y-auto">
-                  {chefs.map(chef => (
-                    <div key={chef.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`chef-${chef.id}`}
-                        checked={formData.chefTesteurIds.includes(chef.id)}
-                        onCheckedChange={() => toggleChef(chef.id)}
-                      />
-                      <label
-                        htmlFor={`chef-${chef.id}`}
-                        className="text-sm cursor-pointer flex-1"
-                      >
-                        {chef.prenom} {chef.nom}
-                      </label>
-                    </div>
-                  ))}
+                  {chefs.map(chef => {
+                    const estCreateur = chef.id === currentUser.id;
+                    const verrouille = estCreateur && !editingCampagne;
+                    return (
+                      <div key={chef.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`chef-${chef.id}`}
+                          checked={formData.chefTesteurIds.includes(chef.id)}
+                          disabled={verrouille}
+                          onCheckedChange={() => toggleChef(chef.id)}
+                        />
+                        <label
+                          htmlFor={`chef-${chef.id}`}
+                          className={`text-sm cursor-pointer flex-1 ${estCreateur ? 'font-medium' : ''}`}
+                        >
+                          {chef.prenom} {chef.nom}
+                          {estCreateur && (
+                            <span className="text-xs text-indigo-500"> ({t('campagne.list.you')})</span>
+                          )}
+                        </label>
+                      </div>
+                    );
+                  })}
                 </div>
                 {errors.chefTesteurIds && <p className="text-sm text-red-500">{errors.chefTesteurIds}</p>}
               </div>

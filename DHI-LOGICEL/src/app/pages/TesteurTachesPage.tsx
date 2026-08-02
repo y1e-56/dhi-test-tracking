@@ -11,10 +11,11 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { CheckCircle2, XCircle, Clock, AlertTriangle, Sparkles, UserCheck, Search, ChevronDown } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, AlertTriangle, Sparkles, UserCheck, Search, ChevronDown, FileText, ClipboardList } from 'lucide-react';
 import { StatutFonctionnalite, Anomalie, TestCase } from '../types';
 import { suggerePriorite, suggereDeveloppeur } from '../services/aiService';
 import { testCaseService } from '../services/testCaseService';
+import { featureService } from '../services/featureService';
 import { useDebounce } from '../hooks/useDebounce';
 
 export function TesteurTachesPage() {
@@ -61,6 +62,43 @@ export function TesteurTachesPage() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+
+  // Modale : cas de test d'une fonctionnalité (chargés à la demande pour éviter la saturation)
+  const [modalTestCasesId, setModalTestCasesId] = useState<string | null>(null);
+  const [testCasesParFonctionnalite, setTestCasesParFonctionnalite] = useState<Record<string, TestCase[]>>({});
+  const [testCasesChargement, setTestCasesChargement] = useState<Record<string, boolean>>({});
+
+  const chargerTestCases = async (featureId: string) => {
+    if (testCasesParFonctionnalite[featureId] || testCasesChargement[featureId]) return;
+    setTestCasesChargement(prev => ({ ...prev, [featureId]: true }));
+    try {
+      const cases = await testCaseService.list({ featureId });
+      setTestCasesParFonctionnalite(prev => ({ ...prev, [featureId]: cases }));
+    } catch (e) {
+      console.error('Erreur chargement cas de test', e);
+    } finally {
+      setTestCasesChargement(prev => ({ ...prev, [featureId]: false }));
+    }
+  };
+
+  const ouvrirModalTestCases = (featureId: string) => {
+    setModalTestCasesId(featureId);
+    chargerTestCases(featureId);
+  };
+
+  const handleTelechargerDocument = async (featureId: string) => {
+    try {
+      const { blob, name } = await featureService.downloadAttachment(featureId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Erreur téléchargement document', e);
+    }
+  };
 
   // Accordéon : IDs des groupes campagne repliés (ouvert par défaut)
   const [campagnesRepliees, setCampagnesRepliees] = useState<Set<string>>(new Set());
@@ -396,6 +434,30 @@ export function TesteurTachesPage() {
                                 {t('testeur.tasks.view_anomaly_history')}
                               </button>
                             )}
+
+                            {/* Accès à la demande : document référentiel + cas de test (modale) */}
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {fonctionnalite.attachment && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1.5 text-indigo-600 border-indigo-300 hover:bg-indigo-50"
+                                  onClick={() => handleTelechargerDocument(fonctionnalite.id)}
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                  {t('testeur.tasks.download_document')}
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-1.5"
+                                onClick={() => ouvrirModalTestCases(fonctionnalite.id)}
+                              >
+                                <ClipboardList className="w-3.5 h-3.5" />
+                                {t('testeur.tasks.view_test_cases')}
+                              </Button>
+                            </div>
                           </>
                         )}
                       </div>
@@ -556,6 +618,20 @@ export function TesteurTachesPage() {
                     {t('testeur.tasks.no_test_case_msg')}
                   </p>
                 )}
+                {testCaseSelectionne && (() => {
+                  const tcDetail = testCases.find(tc => tc.id === testCaseSelectionne);
+                  return tcDetail && (tcDetail.steps || tcDetail.expectedResult) ? (
+                    <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 text-xs space-y-1">
+                      <p className="font-medium text-gray-700">{t('testeur.tasks.test_case_detail')}</p>
+                      {tcDetail.steps && (
+                        <p className="text-gray-600 whitespace-pre-line"><strong>{t('campagne.detail.steps_label')}</strong> {tcDetail.steps}</p>
+                      )}
+                      {tcDetail.expectedResult && (
+                        <p className="text-gray-600 whitespace-pre-line"><strong>{t('campagne.detail.expected_result_label')}</strong> {tcDetail.expectedResult}</p>
+                      )}
+                    </div>
+                  ) : null;
+                })()}
               </div>
             </div>
           )}
@@ -568,6 +644,54 @@ export function TesteurTachesPage() {
               {t('common.confirm')}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modale : cas de test de la fonctionnalité (guide à la demande) */}
+      <Dialog open={!!modalTestCasesId} onOpenChange={(open) => { if (!open) setModalTestCasesId(null); }}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {t('testeur.tasks.test_cases_title')}
+              {modalTestCasesId && fonctionnalites.find(f => f.id === modalTestCasesId)?.nom && (
+                <span className="text-gray-400 font-normal"> — {fonctionnalites.find(f => f.id === modalTestCasesId)?.nom}</span>
+              )}
+            </DialogTitle>
+            <DialogDescription>{t('testeur.tasks.test_cases_desc')}</DialogDescription>
+          </DialogHeader>
+
+          {modalTestCasesId && testCasesChargement[modalTestCasesId] ? (
+            <p className="text-sm text-gray-400 py-8 text-center">{t('common.loading')}</p>
+          ) : modalTestCasesId && (testCasesParFonctionnalite[modalTestCasesId] || []).length === 0 ? (
+            <div className="py-8 text-center">
+              <ClipboardList className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+              <p className="text-sm text-gray-500">{t('testeur.tasks.no_test_cases')}</p>
+              <p className="text-xs text-gray-400 mt-1">{t('testeur.tasks.no_test_cases_hint')}</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {(modalTestCasesId ? (testCasesParFonctionnalite[modalTestCasesId] || []) : []).map(tc => (
+                <div key={tc.id} className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-medium text-sm">{tc.nom}</h4>
+                    {tc.priority && <Badge className={getPrioriteBadge(tc.priority)}>{t(`priorite.${tc.priority}`)}</Badge>}
+                  </div>
+                  {tc.steps && (
+                    <p className="text-sm text-gray-600 whitespace-pre-line mt-1">
+                      <strong>{t('campagne.detail.steps_label')}</strong>
+                      <span className="block pl-3 mt-0.5">{tc.steps}</span>
+                    </p>
+                  )}
+                  {tc.expectedResult && (
+                    <p className="text-sm text-gray-600 whitespace-pre-line mt-1">
+                      <strong>{t('campagne.detail.expected_result_label')}</strong>
+                      <span className="block pl-3 mt-0.5">{tc.expectedResult}</span>
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

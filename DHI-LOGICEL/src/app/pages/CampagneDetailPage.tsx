@@ -12,11 +12,12 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { ArrowLeft, Plus, TestTube, AlertTriangle, CheckCircle2, Clock, User, Play, Flag, X, Users, Trash2, Search, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, TestTube, AlertTriangle, CheckCircle2, Clock, User, Play, Flag, X, Users, Trash2, Search, Loader2, Sparkles, FileText } from 'lucide-react';
 import { Fonctionnalite, Priorite, StatutFonctionnalite, StatutAnomalie, TestCase, HistoriqueAction } from '../types';
 import { useDebounce } from '../hooks/useDebounce';
 import { campaignService } from '../services/campaignService';
 import { testCaseService } from '../services/testCaseService';
+import { featureService } from '../services/featureService';
 import { dashboardService } from '../services/dashboardService';
 import { toast } from 'sonner';
 import { HistoriqueTimeline } from '../components/HistoriqueTimeline';
@@ -205,6 +206,23 @@ export function CampagneDetailPage() {
     }
   };
 
+  const handleGenererTestCases = async () => {
+    if (!selectedFonctionnalite) return;
+    if (campagne?.statut === 'terminee' || campagne?.statut === 'archive') {
+      toast.error(t('campagne.detail.read_only_error'));
+      return;
+    }
+    try {
+      const result = await testCaseService.generate({ featureId: selectedFonctionnalite });
+      const cases = await testCaseService.list({ featureId: selectedFonctionnalite });
+      setTestCases(cases);
+      toast.success(t('campagne.detail.toast.testcase_generated', { count: result.count }));
+    } catch (error) {
+      toast.error(t('campagne.detail.toast.testcase_error'));
+      console.error(error);
+    }
+  };
+
   const handleOpenAssignDialog = (fonctionnaliteId: string) => {
     setAssignData({ fonctionnaliteId, testeurAssigneId: '', developpeurAssigneId: '', priorite: 'moyenne' });
     setAssignDialogOpen(true);
@@ -286,7 +304,23 @@ export function CampagneDetailPage() {
 
   const handleOpenDialog = () => {
     setFormData({ nom: '', description: '', module: '', testeurAssigneId: '', developpeurAssigneId: '', priorite: 'moyenne' as Priorite });
+    setAttachmentFile(null);
     setDialogOpen(true);
+  };
+
+  const handleTelechargerDocument = async (feature: Fonctionnalite) => {
+    try {
+      const { blob, name } = await featureService.downloadAttachment(feature.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(t('campagne.detail.toast.attachment_download_error'));
+      console.error(error);
+    }
   };
 
   const handleAjouterFonctionnalite = async () => {
@@ -417,7 +451,7 @@ export function CampagneDetailPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>{t('campagne.detail.assign_dev')}</Label>
-                    <Select value={formData.developpeurAssigneId || undefined} onValueChange={(value) => setFormData({ ...formData, developpeurAssigneId: value })} onClear={() => setFormData({ ...formData, developpeurAssigneId: '' })}>
+                    <Select value={formData.developpeurAssigneId || undefined} onValueChange={v => setFormData({ ...formData, developpeurAssigneId: v })}>
                       <SelectTrigger><SelectValue placeholder={t('campagne.detail.select_dev')}>{formData.developpeurAssigneId && tousLesDeveloppeurs.find(d => d.id === formData.developpeurAssigneId) ? `${tousLesDeveloppeurs.find(d => d.id === formData.developpeurAssigneId)?.prenom} ${tousLesDeveloppeurs.find(d => d.id === formData.developpeurAssigneId)?.nom}` : ''}</SelectValue></SelectTrigger>
                       <SelectContent>
                         {tousLesDeveloppeurs.map(dev => (
@@ -498,6 +532,15 @@ export function CampagneDetailPage() {
                           <span><strong>{t('campagne.detail.module')}:</strong> {fonctionnalite.module}</span>
                           <span><strong>{t('campagne.detail.tester_label')}:</strong> {testeur?.prenom} {testeur?.nom || t('campagne.detail.not_assigned')}</span>
                         </div>
+                        {fonctionnalite.attachment && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleTelechargerDocument(fonctionnalite); }}
+                            className="mt-2 flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            {fonctionnalite.attachment.name}
+                          </button>
+                        )}
                       </div>
                       {peutGerer && !readOnly && (
                         <Button size="sm" variant="outline"
@@ -534,63 +577,68 @@ export function CampagneDetailPage() {
 
             {selectedFonctionnalite && (
               <div className="space-y-4">
-                <Dialog open={testCasesDialog} onOpenChange={setTestCasesDialog}>
-                  <DialogTrigger asChild>
-                    <Button className="gap-2" disabled={readOnly} title={readOnly ? t('campagne.detail.read_only_error') : undefined}>
-                      <Plus className="w-4 h-4" />{t('campagne.detail.create_testcase')}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>{t('campagne.detail.create_testcase_title')}</DialogTitle>
-                      <DialogDescription>{t('campagne.detail.create_testcase_desc')}</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label>{t('campagne.detail.testcase_name')}</Label>
-                        <Input
-                          placeholder={t('campagne.detail.testcase_name_placeholder')}
-                          value={newTestCase.nom}
-                          onChange={(e) => setNewTestCase({ ...newTestCase, nom: e.target.value })}
-                        />
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" className="gap-2" disabled={readOnly} onClick={handleGenererTestCases} title={readOnly ? t('campagne.detail.read_only_error') : undefined}>
+                    <Sparkles className="w-4 h-4" />{t('campagne.detail.generate_testcases')}
+                  </Button>
+                  <Dialog open={testCasesDialog} onOpenChange={setTestCasesDialog}>
+                    <DialogTrigger asChild>
+                      <Button className="gap-2" disabled={readOnly} title={readOnly ? t('campagne.detail.read_only_error') : undefined}>
+                        <Plus className="w-4 h-4" />{t('campagne.detail.create_testcase')}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>{t('campagne.detail.create_testcase_title')}</DialogTitle>
+                        <DialogDescription>{t('campagne.detail.create_testcase_desc')}</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label>{t('campagne.detail.testcase_name')}</Label>
+                          <Input
+                            placeholder={t('campagne.detail.testcase_name_placeholder')}
+                            value={newTestCase.nom}
+                            onChange={(e) => setNewTestCase({ ...newTestCase, nom: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{t('campagne.detail.test_steps')}</Label>
+                          <Textarea
+                            placeholder={t('campagne.detail.test_steps_placeholder')}
+                            value={newTestCase.steps}
+                            onChange={(e) => setNewTestCase({ ...newTestCase, steps: e.target.value })}
+                            rows={3}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{t('campagne.detail.expected_result')}</Label>
+                          <Textarea
+                            placeholder={t('campagne.detail.expected_result_placeholder')}
+                            value={newTestCase.expectedResult}
+                            onChange={(e) => setNewTestCase({ ...newTestCase, expectedResult: e.target.value })}
+                            rows={2}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{t('campagne.detail.testcase_priority')}</Label>
+                          <Select value={newTestCase.priority} onValueChange={(value: Priorite) => setNewTestCase({ ...newTestCase, priority: value })}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="basse">{t('priorite.basse')}</SelectItem>
+                              <SelectItem value="moyenne">{t('priorite.moyenne')}</SelectItem>
+                              <SelectItem value="haute">{t('priorite.haute')}</SelectItem>
+                              <SelectItem value="critique">{t('priorite.critique')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label>{t('campagne.detail.test_steps')}</Label>
-                        <Textarea
-                          placeholder={t('campagne.detail.test_steps_placeholder')}
-                          value={newTestCase.steps}
-                          onChange={(e) => setNewTestCase({ ...newTestCase, steps: e.target.value })}
-                          rows={3}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{t('campagne.detail.expected_result')}</Label>
-                        <Textarea
-                          placeholder={t('campagne.detail.expected_result_placeholder')}
-                          value={newTestCase.expectedResult}
-                          onChange={(e) => setNewTestCase({ ...newTestCase, expectedResult: e.target.value })}
-                          rows={2}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{t('campagne.detail.testcase_priority')}</Label>
-                        <Select value={newTestCase.priority} onValueChange={(value: Priorite) => setNewTestCase({ ...newTestCase, priority: value })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="basse">{t('priorite.basse')}</SelectItem>
-                            <SelectItem value="moyenne">{t('priorite.moyenne')}</SelectItem>
-                            <SelectItem value="haute">{t('priorite.haute')}</SelectItem>
-                            <SelectItem value="critique">{t('priorite.critique')}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setTestCasesDialog(false)}>{t('campagne.detail.cancel')}</Button>
-                      <Button onClick={handleAjouterTestCase}>{t('campagne.detail.create')}</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setTestCasesDialog(false)}>{t('campagne.detail.cancel')}</Button>
+                        <Button onClick={handleAjouterTestCase}>{t('campagne.detail.create')}</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
 
                 <div className="space-y-3">
                   {testCases.map((tc) => (

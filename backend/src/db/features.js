@@ -110,16 +110,16 @@ export async function findById(id, client = null) {
 export async function create(data, client = null) {
   const c = client || pool;
   const result = await c.query(
-    `INSERT INTO features (campaign_id, name, description, priority, status)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [data.campaign_id, data.name, data.description || null, data.priority || 'medium', data.status || 'pending']
+    `INSERT INTO features (campaign_id, name, description, priority, status, module)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    [data.campaign_id, data.name, data.description || null, data.priority || 'medium', data.status || 'pending', data.module || null]
   );
   return result.rows[0];
 }
 
 export async function update(id, data, client = null) {
   const c = client || pool;
-  const allowedFields = ['name', 'description', 'priority', 'status'];
+  const allowedFields = ['name', 'description', 'priority', 'status', 'module'];
   const sets = [];
   const values = [];
   let idx = 1;
@@ -144,6 +144,28 @@ export async function updateStatus(id, status, client = null) {
   const result = await c.query(
     `UPDATE features SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
     [status, id]
+  );
+  return result.rows[0] || null;
+}
+
+export async function setAttachment(id, data, client = null) {
+  const c = client || pool;
+  const result = await c.query(
+    `UPDATE features
+     SET attachment_path = $1, attachment_name = $2, attachment_type = $3, attachment_size = $4, updated_at = NOW()
+     WHERE id = $5 RETURNING *`,
+    [data.path, data.name, data.type, data.size, id]
+  );
+  return result.rows[0] || null;
+}
+
+export async function clearAttachment(id, client = null) {
+  const c = client || pool;
+  const result = await c.query(
+    `UPDATE features
+     SET attachment_path = NULL, attachment_name = NULL, attachment_type = NULL, attachment_size = NULL, updated_at = NOW()
+     WHERE id = $1 RETURNING *`,
+    [id]
   );
   return result.rows[0] || null;
 }

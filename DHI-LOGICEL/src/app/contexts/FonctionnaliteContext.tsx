@@ -40,7 +40,7 @@ export function FonctionnaliteProvider({ children }: { children: ReactNode }) {
       if (fonctionnalite.testeurAssigneId) {
         const assignment = await taskService.assignTask(created.id, fonctionnalite.testeurAssigneId);
         const assignmentId = assignment?.id || assignment?.assignment?.id;
-        createdWithAssign = { ...created, testeurAssigneId: fonctionnalite.testeurAssigneId, assignmentId };
+        createdWithAssign = { ...createdWithAssign, testeurAssigneId: fonctionnalite.testeurAssigneId, assignmentId };
       }
 
       if (fonctionnalite.developpeurAssigneId) {
@@ -77,7 +77,7 @@ export function FonctionnaliteProvider({ children }: { children: ReactNode }) {
       }
 
       const featurePayload = mapFonctionnaliteToBackend(fonctionnalitePartielle);
-      const allowedKeys = ['name', 'description', 'priority', 'status'];
+      const allowedKeys = ['name', 'description', 'priority', 'status', 'module'];
       const filtered: Record<string, unknown> = {};
       for (const key of allowedKeys) {
         if (featurePayload[key as keyof typeof featurePayload] !== undefined) {

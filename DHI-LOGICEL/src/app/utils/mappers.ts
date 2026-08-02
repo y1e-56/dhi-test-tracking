@@ -204,13 +204,16 @@ export const mapFonctionnaliteFromBackend = (f: any): Fonctionnalite => {
     campagneId: String(f.campaign_id),
     nom: f.name,
     description: f.description || '',
-    module: f.name,
+    module: f.module || '',
     testeurAssigneId: firstAssignment ? String(firstAssignment.assigned_to) : undefined,
     assignmentId: firstAssignment ? String(firstAssignment.id) : undefined,
     statut: mapFeatureStatusToFrontend(f.status || 'pending'),
     priorite: mapPriorityToFrontend(f.priority || 'medium'),
     dateAssignation: firstAssignment?.assigned_at,
     dateTest: f.updated_at,
+    attachment: f.attachment_name
+      ? { name: f.attachment_name, type: f.attachment_type || '', size: f.attachment_size || 0 }
+      : null,
   };
 };
 
@@ -220,6 +223,7 @@ export const mapFonctionnaliteToBackend = (f: Partial<Fonctionnalite>) => ({
   description: f.description,
   priority: f.priorite ? mapPriorityToBackend(f.priorite) : 'medium',
   status: f.statut ? mapFeatureStatusToBackend(f.statut) : undefined,
+  module: f.module || undefined,
 });
 
 // =====================

@@ -14,7 +14,8 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-import { envoyerMessageIA } from '../services/aiService';
+import { envoyerMessageIA, suggerePriorite } from '../services/aiService';
+import { Anomalie, Priorite, StatutAnomalie, StatutFonctionnalite } from '../types';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose
 } from '../components/ui/dialog';
@@ -25,7 +26,7 @@ const COLORS_PRIORITE = ['#DC2626', '#F97316', '#EAB308', '#94A3B8'];
 
 export function ReportingPage() {
   const { t } = useTranslation();
-  const { currentUser } = useAuth();
+  const { currentUser, users } = useAuth();
   const { campagnes, projets, fonctionnalites, anomalies } = useData();
   const [campagneSelectionnee, setCampagneSelectionnee] = useState<string>('');
 
@@ -38,6 +39,130 @@ export function ReportingPage() {
     );
   }
 
+  const getUserName = (userId?: string): string => {
+    if (!userId || userId === 'undefined') return '—';
+    const u = users.find(x => x.id === userId);
+    return u ? `${u.prenom} ${u.nom}`.trim() : `#${userId}`;
+  };
+
+  const getFeatureName = (featureId?: string): string => {
+    if (!featureId) return '—';
+    const f = fonctionnalites.find(x => x.id === featureId);
+    return f ? f.nom : `#${featureId}`;
+  };
+
+  const getPrioriteReelle = (a: Anomalie): Priorite => suggerePriorite(a.titre, a.description);
+
+  const statutAnomalieLabel = (s: StatutAnomalie): string =>
+    ({
+      nouvelle: t('statut.nouvelle'),
+      en_cours: t('statut.en_cours'),
+      resolution_signalee: t('statut.resolution_signalee'),
+      validee: t('statut.validee'),
+      cloturee: t('statut.cloturee'),
+    })[s] || s;
+
+  const statutFonctionnaliteLabel = (s: StatutFonctionnalite): string =>
+    ({
+      non_testee: t('reporting.pdf_not_tested'),
+      conforme: t('reporting.pdf_compliant'),
+      anomalie: t('reporting.pdf_with_anomalies'),
+    })[s] || s;
+
+  const statutCampagneLabel = (s: string): string =>
+    ({
+      en_preparation: t('reporting.pdf_planned'),
+      en_cours: t('reporting.pdf_in_progress'),
+      terminee: t('reporting.pdf_completed'),
+      archive: t('reporting.pdf_archived'),
+    })[s] || s;
+
+  const prioriteLabel = (p: Priorite): string =>
+    ({
+      critique: t('reporting.pdf_critical'),
+      haute: t('reporting.pdf_high'),
+      moyenne: t('reporting.pdf_medium'),
+      basse: t('reporting.pdf_low'),
+    })[p] || p;
+
+  interface LigneStat {
+    id: string;
+    nom: string;
+    role: string;
+    creees: number;
+    enCours: number;
+    resolues: number;
+    assignees: number;
+  }
+
+  const calculerStatsParPersonne = (): LigneStat[] => {
+    const ac = anomalies.filter(a => a.campagneId === campagneSelectionnee);
+    const personnes = new Map<string, LigneStat>();
+    const ajouter = (id: string, role: string) => {
+      if (!personnes.has(id)) {
+        personnes.set(id, { id, nom: getUserName(id), role, creees: 0, enCours: 0, resolues: 0, assignees: 0 });
+      }
+    };
+    ac.forEach(a => {
+      if (a.testeurId) {
+        ajouter(a.testeurId, t('reporting.pdf_tester_role'));
+        const p = personnes.get(a.testeurId)!;
+        p.creees += 1;
+        if (a.statut === 'nouvelle' || a.statut === 'en_cours') p.enCours += 1;
+        if (a.statut === 'resolution_signalee' || a.statut === 'validee' || a.statut === 'cloturee') p.resolues += 1;
+      }
+      if (a.developpeurId) {
+        ajouter(a.developpeurId, t('reporting.pdf_developer_role'));
+        const p = personnes.get(a.developpeurId)!;
+        p.assignees += 1;
+        if (a.statut === 'resolution_signalee' || a.statut === 'validee' || a.statut === 'cloturee') p.resolues += 1;
+      }
+    });
+    return Array.from(personnes.values());
+  };
+
+  const getEquipeRows = (): { role: string; nom: string; email: string }[] => {
+    if (!campagne) return [];
+    const rows: { role: string; nom: string; email: string }[] = [];
+    (campagne.chefTesteurIds || []).forEach(id => {
+      const u = users.find(x => x.id === id);
+      rows.push({ role: t('reporting.pdf_lead_role'), nom: getUserName(id), email: u?.email || '—' });
+    });
+    (campagne.equipeTesteurs || []).forEach(id => {
+      if (campagne.chefTesteurIds?.includes(id)) return;
+      const u = users.find(x => x.id === id);
+      rows.push({ role: t('reporting.pdf_tester_role'), nom: getUserName(id), email: u?.email || '—' });
+    });
+    (campagne.equipeDeveloppeurs || []).forEach(id => {
+      const u = users.find(x => x.id === id);
+      rows.push({ role: t('reporting.pdf_developer_role'), nom: getUserName(id), email: u?.email || '—' });
+    });
+    return rows;
+  };
+
+  const genererSynthese = (): string => {
+    if (!campagne || !projet || !stats) return '';
+    const lignes: string[] = [];
+    lignes.push(t('reporting.pdf_syn_campaign', { campagne: campagne.nom, projet: projet.nom }));
+    lignes.push(t('reporting.pdf_syn_coverage', { total: stats.totalFonctionnalites, testees: stats.conformes + stats.anomaliesDetectees, taux: tauxAvancement }));
+    lignes.push(t('reporting.pdf_syn_compliance', { taux: tauxConformite, conformes: stats.conformes }));
+    if (stats.totalAnomalies > 0) {
+      lignes.push(t('reporting.pdf_syn_anomalies', { total: stats.totalAnomalies, nouvelles: stats.nouvelles, enCours: stats.enCours, resolues: stats.resolues, cloturees: stats.cloturees }));
+      if (stats.critiques > 0) lignes.push(t('reporting.pdf_syn_critical', { n: stats.critiques }));
+    } else {
+      lignes.push(t('reporting.pdf_syn_no_anomalies'));
+    }
+    lignes.push('');
+    lignes.push(t('reporting.pdf_recommendations'));
+    if (stats.nonTestees > 0) lignes.push(`- ${t('reporting.pdf_rec_untested', { n: stats.nonTestees })}`);
+    if (stats.nouvelles > 0) lignes.push(`- ${t('reporting.pdf_rec_new', { n: stats.nouvelles })}`);
+    if (stats.enCours > 0) lignes.push(`- ${t('reporting.pdf_rec_inprogress', { n: stats.enCours })}`);
+    if (stats.critiques > 0) lignes.push(`- ${t('reporting.pdf_rec_critical')}`);
+    if (tauxConformite < 50) lignes.push(`- ${t('reporting.pdf_rec_lowcompliance', { taux: tauxConformite })}`);
+    else lignes.push(`- ${t('reporting.pdf_rec_goodcompliance', { taux: tauxConformite })}`);
+    return lignes.join('\n');
+  };
+
   const handleExportPDF = () => {
     if (!campagne || !stats || !projet) {
       toast.error(t('reporting.select_campaign_error'));
@@ -49,113 +174,165 @@ export function ReportingPage() {
 
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const marge = 15;
       let currentY = 20;
 
-      // En-tête
+      const formatDate = (d?: string) => (d ? new Date(d).toLocaleDateString('fr-FR') : '—');
+
+      const ensureSpace = (needed: number) => {
+        if (currentY + needed > pageHeight - 20) {
+          doc.addPage();
+          currentY = 20;
+        }
+      };
+
+      const addHeading = (text: string, size = 14, color: [number, number, number] = [30, 41, 59]) => {
+        ensureSpace(28);
+        doc.setFontSize(size);
+        doc.setTextColor(color[0], color[1], color[2]);
+        doc.text(text, marge, currentY);
+        currentY += 8;
+      };
+
+      const addTable = (head: string[][], body: string[][], theme: 'striped' | 'grid' | 'plain' = 'striped') => {
+        autoTable(doc, {
+          startY: currentY,
+          head,
+          body,
+          theme,
+          headStyles: { fillColor: [79, 70, 229], fontSize: 9 },
+          styles: { fontSize: 9, cellPadding: 3 },
+          margin: { left: marge, right: marge },
+        });
+        currentY = (doc as any).lastAutoTable.finalY + 15;
+      };
+
+      // ===== Page 1 : en-tête et synthèse chiffrée =====
       doc.setFontSize(20);
+      doc.setTextColor(30, 41, 59);
       doc.text(t('reporting.pdf_report_title'), pageWidth / 2, currentY, { align: 'center' });
 
-      currentY += 10;
+      currentY += 9;
       doc.setFontSize(10);
       doc.setTextColor(100);
       doc.text(t('reporting.pdf_generated_on', { date: new Date().toLocaleString('fr-FR') }), pageWidth / 2, currentY, { align: 'center' });
 
       currentY += 15;
-      doc.setFontSize(14);
-      doc.setTextColor(0);
-      doc.text(t('reporting.pdf_general_info'), 15, currentY);
 
-      currentY += 8;
-      autoTable(doc, {
-        startY: currentY,
-        head: [[t('reporting.pdf_property'), t('reporting.pdf_value')]],
-        body: [
-          [t('reporting.pdf_campagne'), campagne.nom],
-          [t('reporting.pdf_projet'), projet.nom],
-          [t('reporting.pdf_start_date'), new Date(campagne.dateDebut).toLocaleDateString('fr-FR')],
-          [t('reporting.pdf_end_date'), new Date(campagne.dateFin).toLocaleDateString('fr-FR')],
-          [t('reporting.pdf_status'), campagne.statut.replace('_', ' ')],
-        ],
-        theme: 'striped',
-        headStyles: { fillColor: [79, 70, 229] },
-      });
+      addHeading(t('reporting.pdf_general_info'));
+      addTable([[t('reporting.pdf_property'), t('reporting.pdf_value')]], [
+        [t('reporting.pdf_campagne'), campagne.nom],
+        [t('reporting.pdf_projet'), projet.nom],
+        [t('reporting.pdf_start_date'), formatDate(campagne.dateDebut)],
+        [t('reporting.pdf_end_date'), formatDate(campagne.dateFin)],
+        [t('reporting.pdf_status'), statutCampagneLabel(campagne.statut)],
+      ]);
 
-      currentY = (doc as any).lastAutoTable.finalY + 15;
+      addHeading(t('reporting.pdf_key_indicators'));
+      addTable([[t('reporting.pdf_indicator'), t('reporting.pdf_indicator_value')]], [
+        [t('reporting.pdf_progress_rate'), `${tauxAvancement}%`],
+        [t('reporting.pdf_compliance_rate'), `${tauxConformite}%`],
+        [t('reporting.pdf_total_features'), stats.totalFonctionnalites.toString()],
+        [t('reporting.pdf_tested_features'), `${stats.conformes + stats.anomaliesDetectees}`],
+        [t('reporting.pdf_total_anomalies'), stats.totalAnomalies.toString()],
+      ]);
 
-      doc.setFontSize(14);
-      doc.text(t('reporting.pdf_key_indicators'), 15, currentY);
-
-      currentY += 8;
-      autoTable(doc, {
-        startY: currentY,
-        head: [[t('reporting.pdf_indicator'), t('reporting.pdf_indicator_value')]],
-        body: [
-          [t('reporting.pdf_progress_rate'), `${tauxAvancement}%`],
-          [t('reporting.pdf_compliance_rate'), `${tauxConformite}%`],
-          [t('reporting.pdf_total_features'), stats.totalFonctionnalites.toString()],
-          [t('reporting.pdf_tested_features'), `${stats.conformes + stats.anomaliesDetectees}`],
-          [t('reporting.pdf_total_anomalies'), stats.totalAnomalies.toString()],
-        ],
-        theme: 'striped',
-        headStyles: { fillColor: [79, 70, 229] },
-      });
-
-      currentY = (doc as any).lastAutoTable.finalY + 15;
-
-      doc.setFontSize(14);
-      doc.text(t('reporting.pdf_features_distribution'), 15, currentY);
-
-      currentY += 8;
-      autoTable(doc, {
-        startY: currentY,
-        head: [[t('reporting.pdf_status_header'), t('reporting.pdf_count_header')]],
-        body: [
-          [t('reporting.pdf_not_tested'), stats.nonTestees.toString()],
-          [t('reporting.pdf_compliant'), stats.conformes.toString()],
-          [t('reporting.pdf_with_anomalies'), stats.anomaliesDetectees.toString()],
-        ],
-        theme: 'grid',
-        headStyles: { fillColor: [79, 70, 229] },
-      });
-
-      currentY = (doc as any).lastAutoTable.finalY + 15;
+      addHeading(t('reporting.pdf_features_distribution'));
+      addTable([[t('reporting.pdf_status_header'), t('reporting.pdf_count_header')]], [
+        [t('reporting.pdf_not_tested'), stats.nonTestees.toString()],
+        [t('reporting.pdf_compliant'), stats.conformes.toString()],
+        [t('reporting.pdf_with_anomalies'), stats.anomaliesDetectees.toString()],
+      ], 'grid');
 
       if (stats.totalAnomalies > 0) {
-        doc.setFontSize(14);
-        doc.text(t('reporting.pdf_anomalies_by_status'), 15, currentY);
+        addHeading(t('reporting.pdf_anomalies_by_status'));
+        addTable([[t('reporting.pdf_status_header'), t('reporting.pdf_count_header')]], [
+          [t('reporting.pdf_new'), stats.nouvelles.toString()],
+          [t('reporting.pdf_in_progress'), stats.enCours.toString()],
+          [t('reporting.pdf_resolved'), stats.resolues.toString()],
+          [t('reporting.pdf_closed'), stats.cloturees.toString()],
+        ], 'grid');
 
-        currentY += 8;
-        autoTable(doc, {
-          startY: currentY,
-          head: [[t('reporting.pdf_status_header'), t('reporting.pdf_count_header')]],
-          body: [
-            [t('reporting.pdf_new'), stats.nouvelles.toString()],
-            [t('reporting.pdf_in_progress'), stats.enCours.toString()],
-            [t('reporting.pdf_resolved'), stats.resolues.toString()],
-            [t('reporting.pdf_closed'), stats.cloturees.toString()],
-          ],
-          theme: 'grid',
-          headStyles: { fillColor: [79, 70, 229] },
-        });
+        addHeading(t('reporting.pdf_anomalies_by_priority'));
+        addTable([[t('reporting.pdf_status_header'), t('reporting.pdf_count_header')]], [
+          [t('reporting.pdf_critical'), stats.critiques.toString()],
+          [t('reporting.pdf_high'), stats.hautes.toString()],
+          [t('reporting.pdf_medium'), stats.moyennes.toString()],
+          [t('reporting.pdf_low'), stats.basses.toString()],
+        ], 'grid');
+      }
 
-        currentY = (doc as any).lastAutoTable.finalY + 15;
+      // ===== Page 2 : synthèse et équipe =====
+      doc.addPage();
+      currentY = 20;
 
-        doc.setFontSize(14);
-        doc.text(t('reporting.pdf_anomalies_by_priority'), 15, currentY);
+      addHeading(t('reporting.pdf_synthesis'));
+      const lignesSynthese = doc.splitTextToSize(genererSynthese(), pageWidth - 2 * marge);
+      doc.setFontSize(10);
+      doc.setTextColor(71, 85, 105);
+      doc.text(lignesSynthese, marge, currentY);
+      currentY += (lignesSynthese.length * 5) + 15;
 
-        currentY += 8;
-        autoTable(doc, {
-          startY: currentY,
-          head: [[t('reporting.pdf_status_header'), t('reporting.pdf_count_header')]],
-          body: [
-            [t('reporting.pdf_critical'), stats.critiques.toString()],
-            [t('reporting.pdf_high'), stats.hautes.toString()],
-            [t('reporting.pdf_medium'), stats.moyennes.toString()],
-            [t('reporting.pdf_low'), stats.basses.toString()],
-          ],
-          theme: 'grid',
-          headStyles: { fillColor: [79, 70, 229] },
-        });
+      addHeading(t('reporting.pdf_team'));
+      const equipeRows = getEquipeRows();
+      addTable([[t('reporting.pdf_member_role'), t('reporting.pdf_member_name'), t('reporting.pdf_member_email')]],
+        equipeRows.length > 0
+          ? equipeRows.map(r => [r.role, r.nom, r.email])
+          : [[t('reporting.pdf_no_members'), '—', '—']],
+      );
+
+      // ===== Page 3 : détails =====
+      doc.addPage();
+      currentY = 20;
+
+      addHeading(t('reporting.pdf_features_detail'));
+      const fonctionnalitesCampagne = fonctionnalites.filter(f => f.campagneId === campagneSelectionnee);
+      addTable([[t('reporting.pdf_num'), t('reporting.pdf_feature'), t('reporting.pdf_status_header'), t('reporting.pdf_priority'), t('reporting.pdf_tester'), t('reporting.pdf_created')]],
+        fonctionnalitesCampagne.length > 0
+          ? fonctionnalitesCampagne.map((f, i) => [
+              String(i + 1),
+              f.nom,
+              statutFonctionnaliteLabel(f.statut),
+              prioriteLabel(f.priorite),
+              getUserName(f.testeurAssigneId),
+              formatDate(f.dateTest),
+            ])
+          : [[t('reporting.pdf_no_features'), '—', '—', '—', '—', '—']],
+      );
+
+      addHeading(t('reporting.pdf_anomalies_detail'));
+      const anomaliesCampagne = anomalies.filter(a => a.campagneId === campagneSelectionnee);
+      addTable([[t('reporting.pdf_num'), t('reporting.pdf_feature'), t('reporting.pdf_status_header'), t('reporting.pdf_priority'), t('reporting.pdf_tester'), t('reporting.pdf_developer'), t('reporting.pdf_created'), t('reporting.pdf_resolved')]],
+        anomaliesCampagne.length > 0
+          ? anomaliesCampagne.map((a, i) => [
+              String(i + 1),
+              getFeatureName(a.fonctionnaliteId),
+              statutAnomalieLabel(a.statut),
+              prioriteLabel(getPrioriteReelle(a)),
+              getUserName(a.testeurId),
+              getUserName(a.developpeurId),
+              formatDate(a.dateCreation),
+              formatDate(a.dateResolution),
+            ])
+          : [[t('reporting.no_anomalies'), '—', '—', '—', '—', '—', '—', '—']],
+      );
+
+      addHeading(t('reporting.pdf_person_stats'));
+      const lignesStats = calculerStatsParPersonne();
+      addTable([[t('reporting.pdf_member_name'), t('reporting.pdf_member_role'), t('reporting.pdf_anomalies_created'), t('reporting.pdf_anomalies_assigned'), t('reporting.pdf_anomalies_inprogress'), t('reporting.pdf_anomalies_resolved')]],
+        lignesStats.length > 0
+          ? lignesStats.map(s => [s.nom, s.role, s.creees.toString(), s.assignees.toString(), s.enCours.toString(), s.resolues.toString()])
+          : [[t('reporting.no_anomalies'), '—', '—', '—', '—', '—']],
+      );
+
+      // Pied de page : numérotation
+      const totalPages = doc.getNumberOfPages();
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(t('reporting.pdf_page_footer', { page: p, total: totalPages }), pageWidth / 2, pageHeight - 8, { align: 'center' });
       }
 
       const fileName = `Rapport_${campagne.nom.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
@@ -177,17 +354,25 @@ export function ReportingPage() {
     try {
       toast.success(t('reporting.generating_excel'));
 
-      // Créer un nouveau classeur
       const workbook = XLSX.utils.book_new();
+      const formatDate = (d?: string) => (d ? new Date(d).toLocaleDateString('fr-FR') : '—');
 
-      const infoData = [
+      const appendSheet = (name: string, data: unknown[][], colWidths?: number[]) => {
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        if (colWidths) ws['!cols'] = colWidths.map(w => ({ wch: w }));
+        XLSX.utils.book_append_sheet(workbook, ws, name);
+      };
+
+      // 1. Synthèse
+      const synthese = genererSynthese();
+      appendSheet(t('reporting.excel_summary'), [
         [t('reporting.excel_report_title')],
         [],
-        ['Campagne', campagne.nom],
-        ['Projet', projet.nom],
-        [t('reporting.pdf_start_date'), new Date(campagne.dateDebut).toLocaleDateString('fr-FR')],
-        [t('reporting.pdf_end_date'), new Date(campagne.dateFin).toLocaleDateString('fr-FR')],
-        [t('reporting.pdf_status'), campagne.statut.replace('_', ' ')],
+        [t('reporting.pdf_campagne'), campagne.nom],
+        [t('reporting.pdf_projet'), projet.nom],
+        [t('reporting.pdf_start_date'), formatDate(campagne.dateDebut)],
+        [t('reporting.pdf_end_date'), formatDate(campagne.dateFin)],
+        [t('reporting.pdf_status'), statutCampagneLabel(campagne.statut)],
         [t('reporting.excel_generated_on'), new Date().toLocaleString('fr-FR')],
         [],
         [t('reporting.excel_key_indicators')],
@@ -196,68 +381,71 @@ export function ReportingPage() {
         [t('reporting.pdf_total_features'), stats.totalFonctionnalites],
         [t('reporting.pdf_tested_features'), stats.conformes + stats.anomaliesDetectees],
         [t('reporting.pdf_total_anomalies'), stats.totalAnomalies],
-      ];
-      const wsInfo = XLSX.utils.aoa_to_sheet(infoData);
-      XLSX.utils.book_append_sheet(workbook, wsInfo, t('reporting.excel_summary'));
+        [t('reporting.pdf_not_tested'), stats.nonTestees],
+        [t('reporting.pdf_compliant'), stats.conformes],
+        [t('reporting.pdf_with_anomalies'), stats.anomaliesDetectees],
+        [],
+        [t('reporting.excel_synthesis')],
+        ...synthese.split('\n').map(l => [l]),
+      ], [40, 80]);
 
-      const fonctData = [
+      // 2. Fonctionnalités
+      const fonctionnalitesCampagne = fonctionnalites.filter(f => f.campagneId === campagneSelectionnee);
+      appendSheet(t('reporting.excel_features_sheet'), [
         [t('reporting.excel_features_distribution')],
         [],
         [t('reporting.pdf_status_header'), t('reporting.pdf_count_header')],
         [t('reporting.pdf_not_tested'), stats.nonTestees],
         [t('reporting.pdf_compliant'), stats.conformes],
         [t('reporting.pdf_with_anomalies'), stats.anomaliesDetectees],
-        [],
         [t('reporting.excel_total'), stats.totalFonctionnalites],
-      ];
-      const wsFonct = XLSX.utils.aoa_to_sheet(fonctData);
-      XLSX.utils.book_append_sheet(workbook, wsFonct, t('reporting.excel_features_sheet'));
+        [],
+        [t('reporting.pdf_features_detail')],
+        [t('reporting.pdf_num'), t('reporting.pdf_feature'), t('reporting.pdf_status_header'), t('reporting.pdf_priority'), t('reporting.pdf_tester'), t('reporting.pdf_created')],
+        ...fonctionnalitesCampagne.map((f, i) => [
+          i + 1, f.nom, statutFonctionnaliteLabel(f.statut), prioriteLabel(f.priorite), getUserName(f.testeurAssigneId), formatDate(f.dateTest),
+        ]),
+      ], [6, 45, 20, 14, 22, 16]);
 
-      if (stats.totalAnomalies > 0) {
-        const anomaliesData = [
-          [t('reporting.excel_anomalies_by_status')],
-          [],
-          [t('reporting.pdf_status_header'), t('reporting.pdf_count_header')],
-          [t('reporting.pdf_new'), stats.nouvelles],
-          [t('reporting.pdf_in_progress'), stats.enCours],
-          [t('reporting.pdf_resolved'), stats.resolues],
-          [t('reporting.pdf_closed'), stats.cloturees],
-          [],
-          [t('reporting.excel_anomalies_by_priority')],
-          [],
-          [t('reporting.excel_priority'), t('reporting.pdf_count_header')],
-          [t('reporting.pdf_critical'), stats.critiques],
-          [t('reporting.pdf_high'), stats.hautes],
-          [t('reporting.pdf_medium'), stats.moyennes],
-          [t('reporting.pdf_low'), stats.basses],
-          [],
-          [t('reporting.excel_total'), stats.totalAnomalies],
-        ];
-        const wsAnomalies = XLSX.utils.aoa_to_sheet(anomaliesData);
-        XLSX.utils.book_append_sheet(workbook, wsAnomalies, t('reporting.excel_anomalies_sheet'));
-      }
-
-      // Feuille 4: Détail des anomalies
+      // 3. Anomalies
       const anomaliesCampagne = anomalies.filter(a => a.campagneId === campagneSelectionnee);
-      if (anomaliesCampagne.length > 0) {
-        const detailData = [
-          [t('reporting.excel_column_title'), t('reporting.excel_column_status'), t('reporting.excel_column_priority'), t('reporting.excel_column_creation_date'), t('reporting.excel_column_tester'), t('reporting.excel_column_developer')],
-        ];
-        anomaliesCampagne.forEach(a => {
-          detailData.push([
-            a.titre,
-            a.statut,
-            a.priorite,
-            new Date(a.dateCreation).toLocaleDateString('fr-FR'),
-            a.testeurId,
-            a.developpeurId,
-          ]);
-        });
-        const wsDetail = XLSX.utils.aoa_to_sheet(detailData);
-        XLSX.utils.book_append_sheet(workbook, wsDetail, t('reporting.excel_detail_sheet'));
-      }
+      appendSheet(t('reporting.excel_anomalies_sheet'), [
+        [t('reporting.pdf_anomalies_detail')],
+        [],
+        [t('reporting.pdf_num'), t('reporting.pdf_feature'), t('reporting.pdf_status_header'), t('reporting.pdf_priority'), t('reporting.pdf_tester'), t('reporting.pdf_developer'), t('reporting.pdf_created'), t('reporting.pdf_resolved'), t('reporting.pdf_resolution_comment')],
+        ...(anomaliesCampagne.length > 0
+          ? anomaliesCampagne.map((a, i) => [
+              i + 1,
+              getFeatureName(a.fonctionnaliteId),
+              statutAnomalieLabel(a.statut),
+              prioriteLabel(getPrioriteReelle(a)),
+              getUserName(a.testeurId),
+              getUserName(a.developpeurId),
+              formatDate(a.dateCreation),
+              formatDate(a.dateResolution),
+              a.commentaireResolution || '—',
+            ])
+          : [[t('reporting.excel_no_anomalies')]]),
+      ], [6, 40, 20, 14, 20, 20, 16, 16, 50]);
 
-      // Télécharger le fichier Excel
+      // 4. Équipe
+      appendSheet(t('reporting.excel_team_sheet'), [
+        [t('reporting.pdf_team')],
+        [],
+        [t('reporting.pdf_member_role'), t('reporting.pdf_member_name'), t('reporting.pdf_member_email')],
+        ...(getEquipeRows().length > 0
+          ? getEquipeRows().map(r => [r.role, r.nom, r.email])
+          : [[t('reporting.pdf_no_members'), '—', '—']]),
+      ], [20, 30, 40]);
+
+      // 5. Stats par personne
+      appendSheet(t('reporting.excel_person_sheet'), [
+        [t('reporting.pdf_person_stats')],
+        [],
+        [t('reporting.pdf_member_name'), t('reporting.pdf_member_role'), t('reporting.pdf_anomalies_created'), t('reporting.pdf_anomalies_assigned'), t('reporting.pdf_anomalies_inprogress'), t('reporting.pdf_anomalies_resolved')],
+        ...(calculerStatsParPersonne().map(s => [s.nom, s.role, s.creees, s.assignees, s.enCours, s.resolues])),
+      ], [30, 20, 20, 20, 16, 16]);
+
       const fileName = `Rapport_${campagne.nom.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(workbook, fileName);
 
@@ -281,10 +469,10 @@ export function ReportingPage() {
       enCours: ac.filter(a => a.statut === 'en_cours').length,
       resolues: ac.filter(a => a.statut === 'resolution_signalee').length,
       cloturees: ac.filter(a => a.statut === 'cloturee' || a.statut === 'validee').length,
-      critiques: ac.filter(a => a.priorite === 'critique').length,
-      hautes: ac.filter(a => a.priorite === 'haute').length,
-      moyennes: ac.filter(a => a.priorite === 'moyenne').length,
-      basses: ac.filter(a => a.priorite === 'basse').length,
+      critiques: ac.filter(a => getPrioriteReelle(a) === 'critique').length,
+      hautes: ac.filter(a => getPrioriteReelle(a) === 'haute').length,
+      moyennes: ac.filter(a => getPrioriteReelle(a) === 'moyenne').length,
+      basses: ac.filter(a => getPrioriteReelle(a) === 'basse').length,
     };
   };
 

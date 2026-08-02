@@ -13,6 +13,7 @@ const createFeatureSchema = z.object({
   name: z.string().min(1, 'Nom requis'),
   description: z.string().optional(),
   priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  module: z.string().optional(),
 });
 
 const createAssignmentSchema = z.object({
@@ -51,9 +52,9 @@ const createAssignmentSchema = z.object({
  */
 router.post('/features', authenticate, async (req, res) => {
   const data = createFeatureSchema.parse(req.body);
-  const feature = await featureService.createFeature(data);
+  const result = await featureService.createFeature(data);
   bus.emit('data:changed', { entity: 'features' });
-  res.status(201).json({ feature });
+  res.status(201).json(result);
 });
 
 /**

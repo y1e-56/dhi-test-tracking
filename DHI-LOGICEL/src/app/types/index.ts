@@ -58,6 +58,7 @@ export interface Fonctionnalite {
   priorite: Priorite;
   dateAssignation?: string;
   dateTest?: string;
+  attachment?: { name: string; type: string; size: number } | null;
 }
 
 export interface Anomalie {

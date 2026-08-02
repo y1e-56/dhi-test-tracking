@@ -25,4 +25,25 @@ export const featureService = {
     }
     return { data: result, pagination: { page: 1, limit: result.length, total: result.length, totalPages: 1 } };
   },
+
+  async uploadAttachment(featureId: string, file: File): Promise<void> {
+    const formData = new FormData();
+    formData.append('file', file);
+    await api.post(`/features/${featureId}/attachment`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
+  async deleteAttachment(featureId: string): Promise<void> {
+    await api.delete(`/features/${featureId}/attachment`);
+  },
+
+  async downloadAttachment(featureId: string): Promise<{ blob: Blob; name: string }> {
+    const res = await api.get(`/features/${featureId}/attachment`, { responseType: 'blob' });
+    const disposition = res.headers?.['content-disposition'] as string | undefined;
+    let name = 'document';
+    const match = disposition?.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+    if (match) name = decodeURIComponent(match[1]);
+    return { blob: res.data as Blob, name };
+  },
 };

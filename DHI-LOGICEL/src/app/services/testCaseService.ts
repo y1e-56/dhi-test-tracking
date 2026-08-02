@@ -31,6 +31,14 @@ export const testCaseService = {
   async delete(id: string): Promise<void> {
     await api.delete(`/test-cases/${id}`);
   },
+
+  async generate(params: { featureId: string }): Promise<{ count: number; testCases: TestCase[] }> {
+    const res = await api.post('/test-cases/generate', { feature_id: parseInt(params.featureId) });
+    return {
+      count: res.data.count,
+      testCases: (res.data.testCases || []).map(mapTestCaseFromBackend),
+    };
+  },
 };
 
 const mapTestCaseFromBackend = (tc: any): TestCase => ({

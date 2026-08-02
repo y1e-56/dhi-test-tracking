@@ -2,6 +2,9 @@ import { withTransaction } from '../config/database.js';
 import { AppError } from '../middleware/errorHandler.js';
 import bus from '../lib/eventBus.js';
 import * as db from '../db/index.js';
+import * as testCaseService from './testCaseService.js';
+import { deleteAttachmentFile } from '../config/upload.js';
+import { generateFeatureDocument } from './featureDocumentService.js';
 
 export async function listFeatures(campaignId) {
   return db.features.findByCampaign(campaignId);
@@ -27,9 +30,21 @@ export async function getFeature(id) {
 }
 
 export async function createFeature(data) {
-  const feature = await db.features.create(data);
-  bus.emit('feature:created', { feature });
-  return feature;
+  const result = await withTransaction(async (client) => {
+    const feature = await db.features.create(data, client);
+    const generatedTestCases = await testCaseService.generateForFeature(feature, client);
+    bus.emit('feature:created', { feature, generatedTestCases });
+    return { feature, generatedTestCases };
+  });
+
+  // Génère automatiquement le document PDF des cas de test au moment de l'assignation
+  try {
+    await generateFeatureDocument(result.feature.id);
+  } catch (e) {
+    console.error('Erreur génération document cas de test:', e);
+  }
+
+  return result;
 }
 
 export async function updateFeature(id, data) {
@@ -45,9 +60,30 @@ export async function updateFeature(id, data) {
 }
 
 export async function deleteFeature(id) {
+  const feature = await db.features.findById(id);
+  if (!feature) throw new AppError('Fonctionnalité non trouvée', 404);
   const result = await db.features.remove(id);
   if (!result) throw new AppError('Fonctionnalité non trouvée', 404);
+  if (feature.attachment_path) deleteAttachmentFile(feature.attachment_path);
   bus.emit('feature:deleted', { feature_id: id });
+}
+
+export async function setFeatureAttachment(id, data) {
+  const feature = await db.features.findById(id);
+  if (!feature) throw new AppError('Fonctionnalité non trouvée', 404);
+  if (feature.attachment_path) deleteAttachmentFile(feature.attachment_path);
+  const updated = await db.features.setAttachment(id, data);
+  bus.emit('feature:updated', { feature: updated });
+  return updated;
+}
+
+export async function clearFeatureAttachment(id) {
+  const feature = await db.features.findById(id);
+  if (!feature) throw new AppError('Fonctionnalité non trouvée', 404);
+  if (feature.attachment_path) deleteAttachmentFile(feature.attachment_path);
+  const updated = await db.features.clearAttachment(id);
+  bus.emit('feature:updated', { feature: updated });
+  return updated;
 }
 
 export async function getFeatureAnomalies(featureId) {

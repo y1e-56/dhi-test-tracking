@@ -142,7 +142,15 @@ router.get('/:id', authenticate, async (req, res) => {
  */
 router.post('/', authenticate, async (req, res) => {
   const data = createSchema.parse(req.body);
-  const enrichedData = { ...data, created_by: req.user.id };
+
+  // Le chef testeur qui crée la campagne est automatiquement chef de cette campagne
+  const chefTesteurRoles = ['chef_testeur', 'test_lead'];
+  let test_lead_ids = data.test_lead_ids || [];
+  if (chefTesteurRoles.includes(req.user.role)) {
+    test_lead_ids = [...new Set([...test_lead_ids, req.user.id])];
+  }
+
+  const enrichedData = { ...data, test_lead_ids, created_by: req.user.id };
   console.log('[campaigns] POST / avec data:', enrichedData);
   const campaign = await campaignService.createCampaign(enrichedData);
   console.log('[campaigns] Campagne créée:', campaign);

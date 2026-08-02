@@ -11,9 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { Plus, TestTube, Search } from 'lucide-react';
+import { Plus, TestTube, Search, FileText } from 'lucide-react';
 import { Fonctionnalite, Priorite, StatutFonctionnalite } from '../types';
 import { useDebounce } from '../hooks/useDebounce';
+import { featureService } from '../services/featureService';
+import { toast } from 'sonner';
 
 interface FeaturesTabProps {
   campagneId: string;
@@ -87,6 +89,21 @@ export function FeaturesTab({ campagneId, peutGerer, readOnly, isEnPreparation, 
       setDialogOpen(false);
     } catch (error) {
       console.error('Erreur:', error);
+    }
+  };
+
+  const handleTelechargerDocument = async (feature: Fonctionnalite) => {
+    try {
+      const { blob, name } = await featureService.downloadAttachment(feature.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error('Erreur lors du téléchargement du document');
+      console.error(error);
     }
   };
 
@@ -188,6 +205,15 @@ export function FeaturesTab({ campagneId, peutGerer, readOnly, isEnPreparation, 
                       <span><strong>{t('campagne.detail.module')}:</strong> {fonctionnalite.module}</span>
                       <span><strong>{t('campagne.detail.tester_label')}:</strong> {testeur?.prenom} {testeur?.nom || t('campagne.detail.not_assigned')}</span>
                     </div>
+                    {fonctionnalite.attachment && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleTelechargerDocument(fonctionnalite); }}
+                        className="mt-2 flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        {fonctionnalite.attachment.name}
+                      </button>
+                    )}
                   </div>
                   {peutGerer && !readOnly && (
                     <Button size="sm" variant="outline"
