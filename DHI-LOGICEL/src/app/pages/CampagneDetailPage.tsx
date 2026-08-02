@@ -304,7 +304,6 @@ export function CampagneDetailPage() {
 
   const handleOpenDialog = () => {
     setFormData({ nom: '', description: '', module: '', testeurAssigneId: '', developpeurAssigneId: '', priorite: 'moyenne' as Priorite });
-    setAttachmentFile(null);
     setDialogOpen(true);
   };
 
