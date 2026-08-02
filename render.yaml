@@ -40,6 +40,18 @@ services:
         value: https://dhi-test-tracking-app.onrender.com
       - key: PORT
         value: "10000"
+      # ── Email (alerte des administrateurs hors poste, mot de passe oublié, réinitialisation) ──
+      # À renseigner dans le dashboard Render (Environment) avec les mêmes valeurs que backend/.env
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
 
 databases:
   - name: dhi-test-tracking-db
