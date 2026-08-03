@@ -1,3 +1,7 @@
+import dotenv from 'dotenv';
+
+dotenv.config();
+
 let sendMail = null;
 
 const rsKey = process.env.RESEND_API_KEY;
