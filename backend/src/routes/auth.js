@@ -20,7 +20,7 @@ const registerSchema = z.object({
   password: z.string().min(6, 'Minimum 6 caractères'),
   first_name: z.string().min(1, 'Prénom requis'),
   last_name: z.string().min(1, 'Nom requis'),
-  role: z.enum(['admin', 'test_lead', 'tester', 'developer']),
+  role: z.enum(['admin', 'chef_testeur', 'tester', 'developer']),
 });
 
 const loginSchema = z.object({
@@ -51,7 +51,7 @@ const forgotPasswordSchema = z.object({
  *               password: { type: string, minLength: 6 }
  *               first_name: { type: string }
  *               last_name: { type: string }
- *               role: { type: string, enum: [admin, test_lead, tester, developer] }
+ *               role: { type: string, enum: [admin, chef_testeur, tester, developer] }
  *     responses:
  *       201:
  *         description: Utilisateur créé

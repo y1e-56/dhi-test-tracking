@@ -9,5 +9,5 @@ JOIN campaigns c ON c.id = h.entity_id
 WHERE h.entity_type = 'campaign'
   AND h.action_type = 'created'
   AND h.user_id IS NOT NULL
-  AND u.role IN ('chef_testeur', 'test_lead')
+  AND u.role = 'chef_testeur'
 ON CONFLICT (campaign_id, user_id) DO NOTHING;

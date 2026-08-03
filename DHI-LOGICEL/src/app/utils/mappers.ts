@@ -1,6 +1,6 @@
 /**
  * Mappers FR ↔ EN entre Frontend et Backend
- * Le backend utilise l'anglais (admin, test_lead, tester, developer, etc.)
+ * Le backend utilise l'anglais (admin, chef_testeur, tester, developer, etc.)
  * Le frontend utilise le français (admin, chef_testeur, testeur, developpeur, etc.)
  */
 
@@ -23,13 +23,14 @@ import {
 // =====================
 const ROLE_FR_TO_EN: Record<UserRole, string> = {
   admin: 'admin',
-  chef_testeur: 'test_lead',
+  chef_testeur: 'chef_testeur',
   testeur: 'tester',
   developpeur: 'developer',
 };
 
 const ROLE_EN_TO_FR: Record<string, UserRole> = {
   admin: 'admin',
+  chef_testeur: 'chef_testeur',
   test_lead: 'chef_testeur',
   tester: 'testeur',
   developer: 'developpeur',
