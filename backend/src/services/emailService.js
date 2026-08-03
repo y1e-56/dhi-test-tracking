@@ -2,25 +2,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-function htmlToText(html) {
-  const links = [];
-  const stripped = html
-    .replace(/<a[^>]*href=["']([^"']+)["'][^>]*>/gi, (m, url) => { links.push(url); return ' '; })
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-  const text = stripped.split('\n').map((l) => l.trim()).filter(Boolean).join('\n');
-  return links.length ? `${text}\n\n${links.join('\n')}` : text;
-}
-
 let sendMail = null;
 
 const rsKey = process.env.RESEND_API_KEY;
@@ -35,7 +16,6 @@ if (rsKey) {
       to: Array.isArray(to) ? to : [to],
       subject,
       html,
-      text: htmlToText(html),
     });
   };
   console.log('[email] Resend initialisé');
@@ -52,14 +32,7 @@ if (rsKey) {
   });
   sendMail = ({ to, subject, html }) => {
     const from = process.env.EMAIL_FROM || `"DHI Test Tracking" <${process.env.SMTP_USER}>`;
-    return transporter.sendMail({
-      from,
-      to,
-      subject,
-      html,
-      text: htmlToText(html),
-      replyTo: process.env.EMAIL_REPLY_TO || process.env.SMTP_USER,
-    });
+    return transporter.sendMail({ from, to, subject, html });
   };
   console.log('[email] SMTP initialisé');
 }
