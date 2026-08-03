@@ -8,9 +8,10 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { ArrowLeft, Bug, User, Calendar, CheckCircle2, Timer, AlertTriangle, ChevronDown } from 'lucide-react';
-import { StatutAnomalie, HistoriqueAction } from '../types';
+import { ArrowLeft, Bug, User, Calendar, CheckCircle2, Timer, AlertTriangle, ChevronDown, ListChecks } from 'lucide-react';
+import { StatutAnomalie, HistoriqueAction, TestCase } from '../types';
 import { api } from '../services/api';
+import { testCaseService } from '../services/testCaseService';
 import { mapHistoriqueFromBackend } from '../utils/mappers';
 import { HistoriqueTimeline } from '../components/HistoriqueTimeline';
 
@@ -43,6 +44,25 @@ export function AnomalieDetailPage() {
   const [descriptionOuverte, setDescriptionOuverte] = useState(true);
   const [historiqueOuvert, setHistoriqueOuvert] = useState(true);
 
+  const anomalie = anomalies.find(a => a.id === anomalieId);
+  const [testCase, setTestCase] = useState<TestCase | null>(null);
+  const [testCaseChargement, setTestCaseChargement] = useState(false);
+
+  useEffect(() => {
+    if (!anomalie?.testCaseId) {
+      setTestCase(null);
+      setTestCaseChargement(false);
+      return;
+    }
+    let annule = false;
+    setTestCaseChargement(true);
+    testCaseService.getById(anomalie.testCaseId)
+      .then(tc => { if (!annule) setTestCase(tc); })
+      .catch(err => console.error('[AnomalieDetailPage] Échec du chargement du cas de test:', err))
+      .finally(() => { if (!annule) setTestCaseChargement(false); });
+    return () => { annule = true; };
+  }, [anomalie?.testCaseId]);
+
   useEffect(() => {
     if (!anomalieId) return;
     api.get(`/anomalies/${anomalieId}/history`)
@@ -50,7 +70,6 @@ export function AnomalieDetailPage() {
       .catch(err => console.error('[AnomalieDetailPage] Échec du chargement de l\'historique:', err));
   }, [anomalieId]);
 
-  const anomalie = anomalies.find(a => a.id === anomalieId);
   const fonctionnalite = fonctionnalites.find(f => f.id === anomalie?.fonctionnaliteId);
   const campagne = campagnes.find(c => c.id === anomalie?.campagneId);
   const projet = projets.find(p => p.id === campagne?.projetId);
@@ -173,6 +192,44 @@ export function AnomalieDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          {anomalie.testCaseId && (
+            <Card className="border-0 shadow-sm border-l-4 border-l-sky-500">
+              <CardHeader className="pb-3 pt-5 px-5">
+                <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                  <ListChecks className="w-4 h-4 text-sky-600" />
+                  {t('anomalie.detail.test_case')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-5 pb-5 space-y-4">
+                {testCaseChargement ? (
+                  <p className="text-sm text-slate-500">{t('common.loading')}</p>
+                ) : testCase ? (
+                  <>
+                    <p className="text-sm font-semibold text-slate-800">{testCase.nom}</p>
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                        {t('anomalie.detail.test_case_steps')}
+                      </p>
+                      <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-slate-50 rounded-lg p-3">
+                        {testCase.steps}
+                      </p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                        {t('anomalie.detail.test_case_expected_result')}
+                      </p>
+                      <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-slate-50 rounded-lg p-3">
+                        {testCase.expectedResult}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-slate-500">{t('anomalie.detail.test_case_unavailable')}</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {peutPrendreEnCharge && (
             <Card className="border-0 shadow-sm border-l-4 border-l-indigo-500">
