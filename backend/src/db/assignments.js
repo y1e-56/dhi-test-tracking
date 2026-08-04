@@ -6,19 +6,23 @@ export async function findById(id, client = null) {
   return result.rows[0] || null;
 }
 
-export async function create(featureId, assignedTo, client = null) {
+export async function create(featureId, assignedTo, durationDays = null, client = null) {
   const c = client || pool;
+  const dueDate = durationDays != null ? new Date(Date.now() + durationDays * 86400000) : null;
   const result = await c.query(
-    `INSERT INTO assignments (feature_id, assigned_to) VALUES ($1, $2)
-     ON CONFLICT (feature_id, assigned_to) DO UPDATE SET assigned_at = NOW() RETURNING *`,
-    [featureId, assignedTo]
+    `INSERT INTO assignments (feature_id, assigned_to, duration_days, due_date) VALUES ($1, $2, $3, $4)
+     ON CONFLICT (feature_id, assigned_to) DO UPDATE SET assigned_at = NOW(), duration_days = EXCLUDED.duration_days, due_date = COALESCE(EXCLUDED.due_date, assignments.due_date) RETURNING *`,
+    [featureId, assignedTo, durationDays, dueDate]
   );
   return result.rows[0];
 }
 
 export async function update(id, data, client = null) {
   const c = client || pool;
-  const allowedFields = ['assigned_to', 'status'];
+  const existing = await findById(id, c);
+  if (!existing) return null;
+
+  const allowedFields = ['assigned_to', 'status', 'duration_days'];
   const sets = [];
   const values = [];
   let idx = 1;
@@ -28,6 +32,23 @@ export async function update(id, data, client = null) {
       values.push(data[field]);
     }
   }
+
+  const assignedAt = data.assigned_to !== undefined ? new Date() : existing.assigned_at;
+  const durationDays = data.duration_days !== undefined ? data.duration_days : existing.duration_days;
+
+  // Une réassignation relance le compteur : assigned_at + échéance recalculées
+  if (data.assigned_to !== undefined) {
+    sets.push(`assigned_at = $${idx++}`);
+    values.push(assignedAt);
+  }
+  if (data.duration_days !== undefined && durationDays == null) {
+    sets.push(`due_date = $${idx++}`);
+    values.push(null);
+  } else if ((data.duration_days !== undefined || data.assigned_to !== undefined) && durationDays != null) {
+    sets.push(`due_date = $${idx++}`);
+    values.push(new Date(new Date(assignedAt).getTime() + durationDays * 86400000));
+  }
+
   if (sets.length === 0) throw new Error('Aucune donnée à mettre à jour');
   values.push(id);
   const result = await c.query(

@@ -115,16 +115,16 @@ export async function findById(id, client = null) {
 export async function create(data, client = null) {
   const c = client || pool;
   const result = await c.query(
-    `INSERT INTO anomalies (feature_id, campaign_id, test_case_id, description, reported_by, assigned_to)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [data.feature_id, data.campaign_id, data.test_case_id || null, data.description, data.reported_by || null, data.assigned_to || null]
+    `INSERT INTO anomalies (feature_id, campaign_id, test_case_id, description, reported_by, assigned_to, correction_due_date)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    [data.feature_id, data.campaign_id, data.test_case_id || null, data.description, data.reported_by || null, data.assigned_to || null, data.correction_due_date || null]
   );
   return result.rows[0];
 }
 
 export async function update(id, data, client = null) {
   const c = client || pool;
-  const allowedFields = ['description', 'assigned_to', 'status', 'resolution_description', 'test_case_id'];
+  const allowedFields = ['description', 'assigned_to', 'status', 'resolution_description', 'test_case_id', 'correction_due_date'];
   const sets = [];
   const values = [];
   let idx = 1;

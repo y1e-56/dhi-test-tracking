@@ -18,6 +18,14 @@ import { testCaseService } from '../services/testCaseService';
 import { featureService } from '../services/featureService';
 import { useDebounce } from '../hooks/useDebounce';
 
+function joursRestants(iso: string): number {
+  return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
+}
+
+function toDateInput(iso: string): string {
+  return iso.slice(0, 10);
+}
+
 export function TesteurTachesPage() {
   const { t } = useTranslation();
   const { currentUser, users } = useAuth();
@@ -42,6 +50,7 @@ export function TesteurTachesPage() {
   const [testCaseSelectionne, setTestCaseSelectionne] = useState('');
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [priorite, setPriorite] = useState<'basse' | 'moyenne' | 'haute' | 'critique'>('moyenne');
+  const [dateLimiteCorrection, setDateLimiteCorrection] = useState('');
   
   // États pour les filtres
   const [filtreStatut, setFiltreStatut] = useState<string>('tous');
@@ -175,6 +184,7 @@ export function TesteurTachesPage() {
   }, [titreAnomalie, descriptionAnomalie, fonctionnaliteSelectionnee, anomalies, developpeurs]);
 
   const handleOpenDialogStatut = (fonctionnaliteId: string, statut: StatutFonctionnalite) => {
+    const fonctionnalite = fonctionnalites.find(f => f.id === fonctionnaliteId);
     setFonctionnaliteSelectionnee(fonctionnaliteId);
     setNouveauStatut(statut);
     setDescriptionAnomalie('');
@@ -183,6 +193,7 @@ export function TesteurTachesPage() {
     setTestCaseSelectionne('');
     setTestCases([]);
     setPriorite('moyenne');
+    setDateLimiteCorrection(statut === 'anomalie' && fonctionnalite?.dateEcheance ? toDateInput(fonctionnalite.dateEcheance) : '');
     setSuggestionPriorite(null);
     setSuggestionDeveloppeur(null);
     setShowSuggestions(false);
@@ -226,7 +237,8 @@ export function TesteurTachesPage() {
         developpeurId: developpeurSelectionne,
         statut: 'nouvelle',
         priorite,
-        dateCreation: new Date().toISOString()
+        dateCreation: new Date().toISOString(),
+        dateLimiteCorrection: dateLimiteCorrection || undefined
       };
 
       ajouterAnomalie(nouvelleAnomalie);
@@ -426,6 +438,20 @@ export function TesteurTachesPage() {
                                 {t('testeur.tasks.assigned_on')} {new Date(fonctionnalite.dateAssignation).toLocaleDateString('fr-FR')}
                               </p>
                             )}
+                            {fonctionnalite.dateEcheance && (
+                              <p className={`text-xs mt-1 ${joursRestants(fonctionnalite.dateEcheance) < 0 ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
+                                {t('testeur.tasks.echeance')} {new Date(fonctionnalite.dateEcheance).toLocaleDateString('fr-FR')}
+                                {' · '}
+                                {(() => {
+                                  const jr = joursRestants(fonctionnalite.dateEcheance);
+                                  return jr < 0
+                                    ? t('testeur.tasks.overdue', { count: Math.abs(jr) })
+                                    : jr === 0
+                                      ? t('testeur.tasks.today')
+                                      : t('testeur.tasks.days_left', { count: jr });
+                                })()}
+                              </p>
+                            )}
                             {derniereAnomalie && (
                               <button
                                 onClick={() => navigate(`/anomalies/${derniereAnomalie.id}`)}
@@ -569,6 +595,17 @@ export function TesteurTachesPage() {
                   placeholder={t('testeur.tasks.description_placeholder')}
                   rows={4}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dateLimiteCorrection">{t('testeur.tasks.correction_due')}</Label>
+                <Input
+                  id="dateLimiteCorrection"
+                  type="date"
+                  value={dateLimiteCorrection}
+                  onChange={(e) => setDateLimiteCorrection(e.target.value)}
+                />
+                <p className="text-xs text-gray-400">{t('testeur.tasks.correction_due_hint')}</p>
               </div>
 
               <div className="space-y-2">

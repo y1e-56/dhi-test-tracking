@@ -29,10 +29,10 @@ async function generateTestCasesIfMissing(featureId) {
   }
 }
 
-export async function createAssignment(featureId, assignedTo, userId = null) {
+export async function createAssignment(featureId, assignedTo, userId = null, durationDays = null) {
   await checkFeatureNotConforme(featureId);
 
-  const assignment = await db.assignments.create(featureId, assignedTo);
+  const assignment = await db.assignments.create(featureId, assignedTo, durationDays);
 
   const feature = await db.features.findById(featureId);
   const featureName = feature?.name || 'une fonctionnalité';

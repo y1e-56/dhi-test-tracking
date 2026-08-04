@@ -118,6 +118,27 @@ export function ProjetsPage() {
     setDialogOpen(true);
   };
 
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const liveDateErrors = (dateDebut: string, dateFin: string) => {
+    const errs: { dateDebut?: string; dateFin?: string } = {};
+    if (dateDebut && dateDebut < today) {
+      errs.dateDebut = 'La date de début ne peut pas être dans le passé';
+    }
+    if (dateFin && dateFin < today) {
+      errs.dateFin = 'La date de fin ne peut pas être dans le passé';
+    } else if (dateDebut && dateFin && dateFin < dateDebut) {
+      errs.dateFin = 'La date de fin doit être après la date de début';
+    }
+    return errs;
+  };
+
+  useEffect(() => {
+    if (!dialogOpen) return;
+    setErrors(prev => ({ ...prev, ...liveDateErrors(formData.dateDebut, formData.dateFin) }));
+  }, [formData.dateDebut, formData.dateFin, dialogOpen]);
+
   const validateForm = () => {
     const newErrors = {
       nom: '',
@@ -133,9 +154,8 @@ export function ProjetsPage() {
     }
     if (!formData.dateFin) {
       newErrors.dateFin = 'La date de fin est requise';
-    } else if (formData.dateDebut && formData.dateFin < formData.dateDebut) {
-      newErrors.dateFin = 'La date de fin doit être après la date de début';
     }
+    Object.assign(newErrors, liveDateErrors(formData.dateDebut, formData.dateFin));
 
     setErrors(newErrors);
     return !newErrors.nom && !newErrors.dateDebut && !newErrors.dateFin;
@@ -227,6 +247,7 @@ export function ProjetsPage() {
                     <Input
                       id="dateDebut"
                       type="date"
+                      min={today}
                       value={formData.dateDebut}
                       onChange={(e) => {
                         setFormData({ ...formData, dateDebut: e.target.value });
@@ -244,6 +265,7 @@ export function ProjetsPage() {
                     <Input
                       id="dateFin"
                       type="date"
+                      min={formData.dateDebut || today}
                       value={formData.dateFin}
                       onChange={(e) => {
                         setFormData({ ...formData, dateFin: e.target.value });

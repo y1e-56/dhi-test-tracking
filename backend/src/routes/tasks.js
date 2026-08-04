@@ -19,6 +19,7 @@ const createFeatureSchema = z.object({
 const createAssignmentSchema = z.object({
   feature_id: z.number(),
   assigned_to: z.number(),
+  duration_days: z.number().int().min(1).optional(),
 });
 
 /**
@@ -109,7 +110,7 @@ router.get('/campaigns/:campaignId/features', authenticate, async (req, res) => 
  */
 router.post('/assignments', authenticate, async (req, res) => {
   const data = createAssignmentSchema.parse(req.body);
-  const assignment = await assignmentService.createAssignment(data.feature_id, data.assigned_to, req.user.id);
+  const assignment = await assignmentService.createAssignment(data.feature_id, data.assigned_to, req.user.id, data.duration_days);
   bus.emit('data:changed', { entity: 'features' });
   res.status(201).json(assignment);
 });
@@ -144,8 +145,10 @@ router.post('/assignments', authenticate, async (req, res) => {
  *       404: { $ref: '#/components/responses/NotFound' }
  */
 router.patch('/assignments/:id/reassign', authenticate, async (req, res) => {
-  const { new_assigned_to } = req.body;
-  const assignment = await assignmentService.updateAssignment(Number(req.params.id), { assigned_to: new_assigned_to }, req.user.id);
+  const { new_assigned_to, duration_days } = req.body;
+  const data = { assigned_to: new_assigned_to };
+  if (duration_days !== undefined) data.duration_days = duration_days;
+  const assignment = await assignmentService.updateAssignment(Number(req.params.id), data, req.user.id);
   bus.emit('data:changed', { entity: 'features' });
   res.json(assignment);
 });

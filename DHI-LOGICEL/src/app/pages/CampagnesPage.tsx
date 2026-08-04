@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Checkbox } from '../components/ui/checkbox';
 import { Loader2, Plus, TestTube, Users, Calendar, Search, X } from 'lucide-react';
-import { Campagne } from '../types';
+import { Campagne, Projet } from '../types';
 import { campaignService } from '../services/campaignService';
 import { getErrorMessage } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
@@ -127,6 +127,34 @@ export function CampagnesPage() {
     setDialogOpen(true);
   };
 
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const liveDateErrors = (dateDebut: string, dateFin: string, projet?: Projet) => {
+    const errs: { dateDebut?: string; dateFin?: string } = {};
+    if (dateDebut && dateDebut < today) {
+      errs.dateDebut = t('campagne.list.start_past');
+    }
+    if (dateFin && dateFin < today) {
+      errs.dateFin = t('campagne.list.end_past');
+    } else if (dateDebut && dateFin && dateFin < dateDebut) {
+      errs.dateFin = t('campagne.list.end_after_start');
+    }
+    if (projet && dateDebut && projet.dateDebut && dateDebut < projet.dateDebut) {
+      errs.dateDebut = t('campagne.list.out_of_project_range', { debut: projet.dateDebut, fin: projet.dateFin });
+    } else if (projet && dateFin && projet.dateFin && dateFin > projet.dateFin) {
+      errs.dateFin = t('campagne.list.out_of_project_range', { debut: projet.dateDebut, fin: projet.dateFin });
+    }
+    return errs;
+  };
+
+  const projetSelectionne = projets.find(p => p.id === formData.projetId);
+
+  useEffect(() => {
+    if (!dialogOpen) return;
+    setErrors(prev => ({ ...prev, ...liveDateErrors(formData.dateDebut, formData.dateFin, projetSelectionne) }));
+  }, [formData.dateDebut, formData.dateFin, formData.projetId, dialogOpen]);
+
   const validateForm = () => {
     const newErrors = {
       nom: '',
@@ -150,9 +178,8 @@ export function CampagnesPage() {
     }
     if (!formData.dateFin) {
       newErrors.dateFin = t('campagne.list.required_end');
-    } else if (formData.dateDebut && formData.dateFin < formData.dateDebut) {
-      newErrors.dateFin = t('campagne.list.end_after_start');
     }
+    Object.assign(newErrors, liveDateErrors(formData.dateDebut, formData.dateFin, projetSelectionne));
 
     setErrors(newErrors);
     return !newErrors.nom && !newErrors.projetId && !newErrors.chefTesteurIds && !newErrors.dateDebut && !newErrors.dateFin;
@@ -325,6 +352,7 @@ export function CampagnesPage() {
                     <Input
                       id="dateDebut"
                       type="date"
+                      min={today}
                       value={formData.dateDebut}
                       onChange={(e) => {
                         setFormData({ ...formData, dateDebut: e.target.value });
@@ -342,6 +370,7 @@ export function CampagnesPage() {
                     <Input
                       id="dateFin"
                       type="date"
+                      min={formData.dateDebut || today}
                       value={formData.dateFin}
                       onChange={(e) => {
                         setFormData({ ...formData, dateFin: e.target.value });

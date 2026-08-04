@@ -200,6 +200,8 @@ export const mapCampagneToBackend = (c: Partial<Campagne>) => ({
 // =====================
 export const mapFonctionnaliteFromBackend = (f: any): Fonctionnalite => {
   const firstAssignment = f.assignments && f.assignments.length > 0 ? f.assignments[0] : null;
+  const dureeJours = firstAssignment ? firstAssignment.duration_days : f.duree_jours;
+  const dateEcheance = firstAssignment ? firstAssignment.due_date : f.date_echeance;
   return {
     id: String(f.id),
     campagneId: String(f.campaign_id),
@@ -211,6 +213,8 @@ export const mapFonctionnaliteFromBackend = (f: any): Fonctionnalite => {
     statut: mapFeatureStatusToFrontend(f.status || 'pending'),
     priorite: mapPriorityToFrontend(f.priority || 'medium'),
     dateAssignation: firstAssignment?.assigned_at,
+    dureeJours: dureeJours != null ? Number(dureeJours) : undefined,
+    dateEcheance: dateEcheance || undefined,
     dateTest: f.updated_at,
     attachment: f.attachment_name
       ? { name: f.attachment_name, type: f.attachment_type || '', size: f.attachment_size || 0 }
@@ -245,6 +249,7 @@ export const mapAnomalieFromBackend = (a: any): Anomalie => ({
   dateResolution: a.status === 'resolution_signaled' || a.status === 'validated' ? a.updated_at : undefined,
   dateValidation: a.status === 'validated' ? a.updated_at : undefined,
   commentaireResolution: a.resolution_description,
+  dateLimiteCorrection: a.correction_due_date || undefined,
 });
 
 export const mapAnomalieToBackend = (a: Partial<Anomalie>) => ({
@@ -254,6 +259,7 @@ export const mapAnomalieToBackend = (a: Partial<Anomalie>) => ({
   reported_by: a.testeurId ? parseInt(a.testeurId) : undefined,
   assigned_to: a.developpeurId ? parseInt(a.developpeurId) : undefined,
   description: a.description,
+  correction_due_date: a.dateLimiteCorrection || undefined,
 });
 
 // =====================
@@ -268,6 +274,7 @@ const NOTIF_TYPE_EN_TO_FR: Record<string, Notification['type']> = {
   task_assigned: 'assignation',
   member_added: 'information',
   password_forgot: 'information',
+  project_created: 'information',
 };
 
 export const mapNotificationFromBackend = (n: any): Notification => ({
@@ -290,6 +297,8 @@ export const mapNotificationFromBackend = (n: any): Notification => ({
     ? 'Anomalie résolue'
     : n.notification_type === 'password_forgot'
     ? 'Mot de passe oublié'
+    : n.notification_type === 'project_created'
+    ? 'Nouveau projet'
     : 'Notification',
   message: n.anomaly_description || n.description || '',
   lue: !!n.is_read,

@@ -26,12 +26,14 @@ export const taskService = {
   },
 
   // ===== Assignations =====
-  async assignTask(featureId: string, userId: string): Promise<any> {
+  async assignTask(featureId: string, userId: string, durationDays?: number): Promise<any> {
     try {
-      const response = await api.post('/tasks/assignments', {
+      const payload: Record<string, number> = {
         feature_id: parseInt(featureId),
         assigned_to: parseInt(userId),
-      });
+      };
+      if (durationDays != null) payload.duration_days = durationDays;
+      const response = await api.post('/tasks/assignments', payload);
       return response.data;
     } catch (e) {
       console.error('[taskService] Erreur assignTask:', e);
@@ -39,11 +41,13 @@ export const taskService = {
     }
   },
 
-  async reassignTask(assignmentId: string, newUserId: string): Promise<any> {
+  async reassignTask(assignmentId: string, newUserId: string, durationDays?: number): Promise<any> {
     try {
-      const response = await api.patch(`/tasks/assignments/${assignmentId}/reassign`, {
+      const payload: Record<string, number> = {
         new_assigned_to: parseInt(newUserId),
-      });
+      };
+      if (durationDays != null) payload.duration_days = durationDays;
+      const response = await api.patch(`/tasks/assignments/${assignmentId}/reassign`, payload);
       return response.data;
     } catch (e) {
       console.error('[taskService] Erreur reassignTask:', e);

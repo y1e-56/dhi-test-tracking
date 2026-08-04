@@ -57,6 +57,8 @@ export interface Fonctionnalite {
   statut: StatutFonctionnalite;
   priorite: Priorite;
   dateAssignation?: string;
+  dateEcheance?: string;
+  dureeJours?: number;
   dateTest?: string;
   attachment?: { name: string; type: string; size: number } | null;
 }
@@ -75,6 +77,7 @@ export interface Anomalie {
   dateCreation: string;
   dateResolution?: string;
   dateValidation?: string;
+  dateLimiteCorrection?: string;
   commentaireResolution?: string;
 }
 

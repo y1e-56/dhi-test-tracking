@@ -14,6 +14,7 @@ const createSchema = z.object({
   reported_by: z.number().optional(),
   assigned_to: z.number().optional(),
   test_case_id: z.number().optional(),
+  correction_due_date: z.string().optional(),
 });
 
 /**

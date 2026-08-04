@@ -38,9 +38,15 @@ export function FonctionnaliteProvider({ children }: { children: ReactNode }) {
       let createdWithAssign = created;
 
       if (fonctionnalite.testeurAssigneId) {
-        const assignment = await taskService.assignTask(created.id, fonctionnalite.testeurAssigneId);
+        const assignment = await taskService.assignTask(created.id, fonctionnalite.testeurAssigneId, fonctionnalite.dureeJours);
         const assignmentId = assignment?.id || assignment?.assignment?.id;
-        createdWithAssign = { ...createdWithAssign, testeurAssigneId: fonctionnalite.testeurAssigneId, assignmentId };
+        createdWithAssign = {
+          ...createdWithAssign,
+          testeurAssigneId: fonctionnalite.testeurAssigneId,
+          assignmentId,
+          dureeJours: fonctionnalite.dureeJours,
+          dateEcheance: assignment?.due_date,
+        };
       }
 
       if (fonctionnalite.developpeurAssigneId) {
@@ -68,9 +74,9 @@ export function FonctionnaliteProvider({ children }: { children: ReactNode }) {
         const userId = fonctionnalitePartielle.testeurAssigneId;
         if (userId) {
           if (existing?.assignmentId) {
-            await taskService.reassignTask(existing.assignmentId, userId);
+            await taskService.reassignTask(existing.assignmentId, userId, fonctionnalitePartielle.dureeJours);
           } else {
-            await taskService.assignTask(id, userId);
+            await taskService.assignTask(id, userId, fonctionnalitePartielle.dureeJours);
           }
         } else if (existing?.assignmentId) {
           await taskService.deleteAssignment(existing.assignmentId);

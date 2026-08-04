@@ -11,7 +11,9 @@ export async function findByCampaign(campaignId, client = null) {
                   'id', a.id,
                   'assigned_to', a.assigned_to,
                   'assigned_at', a.assigned_at,
-                  'status', a.status
+                  'status', a.status,
+                  'duration_days', a.duration_days,
+                  'due_date', a.due_date
                 )
               ) FILTER (WHERE a.id IS NOT NULL),
               '[]'
@@ -61,6 +63,7 @@ export async function findByCampaignPaginated(filters = {}, client = null) {
   `;
 
   const select = `f.*, a.assigned_to AS testeur_assigne_id, a.id AS assignment_id, a.assigned_at AS date_assignation,
+    a.duration_days AS duree_jours, a.due_date AS date_echeance,
     assigned_user.first_name AS assignee_first_name, assigned_user.last_name AS assignee_last_name`;
 
   const countQuery = `SELECT COUNT(DISTINCT f.id) FROM features f ${joins} ${where}`;
@@ -93,7 +96,9 @@ export async function findById(id, client = null) {
                   'id', a.id,
                   'assigned_to', a.assigned_to,
                   'assigned_at', a.assigned_at,
-                  'status', a.status
+                  'status', a.status,
+                  'duration_days', a.duration_days,
+                  'due_date', a.due_date
                 )
               ) FILTER (WHERE a.id IS NOT NULL),
               '[]'

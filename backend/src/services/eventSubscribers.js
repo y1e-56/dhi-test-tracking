@@ -352,22 +352,40 @@ export function setupEventSubscribers(io) {
     if (io) emitDataChanged(io, 'projects');
 
     try {
-      const leadIds = project.test_lead_ids || [];
+      const leadIds = [...new Set(project.test_lead_ids || [])];
       for (const id of leadIds) {
         const lead = await db.users.findById(id).catch(() => null);
-        if (!lead?.email) continue;
-        await sendEmail({
-          to: lead.email,
-          subject: `Nouveau projet — ${project.name}`,
-          html: projectCreatedEmail({
-            userFirstName: lead.first_name,
-            projectName: project.name,
-            linkUrl: `${process.env.APP_URL || 'http://localhost:5173'}/projets`,
-          }),
-        }).catch(e => console.error('[email] Erreur envoi project:created à', lead.email, e.message));
+        if (!lead) continue;
+
+        // Notification in-app (uniquement les chefs de test concernés)
+        try {
+          const notification = await notificationService.createNotification({
+            notified_user_id: lead.id,
+            anomaly_id: null,
+            notification_type: 'project_created',
+            description: `Vous avez été ajouté(e) comme chef de test au projet « ${project.name} »`,
+            link_url: '/projets',
+          });
+          if (io) emitNotification(io, lead.id, notification);
+        } catch (e) {
+          console.error('[events] Erreur notification project:created', e);
+        }
+
+        // Email
+        if (lead.email) {
+          await sendEmail({
+            to: lead.email,
+            subject: `Nouveau projet — ${project.name}`,
+            html: projectCreatedEmail({
+              userFirstName: lead.first_name,
+              projectName: project.name,
+              linkUrl: `${process.env.APP_URL || 'http://localhost:5173'}/projets`,
+            }),
+          }).catch(e => console.error('[email] Erreur envoi project:created à', lead.email, e.message));
+        }
       }
     } catch (e) {
-      console.error('[email] Erreur project:created', e);
+      console.error('[events] Erreur project:created', e);
     }
   });
   bus.on('project:updated', async () => { if (io) emitDataChanged(io, 'projects'); });

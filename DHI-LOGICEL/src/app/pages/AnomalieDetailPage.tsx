@@ -95,6 +95,9 @@ export function AnomalieDetailPage() {
   const statutInfo = statutConfig[anomalie.statut];
   const StatutIcon = statutInfo.icon;
   const prioriteInfo = prioriteConfig[anomalie.priorite];
+  const dateLimiteDepassee = !!anomalie.dateLimiteCorrection &&
+    anomalie.statut !== 'validee' && anomalie.statut !== 'cloturee' &&
+    new Date(anomalie.dateLimiteCorrection).getTime() < Date.now();
 
   const handleSignalerResolution = () => {
     if (!currentUser || !commentaireResolution.trim()) return;
@@ -384,6 +387,24 @@ export function AnomalieDetailPage() {
                     <p className="text-sm font-semibold text-slate-700 font-mono">
                       {new Date(anomalie.dateValidation).toLocaleDateString('fr-FR')}
                     </p>
+                  </div>
+                </div>
+              )}
+              {anomalie.dateLimiteCorrection && (
+                <div className={`flex items-start gap-2.5 ${dateLimiteDepassee ? 'bg-red-50 border border-red-200 rounded-lg p-2.5' : ''}`}>
+                  <Calendar className={`w-4 h-4 flex-shrink-0 mt-0.5 ${dateLimiteDepassee ? 'text-red-500' : 'text-amber-400'}`} />
+                  <div>
+                    <p className="text-[10px] text-slate-400">{t('anomalie.detail.correction_due')}</p>
+                    <p className={`text-sm font-semibold font-mono ${dateLimiteDepassee ? 'text-red-600' : 'text-slate-700'}`}>
+                      {new Date(anomalie.dateLimiteCorrection).toLocaleDateString('fr-FR')}
+                    </p>
+                    {dateLimiteDepassee && (
+                      <p className="text-xs text-red-500">
+                        {t('anomalie.detail.correction_overdue', {
+                          count: Math.abs(Math.ceil((Date.now() - new Date(anomalie.dateLimiteCorrection).getTime()) / 86400000))
+                        })}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

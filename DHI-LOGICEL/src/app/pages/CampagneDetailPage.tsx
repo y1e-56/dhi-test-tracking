@@ -23,6 +23,14 @@ import { toast } from 'sonner';
 import { getErrorMessage } from '../services/api';
 import { HistoriqueTimeline } from '../components/HistoriqueTimeline';
 
+function joursRestants(iso: string): number {
+  return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
+}
+
+function formatDateFR(iso?: string): string {
+  return iso ? new Date(iso).toLocaleDateString('fr-FR') : '';
+}
+
 export function CampagneDetailPage() {
   const { t } = useTranslation();
   const { campagneId } = useParams<{ campagneId: string }>();
@@ -50,11 +58,13 @@ export function CampagneDetailPage() {
   const [formData, setFormData] = useState({
     nom: '', description: '', module: '',
     testeurAssigneId: '', developpeurAssigneId: '',
-    priorite: 'moyenne' as Priorite
+    priorite: 'moyenne' as Priorite,
+    dureeJours: ''
   });
   const [assignData, setAssignData] = useState({
     fonctionnaliteId: '', testeurAssigneId: '', developpeurAssigneId: '',
-    priorite: 'moyenne' as Priorite
+    priorite: 'moyenne' as Priorite,
+    dureeJours: ''
   });
   const [nouveauMembre, setNouveauMembre] = useState({
     userId: '', type: 'testeur' as 'testeur' | 'developpeur'
@@ -232,7 +242,14 @@ export function CampagneDetailPage() {
   };
 
   const handleOpenAssignDialog = (fonctionnaliteId: string) => {
-    setAssignData({ fonctionnaliteId, testeurAssigneId: '', developpeurAssigneId: '', priorite: 'moyenne' });
+    const existante = fonctionnalites.find((f: any) => f.id === fonctionnaliteId);
+    setAssignData({
+      fonctionnaliteId,
+      testeurAssigneId: '',
+      developpeurAssigneId: '',
+      priorite: 'moyenne',
+      dureeJours: existante?.dureeJours != null ? String(existante.dureeJours) : ''
+    });
     setAssignDialogOpen(true);
   };
 
@@ -247,7 +264,8 @@ export function CampagneDetailPage() {
         testeurAssigneId: assignData.testeurAssigneId,
         developpeurAssigneId: assignData.developpeurAssigneId || undefined,
         priorite: assignData.priorite,
-        dateAssignation: new Date().toISOString()
+        dateAssignation: new Date().toISOString(),
+        dureeJours: assignData.dureeJours ? Number(assignData.dureeJours) : undefined
       });
       setAssignDialogOpen(false);
     } catch (error) {
@@ -311,7 +329,7 @@ export function CampagneDetailPage() {
   };
 
   const handleOpenDialog = () => {
-    setFormData({ nom: '', description: '', module: '', testeurAssigneId: '', developpeurAssigneId: '', priorite: 'moyenne' as Priorite });
+    setFormData({ nom: '', description: '', module: '', testeurAssigneId: '', developpeurAssigneId: '', priorite: 'moyenne' as Priorite, dureeJours: '' });
     setErreurNomFonctionnalite('');
     setDialogOpen(true);
   };
@@ -348,9 +366,10 @@ export function CampagneDetailPage() {
         developpeurAssigneId: formData.developpeurAssigneId || undefined,
         statut: 'non_testee',
         priorite: formData.priorite,
-        dateAssignation: new Date().toISOString()
+        dateAssignation: new Date().toISOString(),
+        dureeJours: formData.dureeJours ? Number(formData.dureeJours) : undefined
       } as Fonctionnalite);
-      setFormData({ nom: '', description: '', module: '', testeurAssigneId: '', developpeurAssigneId: '', priorite: 'moyenne' as Priorite });
+      setFormData({ nom: '', description: '', module: '', testeurAssigneId: '', developpeurAssigneId: '', priorite: 'moyenne' as Priorite, dureeJours: '' });
       setErreurNomFonctionnalite('');
       setDialogOpen(false);
     } catch (error: any) {
@@ -476,6 +495,17 @@ export function CampagneDetailPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="duree">{t('campagne.detail.duree')}</Label>
+                    <Input
+                      id="duree"
+                      type="number"
+                      min={1}
+                      value={formData.dureeJours}
+                      onChange={(e) => setFormData({ ...formData, dureeJours: e.target.value })}
+                      placeholder={t('campagne.detail.duree_placeholder')}
+                    />
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('campagne.detail.cancel')}</Button>
@@ -547,6 +577,19 @@ export function CampagneDetailPage() {
                         <div className="flex gap-4 text-xs text-gray-500">
                           <span><strong>{t('campagne.detail.module')}:</strong> {fonctionnalite.module}</span>
                           <span><strong>{t('campagne.detail.tester_label')}:</strong> {testeur?.prenom} {testeur?.nom || t('campagne.detail.not_assigned')}</span>
+                          {fonctionnalite.dateEcheance && (
+                            <span className={joursRestants(fonctionnalite.dateEcheance) < 0 ? 'text-red-500 font-medium' : ''}>
+                              <strong>{t('campagne.detail.echeance')}:</strong> {formatDateFR(fonctionnalite.dateEcheance)}
+                              {(() => {
+                                const jr = joursRestants(fonctionnalite.dateEcheance);
+                                return jr < 0
+                                  ? ` (${t('campagne.detail.overdue', { count: Math.abs(jr) })})`
+                                  : jr === 0
+                                    ? ` (${t('campagne.detail.today')})`
+                                    : ` (${t('campagne.detail.days_left', { count: jr })})`;
+                              })()}
+                            </span>
+                          )}
                         </div>
                         {fonctionnalite.attachment && (
                           <button
@@ -755,6 +798,11 @@ export function CampagneDetailPage() {
                           <span><strong>{t('campagne.detail.feature_label')}:</strong> {fonctionnalite?.nom}</span>
                           <span><strong>{t('campagne.detail.tester_label')}:</strong> {testeur?.prenom} {testeur?.nom}</span>
                           <span><strong>{t('campagne.detail.dev_label')}:</strong> {developpeur?.prenom} {developpeur?.nom}</span>
+                          {anomalie.dateLimiteCorrection && (
+                            <span className={joursRestants(anomalie.dateLimiteCorrection) < 0 ? 'text-red-500 font-medium' : ''}>
+                              <strong>{t('campagne.detail.correction_due')}:</strong> {formatDateFR(anomalie.dateLimiteCorrection)}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -865,6 +913,17 @@ export function CampagneDetailPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="duree">{t('campagne.detail.duree')}</Label>
+              <Input
+                id="duree"
+                type="number"
+                min={1}
+                value={assignData.dureeJours}
+                onChange={(e) => setAssignData({ ...assignData, dureeJours: e.target.value })}
+                placeholder={t('campagne.detail.duree_placeholder')}
+              />
             </div>
             <div className="space-y-2">
               <Label>{t('campagne.detail.priority')}</Label>
