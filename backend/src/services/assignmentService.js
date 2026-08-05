@@ -34,6 +34,11 @@ export async function createAssignment(featureId, assignedTo, userId = null, dur
 
   const assignment = await db.assignments.create(featureId, assignedTo, durationDays);
 
+  // Fait suivre le délai de correction des anomalies ouvertes à la nouvelle échéance
+  if (assignment.due_date) {
+    await db.anomalies.syncCorrectionDueDateForFeature(featureId, assignment.due_date);
+  }
+
   const feature = await db.features.findById(featureId);
   const featureName = feature?.name || 'une fonctionnalité';
   let campaignName = '';
@@ -64,6 +69,11 @@ export async function updateAssignment(id, data, userId = null) {
   try {
     const updated = await db.assignments.update(id, data);
     if (!updated) throw new AppError('Assignation non trouvée', 404);
+
+    // L'échéance a changé (réassignation et/ou nouvelle durée) : les anomalies ouvertes suivent
+    if (updated.due_date !== assignment.due_date) {
+      await db.anomalies.syncCorrectionDueDateForFeature(assignment.feature_id, updated.due_date);
+    }
 
     if (data.assigned_to !== undefined) {
       const feature = await db.features.findById(assignment.feature_id);

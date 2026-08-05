@@ -245,18 +245,33 @@ export function CampagneDetailPage() {
     const existante = fonctionnalites.find((f: any) => f.id === fonctionnaliteId);
     setAssignData({
       fonctionnaliteId,
-      testeurAssigneId: '',
-      developpeurAssigneId: '',
-      priorite: 'moyenne',
+      testeurAssigneId: existante?.testeurAssigneId ?? '',
+      developpeurAssigneId: existante?.developpeurAssigneId ?? '',
+      priorite: existante?.priorite ?? 'moyenne',
       dureeJours: existante?.dureeJours != null ? String(existante.dureeJours) : ''
     });
     setAssignDialogOpen(true);
   };
 
   const handleAssignerFonctionnalite = async () => {
-    if (!assignData.fonctionnaliteId || !assignData.testeurAssigneId) return;
+    if (!assignData.fonctionnaliteId) return;
     if (campagne?.statut === 'en_preparation') {
       toast.error(t('campagne.detail.not_started_error'));
+      return;
+    }
+    if (!assignData.testeurAssigneId) {
+      toast.error(t('campagne.detail.toast.tester_required'));
+      return;
+    }
+    const existante = fonctionnalites.find((f: any) => f.id === assignData.fonctionnaliteId);
+    const dureeChoisie = assignData.dureeJours ? Number(assignData.dureeJours) : undefined;
+    const rienNeChange = !!existante &&
+      assignData.testeurAssigneId === (existante.testeurAssigneId ?? '') &&
+      (assignData.developpeurAssigneId || '') === (existante.developpeurAssigneId ?? '') &&
+      assignData.priorite === existante.priorite &&
+      (dureeChoisie ?? existante.dureeJours) === existante.dureeJours;
+    if (rienNeChange) {
+      setAssignDialogOpen(false);
       return;
     }
     try {
@@ -265,7 +280,7 @@ export function CampagneDetailPage() {
         developpeurAssigneId: assignData.developpeurAssigneId || undefined,
         priorite: assignData.priorite,
         dateAssignation: new Date().toISOString(),
-        dureeJours: assignData.dureeJours ? Number(assignData.dureeJours) : undefined
+        dureeJours: dureeChoisie
       });
       setAssignDialogOpen(false);
     } catch (error) {
@@ -325,7 +340,7 @@ export function CampagneDetailPage() {
     nonTestees: fonctionnalitesCampagne.filter((f: any) => f.statut === 'non_testee').length,
     conformes: fonctionnalitesCampagne.filter((f: any) => f.statut === 'conforme').length,
     anomalies: fonctionnalitesCampagne.filter((f: any) => f.statut === 'anomalie').length,
-    anomaliesOuvertes: anomaliesCampagne.filter((a: any) => a.statut !== 'cloturee' && a.statut !== 'validee').length
+    anomaliesOuvertes: anomalies.filter((a: any) => a.campagneId === campagneId && a.statut !== 'cloturee' && a.statut !== 'validee').length
   };
 
   const handleOpenDialog = () => {
@@ -350,9 +365,17 @@ export function CampagneDetailPage() {
   };
 
   const handleAjouterFonctionnalite = async () => {
-    if (!formData.nom.trim() || !formData.testeurAssigneId || !campagneId) return;
+    if (!campagneId) return;
     if (campagne?.statut === 'en_preparation') {
       toast.error(t('campagne.detail.not_started_error'));
+      return;
+    }
+    if (!formData.nom.trim()) {
+      toast.error(t('campagne.detail.toast.feature_name_required'));
+      return;
+    }
+    if (!formData.testeurAssigneId) {
+      toast.error(t('campagne.detail.toast.tester_required'));
       return;
     }
     try {
@@ -578,9 +601,9 @@ export function CampagneDetailPage() {
                           <span><strong>{t('campagne.detail.module')}:</strong> {fonctionnalite.module}</span>
                           <span><strong>{t('campagne.detail.tester_label')}:</strong> {testeur?.prenom} {testeur?.nom || t('campagne.detail.not_assigned')}</span>
                           {fonctionnalite.dateEcheance && (
-                            <span className={joursRestants(fonctionnalite.dateEcheance) < 0 ? 'text-red-500 font-medium' : ''}>
+                            <span className={`${fonctionnalite.statut !== 'conforme' && joursRestants(fonctionnalite.dateEcheance) < 0 ? 'text-red-500 font-medium' : ''}`}>
                               <strong>{t('campagne.detail.echeance')}:</strong> {formatDateFR(fonctionnalite.dateEcheance)}
-                              {(() => {
+                              {fonctionnalite.statut !== 'conforme' && (() => {
                                 const jr = joursRestants(fonctionnalite.dateEcheance);
                                 return jr < 0
                                   ? ` (${t('campagne.detail.overdue', { count: Math.abs(jr) })})`
@@ -781,8 +804,10 @@ export function CampagneDetailPage() {
               const developpeur = users.find((u: any) => u.id === anomalie.developpeurId);
               const statutBadge: Record<string, string> = {
                 nouvelle: 'bg-red-100 text-red-700', en_cours: 'bg-blue-100 text-blue-700',
-                resolution_signalee: 'bg-green-100 text-green-700', cloturee: 'bg-gray-100 text-gray-700'
+                resolution_signalee: 'bg-green-100 text-green-700', validee: 'bg-green-200 text-green-800',
+                cloturee: 'bg-gray-100 text-gray-700'
               };
+              const anomalieFinale = anomalie.statut === 'validee' || anomalie.statut === 'cloturee';
               return (
                 <Card key={anomalie.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/anomalies/${anomalie.id}`)}>
                   <CardContent className="p-4">
@@ -799,8 +824,17 @@ export function CampagneDetailPage() {
                           <span><strong>{t('campagne.detail.tester_label')}:</strong> {testeur?.prenom} {testeur?.nom}</span>
                           <span><strong>{t('campagne.detail.dev_label')}:</strong> {developpeur?.prenom} {developpeur?.nom}</span>
                           {anomalie.dateLimiteCorrection && (
-                            <span className={joursRestants(anomalie.dateLimiteCorrection) < 0 ? 'text-red-500 font-medium' : ''}>
+                            <span className={`${!anomalieFinale && joursRestants(anomalie.dateLimiteCorrection) < 0 ? 'text-red-500 font-medium' : ''}`}>
                               <strong>{t('campagne.detail.correction_due')}:</strong> {formatDateFR(anomalie.dateLimiteCorrection)}
+                              {!anomalieFinale && (
+                                <> {' '}(
+                                {joursRestants(anomalie.dateLimiteCorrection) < 0
+                                  ? t('campagne.detail.overdue', { count: Math.abs(joursRestants(anomalie.dateLimiteCorrection)) })
+                                  : joursRestants(anomalie.dateLimiteCorrection) === 0
+                                  ? t('campagne.detail.today')
+                                  : t('campagne.detail.days_left', { count: joursRestants(anomalie.dateLimiteCorrection) })})
+                                </>
+                              )}
                             </span>
                           )}
                         </div>

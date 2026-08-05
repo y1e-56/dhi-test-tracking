@@ -30,6 +30,10 @@ const statutConfig: Record<StatutAnomalie, { labelKey: string; cls: string; icon
   cloturee: { labelKey: 'statut.cloturee', cls: 'bg-slate-100 text-slate-600 border border-slate-200', icon: CheckCircle2 },
 };
 
+function joursRestants(iso: string): number {
+  return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
+}
+
 export function AnomalieDetailPage() {
   const { t } = useTranslation();
   const { anomalieId } = useParams<{ anomalieId: string }>();
@@ -88,7 +92,7 @@ export function AnomalieDetailPage() {
 
   const estDeveloppeurAssigne = currentUser.id === anomalie.developpeurId;
   const estTesteurCreateur = currentUser.id === anomalie.testeurId;
-  const peutSignalerResolution = estDeveloppeurAssigne && (anomalie.statut === 'nouvelle' || anomalie.statut === 'en_cours');
+  const peutSignalerResolution = estDeveloppeurAssigne && anomalie.statut === 'en_cours';
   const peutValiderCloture = estTesteurCreateur && anomalie.statut === 'resolution_signalee';
   const peutPrendreEnCharge = estDeveloppeurAssigne && anomalie.statut === 'nouvelle';
 
@@ -98,6 +102,19 @@ export function AnomalieDetailPage() {
   const dateLimiteDepassee = !!anomalie.dateLimiteCorrection &&
     anomalie.statut !== 'validee' && anomalie.statut !== 'cloturee' &&
     new Date(anomalie.dateLimiteCorrection).getTime() < Date.now();
+
+  const echeanceTache = fonctionnalite?.dateEcheance;
+  const echeanceTacheDepassee = !!echeanceTache &&
+    anomalie.statut !== 'validee' && anomalie.statut !== 'cloturee' &&
+    new Date(echeanceTache).getTime() < Date.now();
+
+  const labelJours = (iso: string): string | null => {
+    if (anomalie.statut === 'validee' || anomalie.statut === 'cloturee') return null;
+    const jr = joursRestants(iso);
+    if (jr < 0) return t('anomalie.detail.overdue', { count: Math.abs(jr) });
+    if (jr === 0) return t('anomalie.detail.today');
+    return t('anomalie.detail.days_left', { count: jr });
+  };
 
   const handleSignalerResolution = () => {
     if (!currentUser || !commentaireResolution.trim()) return;
@@ -398,11 +415,25 @@ export function AnomalieDetailPage() {
                     <p className={`text-sm font-semibold font-mono ${dateLimiteDepassee ? 'text-red-600' : 'text-slate-700'}`}>
                       {new Date(anomalie.dateLimiteCorrection).toLocaleDateString('fr-FR')}
                     </p>
-                    {dateLimiteDepassee && (
-                      <p className="text-xs text-red-500">
-                        {t('anomalie.detail.correction_overdue', {
-                          count: Math.abs(Math.ceil((Date.now() - new Date(anomalie.dateLimiteCorrection).getTime()) / 86400000))
-                        })}
+                    {labelJours(anomalie.dateLimiteCorrection) && (
+                      <p className={`text-xs ${dateLimiteDepassee ? 'text-red-500 font-medium' : 'text-slate-400'}`}>
+                        {labelJours(anomalie.dateLimiteCorrection)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+              {echeanceTache && (
+                <div className={`flex items-start gap-2.5 ${echeanceTacheDepassee ? 'bg-red-50 border border-red-200 rounded-lg p-2.5' : ''}`}>
+                  <Calendar className={`w-4 h-4 flex-shrink-0 mt-0.5 ${echeanceTacheDepassee ? 'text-red-500' : 'text-slate-400'}`} />
+                  <div>
+                    <p className="text-[10px] text-slate-400">{t('anomalie.detail.task_due')}</p>
+                    <p className={`text-sm font-semibold font-mono ${echeanceTacheDepassee ? 'text-red-600' : 'text-slate-700'}`}>
+                      {new Date(echeanceTache).toLocaleDateString('fr-FR')}
+                    </p>
+                    {labelJours(echeanceTache) && (
+                      <p className={`text-xs ${echeanceTacheDepassee ? 'text-red-500 font-medium' : 'text-slate-400'}`}>
+                        {labelJours(echeanceTache)}
                       </p>
                     )}
                   </div>

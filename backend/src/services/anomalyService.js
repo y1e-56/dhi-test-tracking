@@ -42,12 +42,30 @@ export async function getAnomaly(id) {
   return anomaly;
 }
 
+async function getFeatureDueDate(featureId) {
+  const feature = await db.features.findById(featureId);
+  if (!feature) return null;
+  if (feature.due_date) return feature.due_date;
+  const assignments = await db.assignments.findByFeature(featureId);
+  return assignments[0]?.due_date || null;
+}
+
+function validateCorrectionDueDate(correctionDueDate, featureDueDate) {
+  if (!correctionDueDate) return;
+  if (featureDueDate && new Date(correctionDueDate).getTime() > new Date(featureDueDate).getTime()) {
+    throw new AppError('Le délai de correction ne peut pas dépasser l\'échéance de la tâche', 400);
+  }
+}
+
 export async function createAnomaly(data) {
   const feature = await db.features.findById(data.feature_id);
   if (!feature) throw new AppError('Fonctionnalité non trouvée', 404);
   if (feature.status === 'conforme') {
     throw new AppError('Impossible de créer une anomalie sur une fonctionnalité déjà marquée conforme', 400);
   }
+
+  const featureDueDate = await getFeatureDueDate(data.feature_id);
+  validateCorrectionDueDate(data.correction_due_date, featureDueDate);
 
   const anomaly = await withTransaction(async (client) => {
     const anomaly = await db.anomalies.create(data, client);
@@ -62,6 +80,23 @@ export async function createAnomaly(data) {
 
 export async function updateAnomaly(id, data, userId = null) {
   try {
+    if (data.correction_due_date !== undefined) {
+      const existing = await db.anomalies.findById(id);
+      if (existing) {
+        const featureDueDate = await getFeatureDueDate(existing.feature_id);
+        validateCorrectionDueDate(data.correction_due_date, featureDueDate);
+      }
+    }
+
+    // Une résolution ne peut être signalée que si l'anomalie a été prise en charge
+    if (data.status === 'resolution_signaled') {
+      const existing = await db.anomalies.findById(id);
+      if (!existing) throw new AppError('Anomalie non trouvée', 404);
+      if (existing.status !== 'in_progress') {
+        throw new AppError('Prenez d\'abord l\'anomalie en charge avant de signaler sa résolution', 400);
+      }
+    }
+
     const updated = await db.anomalies.update(id, data);
     if (!updated) throw new AppError('Anomalie non trouvée', 404);
 

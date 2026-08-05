@@ -15,6 +15,10 @@ import { AlertTriangle, Clock, CheckCircle2, Code, Play, Search, ChevronDown } f
 import { StatutAnomalie } from '../types';
 import { useDebounce } from '../hooks/useDebounce';
 
+function joursRestants(iso: string): number {
+  return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
+}
+
 export function DeveloppeurAnomaliesPage() {
   const { t } = useTranslation();
   const { currentUser, users } = useAuth();
@@ -103,6 +107,14 @@ export function DeveloppeurAnomaliesPage() {
   const getStatutBadge = (statut: StatutAnomalie) => {
     const found = badgeConfigDev[statut];
     return found ? { label: t(found.labelKey), className: found.className } : { label: statut, className: 'bg-gray-100 text-gray-700' };
+  };
+
+  const labelJoursCorrection = (iso: string, statutFinal = false) => {
+    if (statutFinal) return null;
+    const jr = joursRestants(iso);
+    if (jr < 0) return t('anomalie.detail.overdue', { count: Math.abs(jr) });
+    if (jr === 0) return t('anomalie.detail.today');
+    return t('anomalie.detail.days_left', { count: jr });
   };
 
   const getPrioriteBadge = (priorite: string) => {
@@ -325,6 +337,17 @@ export function DeveloppeurAnomaliesPage() {
                     <div className="text-xs text-gray-400">
                       {t('developpeur.anomalies.created_on')} {new Date(anomalie.dateCreation).toLocaleString('fr-FR')}
                     </div>
+
+                    {anomalie.dateLimiteCorrection && (() => {
+                      const statutFinal = anomalie.statut === 'validee' || anomalie.statut === 'cloturee';
+                      const label = labelJoursCorrection(anomalie.dateLimiteCorrection, statutFinal);
+                      return (
+                        <div className={`text-xs ${!statutFinal && joursRestants(anomalie.dateLimiteCorrection) < 0 ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
+                          <strong>{t('testeur.tasks.correction_due')}:</strong> {new Date(anomalie.dateLimiteCorrection).toLocaleDateString('fr-FR')}
+                          {label && <> {' '}({label})</>}
+                        </div>
+                      );
+                    })()}
 
                     {anomalie.statut === 'resolution_signalee' && anomalie.commentaireResolution && (
                       <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">

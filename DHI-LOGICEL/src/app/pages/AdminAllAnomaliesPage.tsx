@@ -14,6 +14,10 @@ import { anomalyService } from '../services/anomalyService';
 import { useDebounce } from '../hooks/useDebounce';
 import { Pagination } from '../components/ui/pagination';
 
+function joursRestants(iso: string): number {
+  return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
+}
+
 const statutBadgeConfig: Record<StatutAnomalie, { labelKey: string; className: string }> = {
   nouvelle: { labelKey: 'statut.nouvelle', className: 'bg-red-100 text-red-700 border-red-200' },
   en_cours: { labelKey: 'statut.en_cours', className: 'bg-blue-100 text-blue-700 border-blue-200' },
@@ -234,6 +238,25 @@ export function AdminAllAnomaliesPage() {
                     <div className="text-xs text-slate-400">
                       {t('admin.anomalies.created_on')} {new Date(anomalie.dateCreation).toLocaleString('fr-FR')}
                     </div>
+
+                    {anomalie.dateLimiteCorrection && (() => {
+                      const statutFinal = anomalie.statut === 'validee' || anomalie.statut === 'cloturee';
+                      const jr = joursRestants(anomalie.dateLimiteCorrection);
+                      return (
+                        <div className={`text-xs ${!statutFinal && jr < 0 ? 'text-red-500 font-medium' : 'text-slate-500'}`}>
+                          <strong>{t('testeur.tasks.correction_due')}:</strong> {new Date(anomalie.dateLimiteCorrection).toLocaleDateString('fr-FR')}
+                          {!statutFinal && (
+                            <> {' '}(
+                            {jr < 0
+                              ? t('anomalie.detail.overdue', { count: Math.abs(jr) })
+                              : jr === 0
+                              ? t('anomalie.detail.today')
+                              : t('anomalie.detail.days_left', { count: jr })})
+                            </>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {anomalie.statut === 'resolution_signalee' && anomalie.commentaireResolution && (
                       <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">

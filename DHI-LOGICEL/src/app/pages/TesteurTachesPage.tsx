@@ -213,6 +213,10 @@ export function TesteurTachesPage() {
     loadTestCases();
   }, [fonctionnaliteSelectionnee]);
 
+  const fonctionnaliteForm = fonctionnalites.find(f => f.id === fonctionnaliteSelectionnee);
+  const echeanceMax = fonctionnaliteForm?.dateEcheance ? toDateInput(fonctionnaliteForm.dateEcheance) : '';
+  const delaiDepasse = !!dateLimiteCorrection && !!echeanceMax && dateLimiteCorrection > echeanceMax;
+
   const handleChangerStatut = () => {
     if (!fonctionnaliteSelectionnee) return;
 
@@ -221,6 +225,7 @@ export function TesteurTachesPage() {
 
     if (nouveauStatut === 'anomalie') {
       if (fonctionnalite.statut === 'conforme') return;
+      if (delaiDepasse) return;
       if (!titreAnomalie || !descriptionAnomalie || !developpeurSelectionne) {
         return;
       }
@@ -603,9 +608,13 @@ export function TesteurTachesPage() {
                   id="dateLimiteCorrection"
                   type="date"
                   value={dateLimiteCorrection}
+                  max={echeanceMax || undefined}
                   onChange={(e) => setDateLimiteCorrection(e.target.value)}
                 />
                 <p className="text-xs text-gray-400">{t('testeur.tasks.correction_due_hint')}</p>
+                {delaiDepasse && (
+                  <p className="text-xs text-red-500">{t('testeur.tasks.correction_due_exceeds', { date: echeanceMax })}</p>
+                )}
               </div>
 
               <div className="space-y-2">

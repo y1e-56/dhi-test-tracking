@@ -150,3 +150,19 @@ export async function remove(id, client = null) {
   const result = await c.query('DELETE FROM anomalies WHERE id = $1 RETURNING id', [id]);
   return result.rows[0] || null;
 }
+
+// Fait suivre le délai de correction des anomalies ouvertes d'une fonctionnalité
+// lorsque l'échéance de la tâche change (réassignation / changement de durée)
+export async function syncCorrectionDueDateForFeature(featureId, dueDate, client = null) {
+  const c = client || pool;
+  const result = await c.query(
+    `UPDATE anomalies
+     SET correction_due_date = $2, updated_at = NOW()
+     WHERE feature_id = $1
+       AND status IN ('new', 'in_progress', 'resolution_signaled')
+       AND correction_due_date IS DISTINCT FROM $2
+     RETURNING id`,
+    [featureId, dueDate]
+  );
+  return result.rows.length;
+}
