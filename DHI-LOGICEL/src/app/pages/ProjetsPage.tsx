@@ -17,6 +17,7 @@ import { Projet } from '../types';
 import { projectService } from '../services/projectService';
 import { getErrorMessage } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 import { Pagination } from '../components/ui/pagination';
 import { toast } from 'sonner';
 
@@ -187,8 +188,9 @@ export function ProjetsPage() {
       console.error('Erreur:', error);
       toast.error('Erreur lors de la sauvegarde du projet');
     }
-    setErrors({ nom: '', dateDebut: '', dateFin: '' });
   };
+
+  const { pending: saving, run: submit } = useAsyncAction(handleSubmit);
 
   return (
     <div className="space-y-6">
@@ -305,8 +307,8 @@ export function ProjetsPage() {
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 Annuler
               </Button>
-              <Button onClick={handleSubmit}>
-                {editingProjet ? 'Modifier' : 'Créer'}
+              <Button onClick={submit} disabled={saving}>
+                {saving ? 'Enregistrement…' : (editingProjet ? 'Modifier' : 'Créer')}
               </Button>
             </DialogFooter>
           </DialogContent>

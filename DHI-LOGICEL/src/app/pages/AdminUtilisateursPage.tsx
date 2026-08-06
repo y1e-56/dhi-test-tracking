@@ -13,6 +13,7 @@ import { Users, ShieldOff, ShieldCheck, Plus, Search, UserCog, Trash2, RotateCcw
 import { User, UserRole } from '../types';
 import { userService } from '../services/userService';
 import { socketService } from '../services/socketService';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 import { useDebounce } from '../hooks/useDebounce';
 import { Pagination } from '../components/ui/pagination';
 import { toast } from 'sonner';
@@ -115,7 +116,7 @@ export function AdminUtilisateursPage() {
   const utilisateursActifs = users.filter((u: User) => !u.dateSuppression);
   const utilisateursSupprimes = users.filter((u: User) => u.dateSuppression);
 
-  const handleCreateUser = () => {
+  const handleCreateUser = async () => {
     const newErrors = {
       prenom: '',
       nom: '',
@@ -141,7 +142,7 @@ export function AdminUtilisateursPage() {
     setErrors(newErrors);
     if (Object.values(newErrors).some(Boolean)) return;
 
-    creerUtilisateur({
+    await creerUtilisateur({
       prenom: newUser.prenom,
       nom: newUser.nom,
       email: newUser.email,
@@ -155,6 +156,8 @@ export function AdminUtilisateursPage() {
     setDialogOpen(false);
     fetchUsers();
   };
+
+  const { pending: creating, run: createUser } = useAsyncAction(handleCreateUser);
 
   const handleBlocage = async (userId: string, bloquer: boolean) => {
     if (bloquer) {
@@ -283,10 +286,10 @@ export function AdminUtilisateursPage() {
               <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
               <Button
                 className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                disabled={!newUser.prenom || !newUser.nom || !newUser.email || !newUser.password || !newUser.role}
-                onClick={handleCreateUser}
+                disabled={creating || !newUser.prenom || !newUser.nom || !newUser.email || !newUser.password || !newUser.role}
+                onClick={createUser}
               >
-                {t('admin.users.create_btn')}
+                {creating ? t('app.loading') : t('admin.users.create_btn')}
               </Button>
             </DialogFooter>
           </DialogContent>

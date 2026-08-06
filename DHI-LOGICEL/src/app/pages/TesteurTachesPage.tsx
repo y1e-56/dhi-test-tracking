@@ -17,6 +17,7 @@ import { suggerePriorite, suggereDeveloppeur } from '../services/aiService';
 import { testCaseService } from '../services/testCaseService';
 import { featureService } from '../services/featureService';
 import { useDebounce } from '../hooks/useDebounce';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 
 function joursRestants(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
@@ -217,7 +218,7 @@ export function TesteurTachesPage() {
   const echeanceMax = fonctionnaliteForm?.dateEcheance ? toDateInput(fonctionnaliteForm.dateEcheance) : '';
   const delaiDepasse = !!dateLimiteCorrection && !!echeanceMax && dateLimiteCorrection > echeanceMax;
 
-  const handleChangerStatut = () => {
+  const handleChangerStatut = async () => {
     if (!fonctionnaliteSelectionnee) return;
 
     const fonctionnalite = fonctionnalites.find(f => f.id === fonctionnaliteSelectionnee);
@@ -246,7 +247,7 @@ export function TesteurTachesPage() {
         dateLimiteCorrection: dateLimiteCorrection || undefined
       };
 
-      ajouterAnomalie(nouvelleAnomalie);
+      await ajouterAnomalie(nouvelleAnomalie);
 
       // Notifier le développeur
       ajouterNotification({
@@ -261,9 +262,11 @@ export function TesteurTachesPage() {
       });
     }
 
-    changerStatutFonctionnalite(fonctionnalite.id, nouveauStatut, currentUser.id);
+    await changerStatutFonctionnalite(fonctionnalite.id, nouveauStatut, currentUser.id);
     setDialogStatutOpen(false);
   };
+
+  const { pending: changementPending, run: changerStatut } = useAsyncAction(handleChangerStatut);
 
   const getStatutIcon = (statut: StatutFonctionnalite) => {
     switch (statut) {
@@ -686,7 +689,7 @@ export function TesteurTachesPage() {
             <Button variant="outline" onClick={() => setDialogStatutOpen(false)}>
               {t('common.cancel')}
             </Button>
-            <Button onClick={handleChangerStatut} disabled={!isFormAnomalieValide}>
+            <Button onClick={changerStatut} disabled={!isFormAnomalieValide || changementPending}>
               {t('common.confirm')}
             </Button>
           </DialogFooter>

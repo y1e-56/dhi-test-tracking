@@ -14,6 +14,7 @@ import { Label } from '../components/ui/label';
 import { AlertTriangle, Clock, CheckCircle2, Code, Play, Search, ChevronDown } from 'lucide-react';
 import { StatutAnomalie } from '../types';
 import { useDebounce } from '../hooks/useDebounce';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 
 function joursRestants(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
@@ -60,6 +61,8 @@ export function DeveloppeurAnomaliesPage() {
     setAnomalieSelectionnee(null);
     setCommentaireResolution('');
   };
+
+  const { pending: resolutionPending, run: signalerResolutionAction } = useAsyncAction(handleSignalerResolution);
 
   if (!currentUser || (currentUser.role !== 'developpeur' && currentUser.role !== 'admin')) {
     return (
@@ -398,7 +401,7 @@ export function DeveloppeurAnomaliesPage() {
             <Button variant="outline" onClick={() => setDialogResolutionOpen(false)}>
               {t('common.cancel')}
             </Button>
-            <Button onClick={handleSignalerResolution} disabled={!commentaireResolution.trim()}>
+            <Button onClick={signalerResolutionAction} disabled={!commentaireResolution.trim() || resolutionPending}>
               {t('developpeur.anomalies.send')}
             </Button>
           </DialogFooter>

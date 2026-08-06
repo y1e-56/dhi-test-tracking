@@ -17,6 +17,7 @@ import { Campagne, Projet } from '../types';
 import { campaignService } from '../services/campaignService';
 import { getErrorMessage } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 import { Pagination } from '../components/ui/pagination';
 import { toast } from 'sonner';
 
@@ -212,6 +213,8 @@ export function CampagnesPage() {
       toast.error(t('campagne.list.error_save'));
     }
   };
+
+  const { pending: saving, run: submit } = useAsyncAction(handleSubmit);
 
   const toggleChef = (userId: string) => {
     setFormData(prev => ({
@@ -429,7 +432,7 @@ export function CampagnesPage() {
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 {t('campagne.list.cancel')}
               </Button>
-              <Button onClick={handleSubmit}>
+              <Button onClick={submit} disabled={saving}>
                 {editingCampagne ? t('campagne.list.modify') : t('campagne.list.save')}
               </Button>
             </DialogFooter>

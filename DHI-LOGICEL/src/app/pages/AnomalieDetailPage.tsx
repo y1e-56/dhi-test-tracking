@@ -10,6 +10,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { ArrowLeft, Bug, User, Calendar, CheckCircle2, Timer, AlertTriangle, ChevronDown, ListChecks } from 'lucide-react';
 import { StatutAnomalie, HistoriqueAction, TestCase } from '../types';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 import { api } from '../services/api';
 import { testCaseService } from '../services/testCaseService';
 import { mapHistoriqueFromBackend } from '../utils/mappers';
@@ -116,16 +117,20 @@ export function AnomalieDetailPage() {
     return t('anomalie.detail.days_left', { count: jr });
   };
 
-  const handleSignalerResolution = () => {
+  const handleSignalerResolution = async () => {
     if (!currentUser || !commentaireResolution.trim()) return;
-    signalerResolution(anomalie.id, currentUser.id, commentaireResolution);
+    await signalerResolution(anomalie.id, currentUser.id, commentaireResolution);
     setCommentaireResolution('');
   };
 
-  const handleValiderCloture = () => {
+  const { pending: resolutionPending, run: signalerResolutionAction } = useAsyncAction(handleSignalerResolution);
+
+  const handleValiderCloture = async () => {
     if (!currentUser) return;
-    validerCloture(anomalie.id, currentUser.id);
+    await validerCloture(anomalie.id, currentUser.id);
   };
+
+  const { pending: cloturePending, run: validerClotureAction } = useAsyncAction(handleValiderCloture);
 
   return (
     <div className="space-y-5">
@@ -286,8 +291,8 @@ export function AnomalieDetailPage() {
                   />
                 </div>
                 <Button
-                  onClick={handleSignalerResolution}
-                  disabled={!commentaireResolution.trim()}
+                  onClick={signalerResolutionAction}
+                  disabled={!commentaireResolution.trim() || resolutionPending}
                   className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
                   <CheckCircle2 className="w-4 h-4" />
@@ -320,7 +325,8 @@ export function AnomalieDetailPage() {
                   {t('anomalie.detail.validate_before')}
                 </p>
                 <Button
-                  onClick={handleValiderCloture}
+                  onClick={validerClotureAction}
+                  disabled={cloturePending}
                   className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
                   <CheckCircle2 className="w-4 h-4" />

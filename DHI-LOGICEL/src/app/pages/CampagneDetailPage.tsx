@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { ArrowLeft, Plus, TestTube, AlertTriangle, CheckCircle2, Clock, User, Play, Flag, X, Users, Trash2, Search, Loader2, Sparkles, FileText } from 'lucide-react';
 import { Fonctionnalite, Priorite, StatutFonctionnalite, StatutAnomalie, TestCase, HistoriqueAction } from '../types';
 import { useDebounce } from '../hooks/useDebounce';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 import { campaignService } from '../services/campaignService';
 import { testCaseService } from '../services/testCaseService';
 import { featureService } from '../services/featureService';
@@ -144,6 +145,8 @@ export function CampagneDetailPage() {
     }
   };
 
+  const { pending: ajoutMembrePending, run: ajouterMembre } = useAsyncAction(handleAjouterMembre);
+
   const handleRetirerMembre = async (userId: string, type: 'testeur' | 'developpeur') => {
     if (!campagneId || !campagne) return;
     if (campagne.statut === 'terminee' || campagne.statut === 'archive') {
@@ -207,6 +210,8 @@ export function CampagneDetailPage() {
     }
   };
 
+  const { pending: ajoutTestCasePending, run: ajouterTestCase } = useAsyncAction(handleAjouterTestCase);
+
   const handleSupprimerTestCase = async (testCaseId: string) => {
     if (!selectedFonctionnalite) return;
     if (campagne?.statut === 'terminee' || campagne?.statut === 'archive') {
@@ -240,6 +245,8 @@ export function CampagneDetailPage() {
       console.error(error);
     }
   };
+
+  const { pending: generationPending, run: genererTestCases } = useAsyncAction(handleGenererTestCases);
 
   const handleOpenAssignDialog = (fonctionnaliteId: string) => {
     const existante = fonctionnalites.find((f: any) => f.id === fonctionnaliteId);
@@ -287,6 +294,8 @@ export function CampagneDetailPage() {
       console.error('Erreur lors de l\'assignation:', error);
     }
   };
+
+  const { pending: assignationPending, run: assignerFonctionnalite } = useAsyncAction(handleAssignerFonctionnalite);
 
   const fonctionnalitesCampagne = fonctionnalites.filter((f: any) => f.campagneId === campagneId);
   const anomaliesCampagne = anomalies.filter((a: any) => a.campagneId === campagneId && (!filtreFonctionnaliteId || a.fonctionnaliteId === filtreFonctionnaliteId));
@@ -403,6 +412,8 @@ export function CampagneDetailPage() {
       console.error('Erreur lors de l\'ajout:', error);
     }
   };
+
+  const { pending: ajoutFonctionnalitePending, run: ajouterFonctionnaliteAction } = useAsyncAction(handleAjouterFonctionnalite);
 
   const getStatutBadge = (statut: StatutFonctionnalite) => {
     const config = {
@@ -532,7 +543,7 @@ export function CampagneDetailPage() {
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('campagne.detail.cancel')}</Button>
-                  <Button onClick={handleAjouterFonctionnalite}>{t('campagne.detail.assign')}</Button>
+                  <Button onClick={ajouterFonctionnaliteAction} disabled={ajoutFonctionnalitePending}>{t('campagne.detail.assign')}</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -660,7 +671,7 @@ export function CampagneDetailPage() {
             {selectedFonctionnalite && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" className="gap-2" disabled={readOnly} onClick={handleGenererTestCases} title={readOnly ? t('campagne.detail.read_only_error') : undefined}>
+                  <Button variant="outline" className="gap-2" disabled={readOnly || generationPending} onClick={genererTestCases} title={readOnly ? t('campagne.detail.read_only_error') : undefined}>
                     <Sparkles className="w-4 h-4" />{t('campagne.detail.generate_testcases')}
                   </Button>
                   <Dialog open={testCasesDialog} onOpenChange={setTestCasesDialog}>
@@ -719,7 +730,7 @@ export function CampagneDetailPage() {
                       </div>
                       <DialogFooter>
                         <Button variant="outline" onClick={() => setTestCasesDialog(false)}>{t('campagne.detail.cancel')}</Button>
-                        <Button onClick={handleAjouterTestCase}>{t('campagne.detail.create')}</Button>
+                        <Button onClick={ajouterTestCase} disabled={ajoutTestCasePending}>{t('campagne.detail.create')}</Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
@@ -974,7 +985,7 @@ export function CampagneDetailPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>{t('campagne.detail.cancel')}</Button>
-            <Button onClick={handleAssignerFonctionnalite}>{t('campagne.detail.assign')}</Button>
+            <Button onClick={assignerFonctionnalite} disabled={assignationPending}>{t('campagne.detail.assign')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1013,7 +1024,7 @@ export function CampagneDetailPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAjoutMembreDialogOpen(false)}>{t('campagne.detail.cancel')}</Button>
-            <Button onClick={handleAjouterMembre}>{t('campagne.detail.add')}</Button>
+            <Button onClick={ajouterMembre} disabled={ajoutMembrePending}>{t('campagne.detail.add')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
