@@ -9,6 +9,7 @@ import {
   TrendingUp, ArrowRight, Bug, BarChart3, Users
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { pressableProps } from '../utils/pressable';
 
 interface StatCardProps {
   label: string;
@@ -210,7 +211,7 @@ export function DashboardPage() {
                       <div
                         key={campagne.id}
                         className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer group"
-                        onClick={() => navigate(`/campagnes/${campagne.id}`)}
+                        {...pressableProps(() => navigate(`/campagnes/${campagne.id}`))}
                       >
                         <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0">
                           <TestTube className="w-4 h-4 text-indigo-500" />
@@ -260,7 +261,7 @@ export function DashboardPage() {
                     <div
                       key={anomalie.id}
                       className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer group"
-                      onClick={() => navigate(`/anomalies/${anomalie.id}`)}
+                      {...pressableProps(() => navigate(`/anomalies/${anomalie.id}`))}
                     >
                       <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
                         <Bug className="w-4 h-4 text-red-500" />
@@ -464,7 +465,7 @@ export function DashboardPage() {
                       <div
                         key={campagne.id}
                         className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer group"
-                        onClick={() => navigate(`/campagnes/${campagne.id}`)}
+                        {...pressableProps(() => navigate(`/campagnes/${campagne.id}`))}
                       >
                         <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0">
                           <TestTube className="w-4 h-4 text-indigo-500" />
@@ -516,7 +517,7 @@ export function DashboardPage() {
                     <div
                       key={anomalie.id}
                       className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer group"
-                      onClick={() => navigate(`/anomalies/${anomalie.id}`)}
+                      {...pressableProps(() => navigate(`/anomalies/${anomalie.id}`))}
                     >
                       <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
                         <Bug className="w-4 h-4 text-red-500" />
@@ -761,7 +762,7 @@ export function DashboardPage() {
                     <div
                       key={anomalie.id}
                       className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer group"
-                      onClick={() => navigate(`/anomalies/${anomalie.id}`)}
+                      {...pressableProps(() => navigate(`/anomalies/${anomalie.id}`))}
                     >
                       <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
                         <Bug className="w-4 h-4 text-red-500" />

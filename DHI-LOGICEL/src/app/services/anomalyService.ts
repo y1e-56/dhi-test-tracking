@@ -21,8 +21,11 @@ export const anomalyService = {
     return { data: response.data.data.map(mapAnomalieFromBackend), pagination: response.data.pagination };
   },
 
-  async getStats(): Promise<{ total: number; byStatus: Record<string, number> }> {
-    const response = await api.get('/anomalies/stats');
+  async getStats(filters: { projetId?: string } = {}): Promise<{ total: number; byStatus: Record<string, number> }> {
+    const params = new URLSearchParams();
+    if (filters.projetId) params.append('projetId', filters.projetId);
+    const qs = params.toString();
+    const response = await api.get(`/anomalies/stats${qs ? `?${qs}` : ''}`);
     return response.data;
   },
 

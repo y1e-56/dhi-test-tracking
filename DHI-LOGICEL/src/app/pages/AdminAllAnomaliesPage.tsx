@@ -13,6 +13,7 @@ import { StatutAnomalie, Priorite, AnomalieFilters, Anomalie } from '../types';
 import { anomalyService } from '../services/anomalyService';
 import { useDebounce } from '../hooks/useDebounce';
 import { Pagination } from '../components/ui/pagination';
+import { keyboardActivateProps } from '../utils/pressable';
 
 function joursRestants(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
@@ -84,10 +85,10 @@ export function AdminAllAnomaliesPage() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const s = await anomalyService.getStats();
+      const s = await anomalyService.getStats({ projetId: filterProjet !== 'tous' ? filterProjet : undefined });
       setStats(s);
     } catch { }
-  }, []);
+  }, [filterProjet]);
 
   useEffect(() => { fetchAnomalies(); }, [fetchAnomalies]);
   useEffect(() => { fetchStats(); }, [fetchStats]);
@@ -198,6 +199,8 @@ export function AdminAllAnomaliesPage() {
                   key={anomalie.id}
                   className="flex items-start gap-4 p-4 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer group"
                   onClick={() => navigate(`/anomalies/${anomalie.id}`)}
+                  {...keyboardActivateProps(() => navigate(`/anomalies/${anomalie.id}`))}
+                  aria-label={t('admin.anomalies.open')}
                 >
                   <div className="flex-shrink-0">
                     {getStatutIcon(anomalie.statut)}

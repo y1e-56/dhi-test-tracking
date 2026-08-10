@@ -2,14 +2,37 @@ import * as React from "react";
 
 import { cn } from "./utils";
 
-function Card({ className, ...props }: React.ComponentProps<"div">) {
+type CardProps = React.ComponentProps<"div"> & {
+  /**
+   * Active la sémantique interactive (role="button", navigation clavier).
+   * Par défaut : true si onClick est fourni.
+   * Mettre à false quand la carte contient des éléments interactifs imbriqués.
+   */
+  interactive?: boolean;
+};
+
+function Card({ className, onClick, interactive, ...props }: CardProps) {
+  const isInteractive = interactive ?? (typeof onClick === "function");
   return (
     <div
       data-slot="card"
       className={cn(
         "bg-white text-card-foreground flex flex-col gap-6 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow duration-200",
+        isInteractive && "cursor-pointer",
         className,
       )}
+      {...(isInteractive ? { role: "button", tabIndex: 0 } : {})}
+      onClick={onClick}
+      onKeyDown={
+        isInteractive
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick!(e as unknown as React.MouseEvent<HTMLDivElement>);
+              }
+            }
+          : undefined
+      }
       {...props}
     />
   );

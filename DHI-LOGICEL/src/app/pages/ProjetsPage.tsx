@@ -367,7 +367,7 @@ export function ProjetsPage() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {paginatedProjets.map((projet) => (
-              <Card key={projet.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/campagnes?projetId=${projet.id}`)}>
+              <Card key={projet.id} interactive={!isAdmin} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/campagnes?projetId=${projet.id}`)}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -407,7 +407,7 @@ export function ProjetsPage() {
                       variant="outline"
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleOpenDialog(projet)}
+                      onClick={(e) => { e.stopPropagation(); handleOpenDialog(projet); }}
                     >
                       <Edit className="w-4 h-4 mr-1" />
                       Modifier
@@ -416,7 +416,7 @@ export function ProjetsPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={async () => { await archiverProjet(projet.id); fetchProjets(); }}
+                        onClick={async (e) => { e.stopPropagation(); await archiverProjet(projet.id); fetchProjets(); }}
                       >
                         <Archive className="w-4 h-4" />
                       </Button>
@@ -424,7 +424,8 @@ export function ProjetsPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         if (confirm(`Êtes-vous sûr de vouloir supprimer le projet "${projet.nom}" ?`)) {
                           supprimerProjet(projet.id);
                           fetchProjets();

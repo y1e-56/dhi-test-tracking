@@ -201,7 +201,7 @@ export function FeaturesTab({ campagneId, peutGerer, readOnly, isEnPreparation, 
           const testeur = users.find((u: any) => u.id === fonctionnalite.testeurAssigneId);
           const statutBadge = getStatutBadge(fonctionnalite.statut);
           return (
-            <Card key={fonctionnalite.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/campagnes/${campagneId}?tab=anomalies&feature=${fonctionnalite.id}`)}>
+            <Card key={fonctionnalite.id} interactive={false} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/campagnes/${campagneId}?tab=anomalies&feature=${fonctionnalite.id}`)}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">

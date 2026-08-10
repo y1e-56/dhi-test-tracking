@@ -92,8 +92,8 @@ router.get('/', authenticate, async (req, res) => {
  *       401: { $ref: '#/components/responses/Unauthorized' }
  */
 // Stats pour les KPIs des pages admin
-router.get('/stats', authenticate, async (_req, res) => {
-  const stats = await anomalyService.getAnomalyStats();
+router.get('/stats', authenticate, async (req, res) => {
+  const stats = await anomalyService.getAnomalyStats(req.query.projetId);
   res.json(stats);
 });
 

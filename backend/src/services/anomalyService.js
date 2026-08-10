@@ -32,8 +32,8 @@ export async function listAnomaliesPaginated(filters = {}) {
   });
 }
 
-export async function getAnomalyStats() {
-  return db.stats.getAnomalyStats();
+export async function getAnomalyStats(projectId = null) {
+  return db.stats.getAnomalyStats(projectId);
 }
 
 export async function getAnomaly(id) {

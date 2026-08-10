@@ -42,13 +42,21 @@ const EN_TO_FR_STATUS = {
   rejected: 'nouvelle',
 };
 
-export async function getAnomalyStats(client = null) {
+export async function getAnomalyStats(projectId = null, client = null) {
   const c = client || pool;
+  const params = [];
+  let where = '';
+  if (projectId) {
+    params.push(projectId);
+    where = ' WHERE c.project_id = $1';
+  }
   const result = await c.query(
     `SELECT a.status, COUNT(*)::int as count FROM anomalies a
      INNER JOIN campaigns c ON c.id = a.campaign_id
      INNER JOIN projects p ON p.id = c.project_id AND p.is_archived = FALSE
-     GROUP BY a.status`
+     ${where}
+     GROUP BY a.status`,
+    params
   );
   const total = result.rows.reduce((sum, row) => sum + row.count, 0);
   const byStatus = Object.fromEntries(

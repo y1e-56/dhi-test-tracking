@@ -137,13 +137,17 @@ export function TesteurTachesPage() {
     : fonctionnalites.filter(f => f.testeurAssigneId === currentUser.id);
   const developpeurs = users.filter(u => u.role === 'developpeur');
 
-  const mesTachesFiltrees = mesTaches.filter(f => {
-    if (filtreStatut !== 'tous' && f.statut !== filtreStatut) return false;
+  const mesTachesBase = mesTaches.filter(f => {
     if (filtreCampagne !== 'tous' && f.campagneId !== filtreCampagne) return false;
     if (debouncedSearch) {
       const q = debouncedSearch.toLowerCase();
       if (!f.nom?.toLowerCase().includes(q) && !f.description?.toLowerCase().includes(q) && !f.module?.toLowerCase().includes(q)) return false;
     }
+    return true;
+  });
+
+  const mesTachesFiltrees = mesTachesBase.filter(f => {
+    if (filtreStatut !== 'tous' && f.statut !== filtreStatut) return false;
     return true;
   });
 
@@ -313,7 +317,7 @@ export function TesteurTachesPage() {
             <CardTitle className="text-sm font-medium text-gray-600">{t('testeur.tasks.total')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mesTaches.length}</div>
+            <div className="text-2xl font-bold">{mesTachesBase.length}</div>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFiltreStatut('non_testee')}>
@@ -322,7 +326,7 @@ export function TesteurTachesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {mesTaches.filter(t => t.statut === 'non_testee').length}
+              {mesTachesBase.filter(t => t.statut === 'non_testee').length}
             </div>
           </CardContent>
         </Card>
@@ -332,7 +336,7 @@ export function TesteurTachesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {mesTaches.filter(t => t.statut === 'conforme').length}
+              {mesTachesBase.filter(t => t.statut === 'conforme').length}
             </div>
           </CardContent>
         </Card>
@@ -342,7 +346,7 @@ export function TesteurTachesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {mesTaches.filter(t => t.statut === 'anomalie').length}
+              {mesTachesBase.filter(t => t.statut === 'anomalie').length}
             </div>
           </CardContent>
         </Card>

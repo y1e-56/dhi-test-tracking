@@ -77,15 +77,19 @@ export function DeveloppeurAnomaliesPage() {
     ? anomalies
     : anomalies.filter(a => a.developpeurId === currentUser.id);
   
-  const anomaliesFiltrees = mesAnomalies.filter(a => {
-    if (filtreStatut !== 'tous') {
-      const correspondCloturee = filtreStatut === 'cloturee' && a.statut === 'validee';
-      if (a.statut !== filtreStatut && !correspondCloturee) return false;
-    }
+  const anomaliesBase = mesAnomalies.filter(a => {
     if (filtreCampagne !== 'tous' && a.campagneId !== filtreCampagne) return false;
     if (debouncedSearch) {
       const q = debouncedSearch.toLowerCase();
       if (!a.titre?.toLowerCase().includes(q) && !a.description?.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  const anomaliesFiltrees = anomaliesBase.filter(a => {
+    if (filtreStatut !== 'tous') {
+      const correspondCloturee = filtreStatut === 'cloturee' && a.statut === 'validee';
+      if (a.statut !== filtreStatut && !correspondCloturee) return false;
     }
     return true;
   });
@@ -158,7 +162,7 @@ export function DeveloppeurAnomaliesPage() {
             <CardTitle className="text-sm font-medium text-gray-600">{t('developpeur.anomalies.total')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mesAnomalies.length}</div>
+            <div className="text-2xl font-bold">{anomaliesBase.length}</div>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFiltreStatut('nouvelle')}>
@@ -167,7 +171,7 @@ export function DeveloppeurAnomaliesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {mesAnomalies.filter(a => a.statut === 'nouvelle').length}
+              {anomaliesBase.filter(a => a.statut === 'nouvelle').length}
             </div>
           </CardContent>
         </Card>
@@ -177,7 +181,7 @@ export function DeveloppeurAnomaliesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {mesAnomalies.filter(a => a.statut === 'en_cours').length}
+              {anomaliesBase.filter(a => a.statut === 'en_cours').length}
             </div>
           </CardContent>
         </Card>
@@ -187,7 +191,7 @@ export function DeveloppeurAnomaliesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {mesAnomalies.filter(a => a.statut === 'resolution_signalee').length}
+              {anomaliesBase.filter(a => a.statut === 'resolution_signalee').length}
             </div>
           </CardContent>
         </Card>
@@ -197,7 +201,7 @@ export function DeveloppeurAnomaliesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-600">
-              {mesAnomalies.filter(a => a.statut === 'cloturee' || a.statut === 'validee').length}
+              {anomaliesBase.filter(a => a.statut === 'cloturee' || a.statut === 'validee').length}
             </div>
           </CardContent>
         </Card>
@@ -265,6 +269,7 @@ export function DeveloppeurAnomaliesPage() {
                   return (
                     <Card 
                       key={anomalie.id} 
+                      interactive={false}
                       className="hover:shadow-md transition-shadow cursor-pointer"
                       onClick={() => navigate(`/anomalies/${anomalie.id}`)}
             >
