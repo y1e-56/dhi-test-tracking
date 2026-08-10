@@ -19,6 +19,7 @@ import { getErrorMessage } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { useAsyncAction } from '../hooks/useAsyncAction';
 import { Pagination } from '../components/ui/pagination';
+import { toDateInput } from '../utils/dateInput';
 import { toast } from 'sonner';
 
 export function CampagnesPage() {
@@ -105,8 +106,8 @@ export function CampagnesPage() {
         nom: campagne.nom,
         projetId: campagne.projetId,
         description: campagne.description,
-        dateDebut: campagne.dateDebut,
-        dateFin: campagne.dateFin,
+        dateDebut: toDateInput(campagne.dateDebut),
+        dateFin: toDateInput(campagne.dateFin),
         chefTesteurIds: campagne.chefTesteurIds || [],
         equipeTesteurs: campagne.equipeTesteurs,
         equipeDeveloppeurs: campagne.equipeDeveloppeurs

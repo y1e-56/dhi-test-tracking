@@ -19,6 +19,7 @@ import { getErrorMessage } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { useAsyncAction } from '../hooks/useAsyncAction';
 import { Pagination } from '../components/ui/pagination';
+import { toDateInput } from '../utils/dateInput';
 import { toast } from 'sonner';
 
 export function ProjetsPage() {
@@ -101,8 +102,8 @@ export function ProjetsPage() {
       setFormData({
         nom: projet.nom,
         description: projet.description,
-        dateDebut: projet.dateDebut,
-        dateFin: projet.dateFin,
+        dateDebut: toDateInput(projet.dateDebut),
+        dateFin: toDateInput(projet.dateFin),
         chefTesteurIds: [...projet.chefTesteurIds]
       });
     } else {
