@@ -35,7 +35,7 @@ services:
       - key: JWT_SECRET
         value: dhi-test-tracking-local-secret-2024
       - key: SENTRY_DSN
-        sync: false
+        value: https://6ea5b8f0627b795807186445b3538d35@o4511892356464640.ingest.de.sentry.io/4511892491599952
       - key: CORS_ORIGIN
         value: dev
       - key: CORS_ORIGINS
