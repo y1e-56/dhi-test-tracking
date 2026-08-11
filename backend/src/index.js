@@ -1,5 +1,6 @@
 import './config/env.js';
 import 'express-async-errors';
+import * as Sentry from '@sentry/node';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -22,6 +23,14 @@ const app = express();
 app.set('trust proxy', 1);
 const httpServer = http.createServer(app);
 const PORT = process.env.PORT || 5000;
+
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    tracesSampleRate: 0.1,
+  });
+}
 
 // Initialiser Socket.IO
 const io = initializeSocket(httpServer);
@@ -64,6 +73,10 @@ app.get('/api-docs.json', (_req, res) => {
 });
 
 app.use('/api', routes);
+
+if (process.env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
+}
 
 app.use(errorHandler);
 

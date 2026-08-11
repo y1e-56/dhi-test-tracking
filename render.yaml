@@ -11,6 +11,8 @@ services:
     envVars:
       - key: VITE_API_URL
         value: https://dhi-test-tracking-api.onrender.com/api
+      - key: VITE_SENTRY_DSN
+        sync: false
     routes:
       - type: rewrite
         source: /*
@@ -32,6 +34,8 @@ services:
           property: connectionString
       - key: JWT_SECRET
         value: dhi-test-tracking-local-secret-2024
+      - key: SENTRY_DSN
+        sync: false
       - key: CORS_ORIGIN
         value: dev
       - key: CORS_ORIGINS
