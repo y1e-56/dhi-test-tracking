@@ -66,6 +66,19 @@ export async function archiveProject(id) {
   });
 }
 
+export async function unarchiveProject(id) {
+  return withTransaction(async (client) => {
+    const project = await db.projects.update(id, { is_archived: false }, client);
+    if (!project) throw new AppError('Projet non trouvé', 404);
+
+    const campaignIds = await db.campaigns.unarchiveByProject(id, client);
+
+    bus.emit('project:unarchived', { project, project_id: id, campaign_ids: campaignIds });
+
+    return project;
+  });
+}
+
 export async function deleteProject(id) {
   return withTransaction(async (client) => {
     await db.history.deleteByProject(id, client);

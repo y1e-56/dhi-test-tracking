@@ -11,7 +11,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Loader2, Plus, Archive, Edit, FolderKanban, Trash2, Calendar, UserCog, Search } from 'lucide-react';
+import { Loader2, Plus, Archive, Edit, FolderKanban, Trash2, Calendar, UserCog, Search, RotateCcw } from 'lucide-react';
 import { Checkbox } from '../components/ui/checkbox';
 import { Projet } from '../types';
 import { projectService } from '../services/projectService';
@@ -25,7 +25,7 @@ import { toast } from 'sonner';
 export function ProjetsPage() {
   const { t } = useTranslation();
   const { currentUser, users } = useAuth();
-  const { ajouterProjet, modifierProjet, archiverProjet, supprimerProjet } = useData();
+  const { ajouterProjet, modifierProjet, archiverProjet, restaurerProjet, supprimerProjet } = useData();
   const navigate = useNavigate();
 
   const [paginatedProjets, setPaginatedProjets] = useState<Projet[]>([]);
@@ -413,13 +413,25 @@ export function ProjetsPage() {
                       <Edit className="w-4 h-4 mr-1" />
                       Modifier
                     </Button>
-                    {projet.statut === 'actif' && (
+                    {projet.statut === 'actif' ? (
                       <Button
                         variant="outline"
                         size="sm"
+                        title="Archiver le projet"
+                        aria-label="Archiver le projet"
                         onClick={async (e) => { e.stopPropagation(); await archiverProjet(projet.id); fetchProjets(); }}
                       >
                         <Archive className="w-4 h-4" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        title="Restaurer le projet"
+                        aria-label="Restaurer le projet"
+                        onClick={async (e) => { e.stopPropagation(); await restaurerProjet(projet.id); fetchProjets(); }}
+                      >
+                        <RotateCcw className="w-4 h-4" />
                       </Button>
                     )}
                     <Button

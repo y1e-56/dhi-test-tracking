@@ -71,6 +71,16 @@ export const projectService = {
     }
   },
 
+  async unarchive(id: string): Promise<Projet> {
+    try {
+      const response = await api.patch(`/projects/${id}/unarchive`);
+      return mapProjetFromBackend(response.data.project);
+    } catch (e) {
+      console.error('[projectService] Erreur unarchive:', e);
+      throw e;
+    }
+  },
+
   async delete(id: string): Promise<void> {
     try {
       await api.delete(`/projects/${id}`);

@@ -21,6 +21,7 @@ interface DataContextType {
   ajouterProjet: (projet: Projet) => Promise<void>;
   modifierProjet: (id: string, projet: Partial<Projet>) => Promise<void>;
   archiverProjet: (id: string) => Promise<void>;
+  restaurerProjet: (id: string) => Promise<void>;
   supprimerProjet: (id: string) => Promise<void>;
   ajouterCampagne: (campagne: Campagne) => Promise<void>;
   modifierCampagne: (id: string, campagne: Partial<Campagne>) => Promise<void>;
@@ -46,7 +47,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const {
     projets, setProjets, refreshProjets,
-    ajouterProjet, modifierProjet, archiverProjet, supprimerProjet
+    ajouterProjet, modifierProjet, archiverProjet, restaurerProjet, supprimerProjet
   } = useProjets();
 
   const {
@@ -164,7 +165,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const value: DataContextType = {
     projets, campagnes, fonctionnalites, anomalies, notifications, historiqueActions,
-    ajouterProjet, modifierProjet, archiverProjet, supprimerProjet,
+    ajouterProjet, modifierProjet, archiverProjet, restaurerProjet, supprimerProjet,
     ajouterCampagne, modifierCampagne,
     ajouterFonctionnalite, modifierFonctionnalite, changerStatutFonctionnalite,
     ajouterAnomalie, changerStatutAnomalie, signalerResolution, validerCloture,

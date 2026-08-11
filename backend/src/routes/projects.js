@@ -219,6 +219,36 @@ router.patch('/:id/archive', authenticate, requireAdmin, async (req, res) => {
 
 /**
  * @swagger
+ * /projects/{id}/unarchive:
+ *   patch:
+ *     tags: [Projects]
+ *     summary: Restaurer un projet archivé (admin uniquement)
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Projet restauré
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 project: { $ref: '#/components/schemas/Project' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       403: { $ref: '#/components/responses/Forbidden' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ */
+router.patch('/:id/unarchive', authenticate, requireAdmin, async (req, res) => {
+  const project = await projectService.unarchiveProject(Number(req.params.id));
+  bus.emit('data:changed', { entity: 'projects' });
+  res.json({ project });
+});
+
+/**
+ * @swagger
  * /projects/{id}:
  *   delete:
  *     tags: [Projects]

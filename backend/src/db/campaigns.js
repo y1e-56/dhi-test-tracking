@@ -133,6 +133,15 @@ export async function archiveByProject(projectId, client = null) {
   return result.rows.map(r => r.id);
 }
 
+export async function unarchiveByProject(projectId, client = null) {
+  const c = client || pool;
+  const result = await c.query(
+    `UPDATE campaigns SET status = 'planning' WHERE project_id = $1 AND status = 'archived' RETURNING id`,
+    [projectId]
+  );
+  return result.rows.map(r => r.id);
+}
+
 export async function remove(id, client = null) {
   const c = client || pool;
   const result = await c.query('DELETE FROM campaigns WHERE id = $1 RETURNING id', [id]);

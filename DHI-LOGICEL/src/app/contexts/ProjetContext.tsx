@@ -11,6 +11,7 @@ interface ProjetContextType {
   ajouterProjet: (projet: Projet) => Promise<void>;
   modifierProjet: (id: string, projet: Partial<Projet>) => Promise<void>;
   archiverProjet: (id: string) => Promise<void>;
+  restaurerProjet: (id: string) => Promise<void>;
   supprimerProjet: (id: string) => Promise<void>;
 }
 
@@ -60,6 +61,16 @@ export function ProjetProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const restaurerProjet = async (id: string) => {
+    try {
+      await projectService.unarchive(id);
+      await refreshProjets();
+      toast.success('Projet restauré avec succès');
+    } catch (e) {
+      toast.error(getErrorMessage(e as any));
+    }
+  };
+
   const supprimerProjet = async (id: string) => {
     try {
       await projectService.delete(id);
@@ -71,7 +82,7 @@ export function ProjetProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <ProjetContext.Provider value={{ projets, setProjets, refreshProjets, ajouterProjet, modifierProjet, archiverProjet, supprimerProjet }}>
+    <ProjetContext.Provider value={{ projets, setProjets, refreshProjets, ajouterProjet, modifierProjet, archiverProjet, restaurerProjet, supprimerProjet }}>
       {children}
     </ProjetContext.Provider>
   );
