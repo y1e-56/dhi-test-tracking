@@ -1,5 +1,8 @@
 export * as users from './users.js';
 export * as projects from './projects.js';
+export * as products from './products.js';
+export * as releases from './releases.js';
+export * as environments from './environments.js';
 export * as campaigns from './campaigns.js';
 export * as features from './features.js';
 export * as anomalies from './anomalies.js';

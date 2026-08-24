@@ -48,8 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = localStorage.getItem('token');
     if (savedUser && token) {
       const parsed = JSON.parse(savedUser);
-      // Ancienne nomenclature — forcer la reconnexion
-      if (parsed.role === 'test_lead') {
+      // Données corrompues ou ancienne nomenclature — forcer la reconnexion
+      if (!parsed || parsed.role === 'test_lead') {
         localStorage.removeItem('currentUser');
         localStorage.removeItem('token');
       } else {

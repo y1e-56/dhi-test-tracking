@@ -16,6 +16,8 @@ const createSchema = z.object({
   test_lead_ids: z.array(z.number()).optional(),
   testers: z.array(z.number()).optional(),
   developers: z.array(z.number()).optional(),
+  release_id: z.number().int().nullable().optional(),
+  environment_id: z.number().int().nullable().optional(),
 });
 
 /**

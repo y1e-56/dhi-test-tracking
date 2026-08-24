@@ -12,6 +12,7 @@ const createSchema = z.object({
   start_date: z.string().optional(),
   end_date: z.string().optional(),
   test_lead_ids: z.array(z.number()).optional(),
+  product_id: z.number().int().nullable().optional(),
 });
 
 const updateSchema = z.object({
@@ -20,6 +21,7 @@ const updateSchema = z.object({
   start_date: z.string().optional(),
   end_date: z.string().optional(),
   test_lead_ids: z.array(z.number()).optional(),
+  product_id: z.number().int().nullable().optional(),
 });
 
 /**

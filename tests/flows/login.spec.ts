@@ -6,9 +6,9 @@ test.describe('Login Flow', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByPlaceholder(/email/i)).toBeVisible();
-    await expect(page.getByPlaceholder(/mot de passe|password/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /se connecter|login|connexion/i })).toBeVisible();
+    await expect(page.locator('#email')).toBeVisible();
+    await expect(page.locator('#password')).toBeVisible();
+    await expect(page.getByRole('button', { name: /se connecter|login|connexion|sign in/i })).toBeVisible();
   });
 
   test('login avec identifiants valides (admin)', async ({ page }) => {
@@ -16,9 +16,9 @@ test.describe('Login Flow', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    await page.getByPlaceholder(/email/i).fill(user.email);
-    await page.getByPlaceholder(/mot de passe|password/i).fill(user.password);
-    await page.getByRole('button', { name: /se connecter|login|connexion/i }).click();
+    await page.locator('#email').fill(user.email);
+    await page.locator('#password').fill(user.password);
+    await page.getByRole('button', { name: /se connecter|login|connexion|sign in/i }).click();
 
     await page.waitForURL('**/dashboard', { timeout: 15_000 });
     await expect(page).toHaveURL(/dashboard/);
@@ -28,9 +28,9 @@ test.describe('Login Flow', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    await page.getByPlaceholder(/email/i).fill('admin@test.fr');
-    await page.getByPlaceholder(/mot de passe|password/i).fill('WRONG_PASSWORD');
-    await page.getByRole('button', { name: /se connecter|login|connexion/i }).click();
+    await page.locator('#email').fill('admin@test.fr');
+    await page.locator('#password').fill('WRONG_PASSWORD');
+    await page.getByRole('button', { name: /se connecter|login|connexion|sign in/i }).click();
 
     await expect(page.locator('.toast, [role="alert"], .error, .text-red, .text-destructive').first())
       .toBeVisible({ timeout: 10_000 });
@@ -40,9 +40,9 @@ test.describe('Login Flow', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    await page.getByPlaceholder(/email/i).fill('inexistant@test.fr');
-    await page.getByPlaceholder(/mot de passe|password/i).fill('whatever123');
-    await page.getByRole('button', { name: /se connecter|login|connexion/i }).click();
+    await page.locator('#email').fill('inexistant@test.fr');
+    await page.locator('#password').fill('whatever123');
+    await page.getByRole('button', { name: /se connecter|login|connexion|sign in/i }).click();
 
     await expect(page.locator('.toast, [role="alert"], .error, .text-red, .text-destructive').first())
       .toBeVisible({ timeout: 10_000 });
@@ -52,7 +52,7 @@ test.describe('Login Flow', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    await page.getByRole('button', { name: /se connecter|login|connexion/i }).click();
+    await page.getByRole('button', { name: /se connecter|login|connexion|sign in/i }).click();
     await expect(page).toHaveURL(/\//);
   });
 
@@ -61,9 +61,9 @@ test.describe('Login Flow', () => {
       await page.goto('/');
       await page.waitForLoadState('networkidle');
 
-      await page.getByPlaceholder(/email/i).fill(user.email);
-      await page.getByPlaceholder(/mot de passe|password/i).fill(user.password);
-      await page.getByRole('button', { name: /se connecter|login|connexion/i }).click();
+      await page.locator('#email').fill(user.email);
+      await page.locator('#password').fill(user.password);
+      await page.getByRole('button', { name: /se connecter|login|connexion|sign in/i }).click();
 
       await page.waitForURL('**/dashboard', { timeout: 15_000 });
       await expect(page).toHaveURL(/dashboard/);

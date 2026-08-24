@@ -2,10 +2,12 @@ import { createBrowserRouter, Navigate } from 'react-router';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProjetsPage } from './pages/ProjetsPage';
+import { ProduitsPage } from './pages/ProduitsPage';
 import { CampagnesPage } from './pages/CampagnesPage';
 import { AdminUtilisateursPage } from './pages/AdminUtilisateursPage';
 import { AdminHistoryPage } from './pages/AdminHistoryPage';
 import { AdminAllAnomaliesPage } from './pages/AdminAllAnomaliesPage';
+import { AdminAssignationPage } from './pages/AdminAssignationPage';
 import { CampagneDetailPage } from './pages/CampagneDetailPage';
 import { TesteurTachesPage } from './pages/TesteurTachesPage';
 import { DeveloppeurAnomaliesPage } from './pages/DeveloppeurAnomaliesPage';
@@ -32,12 +34,14 @@ export const router = createBrowserRouter([
     element: <ProtectedLayout />,
     children: [
       { path: '/dashboard', element: <DashboardPage /> },
+      { path: '/produits', element: <ProduitsPage /> },
       { path: '/projets', element: <ProjetsPage /> },
       { path: '/campagnes', element: <CampagnesPage /> },
       { path: '/campagnes/:campagneId', element: <CampagneDetailPage /> },
       { path: '/admin/utilisateurs', element: <AdminUtilisateursPage /> },
       { path: '/admin/history', element: <AdminHistoryPage /> },
       { path: '/admin/anomalies', element: <AdminAllAnomaliesPage /> },
+      { path: '/admin/assignations', element: <AdminAssignationPage /> },
       { path: '/testeur/taches', element: <TesteurTachesPage /> },
       { path: '/developpeur/anomalies', element: <DeveloppeurAnomaliesPage /> },
       { path: '/anomalies/:anomalieId', element: <AnomalieDetailPage /> },
@@ -48,4 +52,4 @@ export const router = createBrowserRouter([
     path: '*',
     element: <Navigate to="/" replace />
   }
-]);
+]); 

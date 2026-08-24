@@ -7,7 +7,7 @@ import { useNavigate, useLocation, Outlet } from 'react-router';
 import {
   Bell, LogOut, Menu, Home, FolderKanban, TestTube,
   BarChart3, ChevronRight, Bug, Users, Sparkles, Languages, KeyRound, Eye, EyeOff, Search,
-  ClipboardList, FileText, Settings, Shield, Clock
+  ClipboardList, FileText, Settings, Shield, Clock, UserPlus, Package
 } from 'lucide-react';
 import { CommandPalette } from './CommandPalette';
 import { Breadcrumbs } from './ui/Breadcrumbs';
@@ -124,6 +124,12 @@ export function Layout() {
       ],
     },
     {
+      label: t('nav.section_portfolio'),
+      items: [
+        { path: '/produits', label: t('nav.products'), icon: Package, roles: ['admin', 'chef_testeur'] },
+      ],
+    },
+    {
       label: t('nav.section_projects'),
       items: [
         { path: '/projets', label: t('nav.projects'), icon: FolderKanban, roles: ['admin', 'chef_testeur'] },
@@ -141,6 +147,7 @@ export function Layout() {
       label: t('nav.section_admin'),
       items: [
         { path: '/admin/anomalies', label: t('nav.all_anomalies'), icon: Shield, roles: ['admin'] },
+        { path: '/admin/assignations', label: t('breadcrumbs.assignment'), icon: UserPlus, roles: ['admin'] },
         { path: '/admin/utilisateurs', label: t('nav.users'), icon: Users, roles: ['admin'] },
         { path: '/admin/history', label: t('nav.history'), icon: FileText, roles: ['admin'] },
         { path: '/reporting', label: t('nav.reporting'), icon: BarChart3, roles: ['admin', 'chef_testeur'] },

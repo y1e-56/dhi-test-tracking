@@ -392,6 +392,103 @@ export function setupEventSubscribers(io) {
   bus.on('project:archived', async () => { if (io) { emitDataChanged(io, 'projects'); emitDataChanged(io, 'campaigns'); } });
   bus.on('project:deleted', async () => { if (io) emitDataChanged(io, 'projects'); });
 
+  // ── Portefeuille produits / releases / environnements ────
+
+  bus.on('product:created', async ({ product, user_id }) => {
+    try {
+      await db.history.addAction({
+        entity_type: 'product',
+        entity_id: product.id,
+        user_id,
+        action_type: 'created',
+        description: `Produit "${product.name}" créé`,
+      });
+    } catch (e) {
+      console.error('[events] Erreur history product:created', e);
+    }
+  });
+  bus.on('product:updated', async ({ product_id, user_id }) => {
+    if (!product_id) return;
+    try {
+      await db.history.addAction({
+        entity_type: 'product',
+        entity_id: product_id,
+        user_id: user_id || null,
+        action_type: 'updated',
+        description: 'Produit mis à jour',
+      });
+    } catch (e) {
+      console.error('[events] Erreur history product:updated', e);
+    }
+  });
+  bus.on('product:archived', async ({ product, product_id, user_id }) => {
+    try {
+      await db.history.addAction({
+        entity_type: 'product',
+        entity_id: product_id || product?.id,
+        user_id: user_id || null,
+        action_type: 'archived',
+        description: `Produit "${product?.name || ''}" archivé`,
+      });
+    } catch (e) {
+      console.error('[events] Erreur history product:archived', e);
+    }
+  });
+
+  bus.on('release:created', async ({ release, user_id }) => {
+    try {
+      await db.history.addAction({
+        entity_type: 'release',
+        entity_id: release.id,
+        user_id,
+        action_type: 'created',
+        description: `Version "${release.version}" créée (produit #${release.product_id})`,
+      });
+    } catch (e) {
+      console.error('[events] Erreur history release:created', e);
+    }
+  });
+  bus.on('release:updated', async ({ release, user_id }) => {
+    try {
+      await db.history.addAction({
+        entity_type: 'release',
+        entity_id: release.id,
+        user_id: user_id || null,
+        action_type: 'updated',
+        description: `Version "${release.version}" mise à jour`,
+      });
+    } catch (e) {
+      console.error('[events] Erreur history release:updated', e);
+    }
+  });
+
+  bus.on('environment:created', async ({ environment, user_id }) => {
+    try {
+      await db.history.addAction({
+        entity_type: 'environment',
+        entity_id: environment.id,
+        user_id,
+        action_type: 'created',
+        description: `Environnement "${environment.name}" créé (produit #${environment.product_id})`,
+      });
+    } catch (e) {
+      console.error('[events] Erreur history environment:created', e);
+    }
+  });
+  bus.on('environment:updated', async ({ environment, user_id }) => {
+    try {
+      await db.history.addAction({
+        entity_type: 'environment',
+        entity_id: environment.id,
+        user_id: user_id || null,
+        action_type: 'updated',
+        description: `Environnement "${environment.name}" mis à jour`,
+      });
+    } catch (e) {
+      console.error('[events] Erreur history environment:updated', e);
+    }
+  });
+
   bus.on('feature:created', async () => { if (io) emitDataChanged(io, 'features'); });
   bus.on('feature:updated', async () => { if (io) emitDataChanged(io, 'features'); });
   bus.on('feature:deleted', async () => { if (io) emitDataChanged(io, 'features'); });

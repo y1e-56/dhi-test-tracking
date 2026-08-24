@@ -15,7 +15,7 @@ import {
 } from './ui/command';
 import {
   FolderKanban, TestTube, Bug, Users, BarChart3, Home,
-  Search, FileText, AlertTriangle,
+  Search, FileText, AlertTriangle, Package,
 } from 'lucide-react';
 
 interface CommandPaletteProps {
@@ -83,6 +83,12 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             <span>{t('nav.dashboard')}</span>
             <CommandShortcut>⌘1</CommandShortcut>
           </CommandItem>
+          {showProjets && (
+            <CommandItem onSelect={() => handleSelect('/produits')}>
+              <Package className="w-4 h-4 text-slate-500" />
+              <span>{t('nav.products')}</span>
+            </CommandItem>
+          )}
           {showProjets && (
             <CommandItem onSelect={() => handleSelect('/projets')}>
               <FolderKanban className="w-4 h-4 text-indigo-500" />

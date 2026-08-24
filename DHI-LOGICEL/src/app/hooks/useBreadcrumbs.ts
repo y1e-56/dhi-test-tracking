@@ -24,6 +24,9 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
       case 'dashboard':
         return [dashboard];
 
+      case 'produits':
+        return [dashboard, { label: t('nav.products') }];
+
       case 'projets':
         return [dashboard, { label: t('nav.projects') }];
 

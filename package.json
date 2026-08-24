@@ -7,6 +7,7 @@
     "start": "node backend/src/index.js",
     "dev": "node --watch backend/src/index.js",
     "seed": "node backend/src/seed.js",
+    "backfill:products": "node backend/src/scripts/backfillDefaultProduct.js",
     "test:e2e": "cd tests && npx playwright test flows/",
     "test:ux": "cd tests && npx playwright test ux-audit/audit.spec.ts",
     "test:ux:report": "cd tests && npx tsx ux-audit/audit-runner.ts",

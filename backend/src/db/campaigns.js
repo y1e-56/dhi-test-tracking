@@ -85,10 +85,10 @@ export async function findByName(projectId, name, excludeId = null, client = nul
 export async function create(data, client = null) {
   const c = client || pool;
   const result = await c.query(
-    `INSERT INTO campaigns (project_id, name, objective, organization_mode, start_date, end_date)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    `INSERT INTO campaigns (project_id, name, objective, organization_mode, start_date, end_date, release_id, environment_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
     [data.project_id, data.name, data.objective || null, data.organization_mode || 'exploratory',
-     data.start_date || null, data.end_date || null]
+     data.start_date || null, data.end_date || null, data.release_id || null, data.environment_id || null]
   );
   const campaign = result.rows[0];
   if (data.test_lead_ids && data.test_lead_ids.length > 0) {
@@ -100,7 +100,7 @@ export async function create(data, client = null) {
 
 export async function update(id, data, client = null) {
   const c = client || pool;
-  const allowedFields = ['name', 'objective', 'organization_mode', 'start_date', 'end_date', 'status'];
+  const allowedFields = ['name', 'objective', 'organization_mode', 'start_date', 'end_date', 'status', 'release_id', 'environment_id'];
   const sets = [];
   const values = [];
   let idx = 1;

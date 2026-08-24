@@ -3,6 +3,17 @@ import * as db from '../db/index.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 
+export function requireRole(...roles) {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'Accès non autorisé pour votre rôle' });
+    }
+    next();
+  };
+}
+
+export const requireQualityAdmin = requireRole('admin', 'quality_manager');
+
 export async function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

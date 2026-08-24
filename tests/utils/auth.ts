@@ -45,9 +45,9 @@ export async function loginAs(page: Page, userKey: keyof typeof USERS) {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
 
-  await page.getByPlaceholder(/email/i).fill(user.email);
-  await page.getByPlaceholder(/mot de passe|password/i).fill(user.password);
-  await page.getByRole('button', { name: /se connecter|login|connexion/i }).click();
+  await page.locator('#email').fill(user.email);
+  await page.locator('#password').fill(user.password);
+  await page.getByRole('button', { name: /se connecter|login|connexion|sign in/i }).click();
 
   await page.waitForURL('**/dashboard', { timeout: 15_000 });
   await expect(page).toHaveURL(/dashboard/);

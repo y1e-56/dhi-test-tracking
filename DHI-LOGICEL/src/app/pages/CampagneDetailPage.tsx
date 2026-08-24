@@ -29,7 +29,7 @@ function joursRestants(iso: string): number {
 }
 
 function formatDateFR(iso?: string): string {
-  return iso ? new Date(iso).toLocaleDateString('fr-FR') : '';
+  return iso ? new Date(iso).toLocaleDateString('fr-FR') : ''; 
 }
 
 export function CampagneDetailPage() {

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import authRouter from './auth.js';
+import productsRouter from './products.js';
 import projectsRouter from './projects.js';
 import campaignsRouter from './campaigns.js';
 import featuresRouter from './features.js';
@@ -13,6 +14,7 @@ import chatRouter from './chat.js';
 const router = Router();
 
 router.use('/auth', authRouter);
+router.use('/products', productsRouter);
 router.use('/projects', projectsRouter);
 router.use('/campaigns', campaignsRouter);
 router.use('/features', featuresRouter);
