@@ -117,7 +117,7 @@ export const productService = {
 
   async getEnvironments(id: string): Promise<EnvironnementProduit[]> {
     try {
-      const response = await api.get<any[]>(`/products/${id}/environments`);
+      const response = await api.get<any[]>(`/products/${id}/environments`, { params: { includeInactive: true } });
       return response.data.map((e: any) => ({
         id: String(e.id),
         produitId: String(e.product_id),
@@ -130,6 +130,60 @@ export const productService = {
     } catch (err) {
       console.error('[productService] Erreur getEnvironments:', err);
       throw err;
+    }
+  },
+
+  async createEnvironment(
+    produitId: string,
+    env: { nom: string; type: EnvironnementProduit['type']; description?: string; actif?: boolean }
+  ): Promise<EnvironnementProduit> {
+    try {
+      const response = await api.post<{ environment: any }>(`/products/${produitId}/environments`, {
+        name: env.nom,
+        type: env.type,
+        description: env.description || undefined,
+        is_active: env.actif ?? true,
+      });
+      const e = response.data.environment;
+      return {
+        id: String(e.id),
+        produitId: String(e.product_id),
+        nom: e.name,
+        type: e.type,
+        description: e.description ?? '',
+        actif: Boolean(e.is_active),
+        dateCreation: e.created_at,
+      };
+    } catch (e) {
+      console.error('[productService] Erreur createEnvironment:', e);
+      throw e;
+    }
+  },
+
+  async updateEnvironment(
+    produitId: string,
+    envId: string,
+    env: { nom?: string; type?: EnvironnementProduit['type']; description?: string; actif?: boolean }
+  ): Promise<void> {
+    try {
+      await api.put(`/products/${produitId}/environments/${envId}`, {
+        ...(env.nom !== undefined ? { name: env.nom } : {}),
+        ...(env.type !== undefined ? { type: env.type } : {}),
+        ...(env.description !== undefined ? { description: env.description } : {}),
+        ...(env.actif !== undefined ? { is_active: env.actif } : {}),
+      });
+    } catch (e) {
+      console.error('[productService] Erreur updateEnvironment:', e);
+      throw e;
+    }
+  },
+
+  async deleteEnvironment(produitId: string, envId: string): Promise<void> {
+    try {
+      await api.delete(`/products/${produitId}/environments/${envId}`);
+    } catch (e) {
+      console.error('[productService] Erreur deleteEnvironment:', e);
+      throw e;
     }
   },
 

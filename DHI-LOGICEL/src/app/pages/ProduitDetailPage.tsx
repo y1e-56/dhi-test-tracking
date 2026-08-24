@@ -1,19 +1,48 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Textarea } from '../components/ui/textarea';
+import { Switch } from '../components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { ArrowLeft, Package, Tag, Server, FolderKanban, Loader2, AlertCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../components/ui/alert-dialog';
+import { ArrowLeft, Package, Tag, Server, FolderKanban, Loader2, AlertCircle, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Produit, ReleaseProduit, EnvironnementProduit } from '../types';
 import { productService } from '../services/productService';
 import { getErrorMessage } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+
+const ENV_TYPES: EnvironnementProduit['type'][] = ['development', 'integration', 'staging', 'production'];
 
 export function ProduitDetailPage() {
   const { t } = useTranslation();
   const { produitId } = useParams<{ produitId: string }>();
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const peutGerer = currentUser?.role === 'admin' || currentUser?.role === 'chef_testeur';
+
+  const [dialogEnvOpen, setDialogEnvOpen] = useState(false);
+  const [envEnEdition, setEnvEnEdition] = useState<EnvironnementProduit | null>(null);
+  const [envForm, setEnvForm] = useState({ nom: '', type: 'development' as EnvironnementProduit['type'], description: '', actif: true });
+  const [envErrors, setEnvErrors] = useState({ nom: '' });
+  const [envASupprimer, setEnvASupprimer] = useState<EnvironnementProduit | null>(null);
+  const [suppressionEnCours, setSuppressionEnCours] = useState(false);
 
   const [produit, setProduit] = useState<Produit | null>(null);
   const [releases, setReleases] = useState<ReleaseProduit[]>([]);
@@ -45,6 +74,65 @@ export function ProduitDetailPage() {
   }, [produitId]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const ouvrirDialogEnv = (env?: EnvironnementProduit) => {
+    setEnvEnEdition(env ?? null);
+    setEnvForm(env
+      ? { nom: env.nom, type: env.type, description: env.description, actif: env.actif }
+      : { nom: '', type: 'development', description: '', actif: true });
+    setEnvErrors({ nom: '' });
+    setDialogEnvOpen(true);
+  };
+
+  const soumettreEnv = async () => {
+    if (!produitId) return;
+    if (!envForm.nom.trim()) {
+      setEnvErrors({ nom: t('products.env_name_required') });
+      return;
+    }
+    try {
+      if (envEnEdition) {
+        await productService.updateEnvironment(produitId, envEnEdition.id, {
+          nom: envForm.nom.trim(),
+          type: envForm.type,
+          description: envForm.description.trim(),
+          actif: envForm.actif,
+        });
+        toast.success(t('products.toast.env_updated'));
+      } else {
+        await productService.createEnvironment(produitId, {
+          nom: envForm.nom.trim(),
+          type: envForm.type,
+          description: envForm.description.trim() || undefined,
+          actif: envForm.actif,
+        });
+        toast.success(t('products.toast.env_created'));
+      }
+      setDialogEnvOpen(false);
+      fetchAll();
+    } catch (error: any) {
+      if (error?.response?.status === 409) {
+        setEnvErrors({ nom: getErrorMessage(error) });
+        return;
+      }
+      toast.error(getErrorMessage(error) || t('products.toast.env_error'));
+    }
+  };
+
+  const confirmerSuppressionEnv = async () => {
+    if (!produitId || !envASupprimer) return;
+    setSuppressionEnCours(true);
+    try {
+      await productService.deleteEnvironment(produitId, envASupprimer.id);
+      toast.success(t('products.toast.env_deleted'));
+      setEnvASupprimer(null);
+      fetchAll();
+    } catch (error: any) {
+      toast.error(getErrorMessage(error) || t('products.toast.env_error'));
+    } finally {
+      setSuppressionEnCours(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -144,6 +232,14 @@ export function ProduitDetailPage() {
         </TabsContent>
 
         <TabsContent value="environnements" className="mt-4">
+          {peutGerer && (
+            <div className="flex justify-end mb-3">
+              <Button size="sm" onClick={() => ouvrirDialogEnv()}>
+                <Plus className="w-4 h-4 mr-2" />
+                {t('products.env_new')}
+              </Button>
+            </div>
+          )}
           {environments.length === 0 ? (
             <Card>
               <CardContent className="py-10 text-center">
@@ -166,9 +262,21 @@ export function ProduitDetailPage() {
                   </CardHeader>
                   <CardContent className="text-sm text-gray-600">
                     {env.description && <CardDescription className="mb-2">{env.description}</CardDescription>}
-                    <Badge variant={env.actif ? 'default' : 'secondary'}>
-                      {env.actif ? t('products.env_active') : t('products.env_inactive')}
-                    </Badge>
+                    <div className="flex items-center justify-between mt-1">
+                      <Badge variant={env.actif ? 'default' : 'secondary'}>
+                        {env.actif ? t('products.env_active') : t('products.env_inactive')}
+                      </Badge>
+                      {peutGerer && (
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => ouvrirDialogEnv(env)} title={t('common.edit')}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => setEnvASupprimer(env)} title={t('common.delete')}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -208,6 +316,92 @@ export function ProduitDetailPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={dialogEnvOpen} onOpenChange={setDialogEnvOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{envEnEdition ? t('products.env_edit_title') : t('products.env_create_title')}</DialogTitle>
+            <DialogDescription>{t('products.dialog.create_desc')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="env-nom">{t('products.name_label')}</Label>
+              <Input
+                id="env-nom"
+                value={envForm.nom}
+                onChange={(e) => {
+                  setEnvForm({ ...envForm, nom: e.target.value });
+                  if (envErrors.nom) setEnvErrors({ nom: '' });
+                }}
+                placeholder={t('products.env_name_placeholder')}
+                className={envErrors.nom ? 'border-red-500 focus:border-red-500' : ''}
+              />
+              {envErrors.nom && <p className="text-sm text-red-500">{envErrors.nom}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>{t('products.env_type_label')}</Label>
+              <Select value={envForm.type} onValueChange={(v) => setEnvForm({ ...envForm, type: v as EnvironnementProduit['type'] })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ENV_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {t(`products.env_type.${type}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="env-description">{t('common.description')}</Label>
+              <Textarea
+                id="env-description"
+                value={envForm.description}
+                onChange={(e) => setEnvForm({ ...envForm, description: e.target.value })}
+                placeholder={t('products.description_placeholder')}
+                rows={3}
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <Label htmlFor="env-actif" className="cursor-pointer">{t('products.env_active')}</Label>
+              <Switch id="env-actif" checked={envForm.actif} onCheckedChange={(v) => setEnvForm({ ...envForm, actif: v })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogEnvOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={soumettreEnv}>
+              {envEnEdition ? t('common.save') : t('common.create')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!envASupprimer} onOpenChange={(o) => !o && setEnvASupprimer(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('products.env_delete_title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('products.env_delete_confirm', { nom: envASupprimer?.nom })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={suppressionEnCours}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              disabled={suppressionEnCours}
+              onClick={(e) => {
+                e.preventDefault();
+                confirmerSuppressionEnv();
+              }}
+            >
+              {suppressionEnCours ? t('common.loading') : t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
