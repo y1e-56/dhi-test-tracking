@@ -36,7 +36,7 @@ test.describe('Testeur Flow', () => {
     const networkErrors = setupNetworkCapture(page);
 
     await loginAs(page, 'testeur');
-    await page.getByRole('link', { name: /tache|task/i }).first().click();
+    await page.getByRole('link', { name: /t[aâ]che|task/i }).first().click();
     await page.waitForLoadState('networkidle');
     await expect(page).toHaveURL(/testeur\/taches/);
     results.push(await capturePageResult(page, consoleErrors, networkErrors, RESULTS_DIR));

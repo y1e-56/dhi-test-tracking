@@ -40,16 +40,39 @@ export const USERS: Record<string, TestUser> = {
   },
 };
 
+const sessionCache = new Map<string, { token: string; user: string }>();
+
 export async function loginAs(page: Page, userKey: keyof typeof USERS) {
   const user = USERS[userKey];
-  await page.goto('/');
-  await page.waitForLoadState('networkidle');
+  const cached = sessionCache.get(userKey);
 
-  await page.locator('#email').fill(user.email);
-  await page.locator('#password').fill(user.password);
-  await page.getByRole('button', { name: /se connecter|login|connexion|sign in/i }).click();
+  if (cached) {
+    await page.addInitScript(
+      ({ token, user }: { token: string; user: string }) => {
+        window.localStorage.setItem('token', token);
+        window.localStorage.setItem('currentUser', user);
+      },
+      cached
+    );
+    await page.goto('/dashboard');
+  } else {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
 
-  await page.waitForURL('**/dashboard', { timeout: 15_000 });
+    await page.locator('#email').fill(user.email);
+    await page.locator('#password').fill(user.password);
+    await page.getByRole('button', { name: /se connecter|login|connexion|sign in/i }).click();
+
+    await page.waitForURL('**/dashboard', { timeout: 15_000 });
+    const session = await page.evaluate(() => ({
+      token: window.localStorage.getItem('token') || '',
+      user: window.localStorage.getItem('currentUser') || '',
+    }));
+    if (session.token && session.user) {
+      sessionCache.set(userKey, session);
+    }
+  }
+
   await expect(page).toHaveURL(/dashboard/);
 }
 

@@ -32,7 +32,7 @@ test.describe('Login Flow', () => {
     await page.locator('#password').fill('WRONG_PASSWORD');
     await page.getByRole('button', { name: /se connecter|login|connexion|sign in/i }).click();
 
-    await expect(page.locator('.toast, [role="alert"], .error, .text-red, .text-destructive').first())
+    await expect(page.locator('[role="alert"], [class*="text-red"], .toast').first())
       .toBeVisible({ timeout: 10_000 });
   });
 
@@ -44,7 +44,7 @@ test.describe('Login Flow', () => {
     await page.locator('#password').fill('whatever123');
     await page.getByRole('button', { name: /se connecter|login|connexion|sign in/i }).click();
 
-    await expect(page.locator('.toast, [role="alert"], .error, .text-red, .text-destructive').first())
+    await expect(page.locator('[role="alert"], [class*="text-red"], .toast').first())
       .toBeVisible({ timeout: 10_000 });
   });
 

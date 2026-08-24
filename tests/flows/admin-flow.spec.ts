@@ -83,7 +83,7 @@ test.describe('Admin Flow', () => {
     const networkErrors = setupNetworkCapture(page);
 
     await loginAs(page, 'admin');
-    await page.getByRole('link', { name: /reporting/i }).first().click();
+    await page.getByRole('link', { name: /rapport|reporting/i }).first().click();
     await page.waitForLoadState('networkidle');
     await expect(page).toHaveURL(/reporting/);
     results.push(await capturePageResult(page, consoleErrors, networkErrors, RESULTS_DIR));
@@ -91,6 +91,7 @@ test.describe('Admin Flow', () => {
 
   test('admin: cmd+K ouvre le palette de recherche', async ({ page }) => {
     await loginAs(page, 'admin');
+    await expect(page.locator('nav, aside, [class*="sidebar"]').first()).toBeVisible();
     await page.keyboard.press('Control+k');
     await expect(page.locator('[role="dialog"], [cmdk-dialog], [class*="command"]').first())
       .toBeVisible({ timeout: 5_000 });

@@ -15,6 +15,7 @@ export default defineConfig({
   ],
   use: {
     baseURL: BASE_URL,
+    locale: 'fr-FR',
     trace: 'on-first-retry',
     screenshot: 'on',
     video: 'on-first-retry',

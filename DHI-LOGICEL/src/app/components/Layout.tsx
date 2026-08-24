@@ -228,9 +228,10 @@ export function Layout() {
                   const Icon = link.icon;
                   const active = isActive(link.path);
                   return (
-                    <button
+                    <a
                       key={link.path}
-                      onClick={() => { navigate(link.path); setSidebarOpen(false); }}
+                      href={link.path}
+                      onClick={(e) => { e.preventDefault(); navigate(link.path); setSidebarOpen(false); }}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 text-left group ${
                         active
                           ? 'bg-gradient-to-r from-indigo-500/25 to-indigo-500/10 text-white font-semibold shadow-lg shadow-indigo-500/10 border border-indigo-500/20'
@@ -240,7 +241,7 @@ export function Layout() {
                       <Icon className={`w-4 h-4 flex-shrink-0 transition-colors ${active ? 'text-indigo-300' : 'group-hover:text-white/80'}`} />
                       <span className="flex-1 truncate">{link.label}</span>
                       {active && <ChevronRight className="w-3.5 h-3.5 text-indigo-300 flex-shrink-0" />}
-                    </button>
+                    </a>
                   );
                 })}
               </div>

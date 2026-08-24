@@ -77,7 +77,7 @@ test.describe('Chef Testeur Flow', () => {
     const networkErrors = setupNetworkCapture(page);
 
     await loginAs(page, 'chef');
-    await page.getByRole('link', { name: /reporting/i }).first().click();
+    await page.getByRole('link', { name: /rapport|reporting/i }).first().click();
     await page.waitForLoadState('networkidle');
     await expect(page).toHaveURL(/reporting/);
     results.push(await capturePageResult(page, consoleErrors, networkErrors, RESULTS_DIR));
@@ -85,6 +85,7 @@ test.describe('Chef Testeur Flow', () => {
 
   test('chef: cmd+K ouvre le palette', async ({ page }) => {
     await loginAs(page, 'chef');
+    await expect(page.locator('nav, aside, [class*="sidebar"]').first()).toBeVisible();
     await page.keyboard.press('Control+k');
     await expect(page.locator('[role="dialog"], [cmdk-dialog], [class*="command"]').first())
       .toBeVisible({ timeout: 5_000 });

@@ -1,6 +1,6 @@
 import { createContext, useContext, ReactNode, useEffect, useCallback, useState } from 'react';
 import { toast } from 'sonner';
-import { Projet, Campagne, Fonctionnalite, Anomalie, Notification, HistoriqueAction, StatutFonctionnalite, StatutAnomalie } from '../types';
+import { Projet, Campagne, Fonctionnalite, Anomalie, Notification, HistoriqueAction, StatutFonctionnalite, StatutAnomalie, User } from '../types';
 import { useAuth } from './AuthContext';
 import { useSocket } from './SocketProvider';
 import { useProjets } from './ProjetContext';
@@ -10,6 +10,7 @@ import { useAnomalies } from './AnomalieContext';
 import { useNotifications } from './NotificationContext';
 import { useHistorique } from './HistoriqueContext';
 import { mapCampagneFromBackend, mapNotificationFromBackend } from '../utils/mappers';
+import { userService } from '../services/userService';
 
 interface DataContextType {
   projets: Projet[];
@@ -18,6 +19,7 @@ interface DataContextType {
   anomalies: Anomalie[];
   notifications: Notification[];
   historiqueActions: HistoriqueAction[];
+  users: User[];
   ajouterProjet: (projet: Projet) => Promise<void>;
   modifierProjet: (id: string, projet: Partial<Projet>) => Promise<void>;
   archiverProjet: (id: string) => Promise<void>;
@@ -72,15 +74,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const { historiqueActions, ajouterHistorique } = useHistorique();
 
+  const [users, setUsers] = useState<User[]>([]);
+  const refreshUsers = useCallback(async () => {
+    try {
+      setUsers(await userService.getAll());
+    } catch {
+      setUsers([]);
+    }
+  }, []);
+
   const refreshAll = useCallback(async () => {
     await Promise.all([
       refreshProjets(),
       refreshCampagnes(),
       refreshFonctionnalites(),
       refreshAnomalies(),
-      refreshNotifications()
+      refreshNotifications(),
+      refreshUsers()
     ]);
-  }, [refreshProjets, refreshCampagnes, refreshFonctionnalites, refreshAnomalies, refreshNotifications]);
+  }, [refreshProjets, refreshCampagnes, refreshFonctionnalites, refreshAnomalies, refreshNotifications, refreshUsers]);
 
   useEffect(() => {
     if (currentUser && !dataLoaded) {
@@ -165,6 +177,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const value: DataContextType = {
     projets, campagnes, fonctionnalites, anomalies, notifications, historiqueActions,
+    users,
     ajouterProjet, modifierProjet, archiverProjet, restaurerProjet, supprimerProjet,
     ajouterCampagne, modifierCampagne,
     ajouterFonctionnalite, modifierFonctionnalite, changerStatutFonctionnalite,
