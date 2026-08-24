@@ -73,6 +73,19 @@ export const productService = {
     }
   },
 
+  async create(produit: { nom: string; description?: string }): Promise<Produit> {
+    try {
+      const response = await api.post<{ product: ProduitBackend }>('/products', {
+        name: produit.nom,
+        description: produit.description || undefined,
+      });
+      return mapProduitFromBackend(response.data.product);
+    } catch (e) {
+      console.error('[productService] Erreur create:', e);
+      throw e;
+    }
+  },
+
   async getById(id: string): Promise<Produit> {
     try {
       const response = await api.get<ProduitBackend>(`/products/${id}`);
