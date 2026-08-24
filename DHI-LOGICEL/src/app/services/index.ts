@@ -8,3 +8,4 @@ export { anomalyService } from './anomalyService';
 export { dashboardService } from './dashboardService';
 export { userService } from './userService';
 export { testCaseService } from './testCaseService';
+export { productService } from './productService';

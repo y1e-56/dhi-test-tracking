@@ -31,6 +31,21 @@ export interface Projet {
   chefTesteurIds: string[];
 }
 
+export interface Produit {
+  id: string;
+  nom: string;
+  description: string;
+  estArchive: boolean;
+  ownerId?: string | null;
+  qualityManagerId?: string | null;
+  creePar?: string | null;
+  dateCreation: string;
+  dateModification: string;
+  nbProjets: number;
+  nbVersions: number;
+  nbEnvironnements: number;
+}
+
 export interface Campagne {
   id: string;
   nom: string;
