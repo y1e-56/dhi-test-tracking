@@ -140,6 +140,7 @@ export const mapProjetFromBackend = (p: any): Projet => ({
   creePar: String(p.created_by),
   dateCreation: p.created_at,
   chefTesteurIds: (p.test_lead_ids || []).map((id: any) => String(id)),
+  produitId: p.product_id != null ? String(p.product_id) : null,
 });
 
 export const mapProjetToBackend = (p: Partial<Projet>) => ({
@@ -148,6 +149,7 @@ export const mapProjetToBackend = (p: Partial<Projet>) => ({
   start_date: p.dateDebut,
   end_date: p.dateFin,
   test_lead_ids: p.chefTesteurIds?.map(id => parseInt(id)),
+  product_id: p.produitId ? parseInt(p.produitId, 10) : null,
 });
 
 // =====================

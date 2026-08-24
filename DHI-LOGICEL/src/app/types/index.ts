@@ -29,6 +29,7 @@ export interface Projet {
   creePar: string;
   dateCreation: string;
   chefTesteurIds: string[];
+  produitId?: string | null;
 }
 
 export interface Produit {

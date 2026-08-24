@@ -13,8 +13,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Loader2, Plus, Archive, Edit, FolderKanban, Trash2, Calendar, UserCog, Search, RotateCcw } from 'lucide-react';
 import { Checkbox } from '../components/ui/checkbox';
-import { Projet } from '../types';
+import { Projet, Produit } from '../types';
 import { projectService } from '../services/projectService';
+import { productService } from '../services/productService';
 import { getErrorMessage } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { useAsyncAction } from '../hooks/useAsyncAction';
@@ -49,8 +50,16 @@ export function ProjetsPage() {
     description: '',
     dateDebut: '',
     dateFin: '',
-    chefTesteurIds: [] as string[]
+    chefTesteurIds: [] as string[],
+    produitId: ''
   });
+  const [produitsDisponibles, setProduitsDisponibles] = useState<Produit[]>([]);
+
+  useEffect(() => {
+    productService.listPaginated({ limit: 100 })
+      .then(r => setProduitsDisponibles(r.data))
+      .catch(() => setProduitsDisponibles([]));
+  }, []);
   const [errors, setErrors] = useState({
     nom: '',
     dateDebut: '',
@@ -104,7 +113,8 @@ export function ProjetsPage() {
         description: projet.description,
         dateDebut: toDateInput(projet.dateDebut),
         dateFin: toDateInput(projet.dateFin),
-        chefTesteurIds: [...projet.chefTesteurIds]
+        chefTesteurIds: [...projet.chefTesteurIds],
+        produitId: projet.produitId ?? ''
       });
     } else {
       setEditingProjet(null);
@@ -113,7 +123,8 @@ export function ProjetsPage() {
         description: '',
         dateDebut: '',
         dateFin: '',
-        chefTesteurIds: []
+        chefTesteurIds: [],
+        produitId: ''
       });
     }
     setErrors({ nom: '', dateDebut: '', dateFin: '' });
@@ -170,16 +181,17 @@ export function ProjetsPage() {
 
     try {
       if (editingProjet) {
-        await modifierProjet(editingProjet.id, formData);
+        await modifierProjet(editingProjet.id, { ...formData, produitId: formData.produitId || null });
       } else {
         await ajouterProjet({
           ...formData,
+          produitId: formData.produitId || null,
           statut: 'actif' as const
         });
       }
 
       setDialogOpen(false);
-      setFormData({ nom: '', description: '', dateDebut: '', dateFin: '', chefTesteurIds: [] });
+      setFormData({ nom: '', description: '', dateDebut: '', dateFin: '', chefTesteurIds: [], produitId: '' });
       fetchProjets();
     } catch (error: any) {
       if (error?.response?.status === 409) {
@@ -241,6 +253,23 @@ export function ProjetsPage() {
                   placeholder="Description du projet..."
                   rows={3}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="produit">Produit associé</Label>
+                <Select
+                  value={formData.produitId || 'none'}
+                  onValueChange={(v) => setFormData({ ...formData, produitId: v === 'none' ? '' : v })}
+                >
+                  <SelectTrigger id="produit">
+                    <SelectValue placeholder="Sélectionner un produit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Aucun produit</SelectItem>
+                    {produitsDisponibles.filter(p => !p.estArchive).map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.nom}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
