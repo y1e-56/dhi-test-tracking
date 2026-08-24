@@ -1,5 +1,5 @@
 import api from './api';
-import { Produit } from '../types';
+import { Produit, ReleaseProduit, EnvironnementProduit } from '../types';
 
 interface ProduitBackend {
   id: number | string;
@@ -92,6 +92,58 @@ export const productService = {
       return mapProduitFromBackend(response.data);
     } catch (e) {
       console.error('[productService] Erreur getById:', e);
+      throw e;
+    }
+  },
+
+  async getReleases(id: string): Promise<ReleaseProduit[]> {
+    try {
+      const response = await api.get<any[]>(`/products/${id}/releases`);
+      return response.data.map((r: any) => ({
+        id: String(r.id),
+        produitId: String(r.product_id),
+        version: r.version,
+        description: r.description ?? '',
+        statut: r.status ?? 'planned',
+        datePrevue: r.planned_date ?? null,
+        livreeLe: r.released_at ?? null,
+        dateCreation: r.created_at,
+      }));
+    } catch (e) {
+      console.error('[productService] Erreur getReleases:', e);
+      throw e;
+    }
+  },
+
+  async getEnvironments(id: string): Promise<EnvironnementProduit[]> {
+    try {
+      const response = await api.get<any[]>(`/products/${id}/environments`);
+      return response.data.map((e: any) => ({
+        id: String(e.id),
+        produitId: String(e.product_id),
+        nom: e.name,
+        type: e.type,
+        description: e.description ?? '',
+        actif: Boolean(e.is_active),
+        dateCreation: e.created_at,
+      }));
+    } catch (err) {
+      console.error('[productService] Erreur getEnvironments:', err);
+      throw err;
+    }
+  },
+
+  async getProjects(id: string): Promise<{ id: string; nom: string; description: string; statut: string }[]> {
+    try {
+      const response = await api.get<any[]>(`/products/${id}/projects`);
+      return response.data.map((p: any) => ({
+        id: String(p.id),
+        nom: p.name,
+        description: p.description ?? '',
+        statut: p.status === 'archive' ? 'archive' : 'actif',
+      }));
+    } catch (e) {
+      console.error('[productService] Erreur getProjects:', e);
       throw e;
     }
   },

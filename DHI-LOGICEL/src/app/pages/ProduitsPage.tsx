@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -19,6 +20,7 @@ import { Pagination } from '../components/ui/pagination';
 
 export function ProduitsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
 
   const [produits, setProduits] = useState<Produit[]>([]);
@@ -216,7 +218,7 @@ export function ProduitsPage() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {produits.map((produit) => (
-              <Card key={produit.id} className="hover:shadow-md transition-shadow">
+              <Card key={produit.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/produits/${produit.id}`)}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2 mb-2 min-w-0">

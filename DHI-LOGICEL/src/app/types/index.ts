@@ -46,6 +46,27 @@ export interface Produit {
   nbEnvironnements: number;
 }
 
+export interface ReleaseProduit {
+  id: string;
+  produitId: string;
+  version: string;
+  description: string;
+  statut: 'planned' | 'in_progress' | 'released' | 'cancelled';
+  datePrevue?: string | null;
+  livreeLe?: string | null;
+  dateCreation: string;
+}
+
+export interface EnvironnementProduit {
+  id: string;
+  produitId: string;
+  nom: string;
+  type: 'development' | 'integration' | 'staging' | 'production';
+  description: string;
+  actif: boolean;
+  dateCreation: string;
+}
+
 export interface Campagne {
   id: string;
   nom: string;
