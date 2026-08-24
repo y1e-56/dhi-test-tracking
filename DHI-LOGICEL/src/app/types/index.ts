@@ -80,6 +80,8 @@ export interface Campagne {
   chefTesteurIds: string[];
   statut: 'en_preparation' | 'en_cours' | 'terminee' | 'archive';
   dateCreation: string;
+  versionId?: string | null;
+  environnementId?: string | null;
 }
 
 export interface Fonctionnalite {

@@ -13,8 +13,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Checkbox } from '../components/ui/checkbox';
 import { Loader2, Plus, TestTube, Users, Calendar, Search, X } from 'lucide-react';
-import { Campagne, Projet } from '../types';
+import { Campagne, Projet, Produit, ReleaseProduit, EnvironnementProduit } from '../types';
 import { campaignService } from '../services/campaignService';
+import { productService } from '../services/productService';
 import { getErrorMessage } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { useAsyncAction } from '../hooks/useAsyncAction';
@@ -53,8 +54,40 @@ export function CampagnesPage() {
     dateFin: '',
     chefTesteurIds: [] as string[],
     equipeTesteurs: [] as string[],
-    equipeDeveloppeurs: [] as string[]
+    equipeDeveloppeurs: [] as string[],
+    versionId: '',
+    environnementId: ''
   });
+  const [produits, setProduits] = useState<Produit[]>([]);
+  const [releasesProduit, setReleasesProduit] = useState<ReleaseProduit[]>([]);
+  const [environnementsProduit, setEnvironnementsProduit] = useState<EnvironnementProduit[]>([]);
+
+  useEffect(() => {
+    productService.listPaginated({ limit: 100 })
+      .then(r => setProduits(r.data))
+      .catch(() => setProduits([]));
+  }, []);
+
+  const chargerContexteProduit = useCallback(async (projetId: string) => {
+    if (!projetId) return;
+    const produitId = projets.find(p => p.id === projetId)?.produitId;
+    if (!produitId) {
+      setReleasesProduit([]);
+      setEnvironnementsProduit([]);
+      return;
+    }
+    try {
+      const [rels, envs] = await Promise.all([
+        productService.getReleases(produitId),
+        productService.getEnvironments(produitId),
+      ]);
+      setReleasesProduit(rels);
+      setEnvironnementsProduit(envs);
+    } catch {
+      setReleasesProduit([]);
+      setEnvironnementsProduit([]);
+    }
+  }, [projets]);
   const [errors, setErrors] = useState({
     nom: '',
     projetId: '',
@@ -110,8 +143,11 @@ export function CampagnesPage() {
         dateFin: toDateInput(campagne.dateFin),
         chefTesteurIds: campagne.chefTesteurIds || [],
         equipeTesteurs: campagne.equipeTesteurs,
-        equipeDeveloppeurs: campagne.equipeDeveloppeurs
+        equipeDeveloppeurs: campagne.equipeDeveloppeurs,
+        versionId: campagne.versionId ?? '',
+        environnementId: campagne.environnementId ?? ''
       });
+      chargerContexteProduit(campagne.projetId);
     } else {
       setEditingCampagne(null);
       setFormData({
@@ -122,10 +158,14 @@ export function CampagnesPage() {
         dateFin: '',
         chefTesteurIds: [currentUser.id],
         equipeTesteurs: [],
-        equipeDeveloppeurs: []
+        equipeDeveloppeurs: [],
+        versionId: '',
+        environnementId: ''
       });
+      setReleasesProduit([]);
+      setEnvironnementsProduit([]);
     }
-    setErrors({ nom: '', projetId: '', dateDebut: '', dateFin: '' });
+    setErrors({ nom: '', projetId: '', chefTesteurIds: '', dateDebut: '', dateFin: '' });
     setDialogOpen(true);
   };
 
@@ -142,10 +182,19 @@ export function CampagnesPage() {
     } else if (dateDebut && dateFin && dateFin < dateDebut) {
       errs.dateFin = t('campagne.list.end_after_start');
     }
-    if (projet && dateDebut && projet.dateDebut && dateDebut < projet.dateDebut) {
-      errs.dateDebut = t('campagne.list.out_of_project_range', { debut: projet.dateDebut, fin: projet.dateFin });
-    } else if (projet && dateFin && projet.dateFin && dateFin > projet.dateFin) {
-      errs.dateFin = t('campagne.list.out_of_project_range', { debut: projet.dateDebut, fin: projet.dateFin });
+    const toLocalDate = (v?: string) => {
+      if (!v) return '';
+      const d = new Date(v);
+      return isNaN(d.getTime())
+        ? v.slice(0, 10)
+        : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+    const projDebut = toLocalDate(projet?.dateDebut);
+    const projFin = toLocalDate(projet?.dateFin);
+    if (projet && dateDebut && projDebut && dateDebut < projDebut) {
+      errs.dateDebut = t('campagne.list.out_of_project_range', { debut: projDebut, fin: projFin });
+    } else if (projet && dateFin && projFin && dateFin > projFin) {
+      errs.dateFin = t('campagne.list.out_of_project_range', { debut: projDebut, fin: projFin });
     }
     return errs;
   };
@@ -194,16 +243,25 @@ export function CampagnesPage() {
 
     try {
       if (editingCampagne) {
-        await modifierCampagne(editingCampagne.id, formData);
+        await modifierCampagne(editingCampagne.id, {
+          ...formData,
+          versionId: formData.versionId || null,
+          environnementId: formData.environnementId || null
+        });
       } else {
         await ajouterCampagne({
           ...formData,
+          id: '',
+          dateCreation: '',
+          versionId: formData.versionId || null,
+          environnementId: formData.environnementId || null,
           statut: 'en_preparation' as const
         });
       }
 
       setDialogOpen(false);
       setErrors({ nom: '', projetId: '', chefTesteurIds: '', dateDebut: '', dateFin: '' });
+      setFormData(prev => ({ ...prev, nom: '', description: '', dateDebut: '', dateFin: '', versionId: '', environnementId: '' }));
       fetchCampagnes();
     } catch (error: any) {
       if (error?.response?.status === 409) {
@@ -290,9 +348,10 @@ export function CampagnesPage() {
                 <Select value={formData.projetId || undefined} onValueChange={(value) => {
                   const projet = projets.find(p => p.id === value);
                   const chefsProjet = [...new Set([...(projet?.chefTesteurIds || []), currentUser.id])];
-                  setFormData({ ...formData, projetId: value, chefTesteurIds: editingCampagne ? formData.chefTesteurIds : chefsProjet });
+                  setFormData({ ...formData, projetId: value, chefTesteurIds: editingCampagne ? formData.chefTesteurIds : chefsProjet, versionId: '', environnementId: '' });
+                  chargerContexteProduit(value);
                   if (errors.projetId) setErrors({ ...errors, projetId: '' });
-                }} onClear={() => setFormData({ ...formData, projetId: '' })}>
+                }} onClear={() => { setFormData({ ...formData, projetId: '', versionId: '', environnementId: '' }); setReleasesProduit([]); setEnvironnementsProduit([]); }}>
                   <SelectTrigger className={errors.projetId ? 'border-red-500 focus:border-red-500' : ''}>
                     <SelectValue placeholder={t('campagne.list.select_project')} />
                   </SelectTrigger>
@@ -305,6 +364,55 @@ export function CampagnesPage() {
                   </SelectContent>
                 </Select>
                 {errors.projetId && <p className="text-sm text-red-500">{errors.projetId}</p>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="versionId">{t('campagne.list.version')}</Label>
+                  <Select
+                    value={formData.versionId || undefined}
+                    onValueChange={(v) => setFormData({ ...formData, versionId: v })}
+                    disabled={releasesProduit.length === 0}
+                  >
+                    <SelectTrigger id="versionId">
+                      <SelectValue placeholder={
+                        !projets.find(p => p.id === formData.projetId)?.produitId
+                          ? t('campagne.list.no_product_hint')
+                          : releasesProduit.length === 0
+                            ? t('campagne.list.version_empty')
+                            : t('campagne.list.select_version')
+                      } />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {releasesProduit.map(r => (
+                        <SelectItem key={r.id} value={r.id}>v{r.version}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="environnementId">{t('campagne.list.environment')}</Label>
+                  <Select
+                    value={formData.environnementId || undefined}
+                    onValueChange={(v) => setFormData({ ...formData, environnementId: v })}
+                    disabled={environnementsProduit.length === 0}
+                  >
+                    <SelectTrigger id="environnementId">
+                      <SelectValue placeholder={
+                        !projets.find(p => p.id === formData.projetId)?.produitId
+                          ? t('campagne.list.no_product_hint')
+                          : environnementsProduit.length === 0
+                            ? t('campagne.list.environment_empty')
+                            : t('campagne.list.select_environment')
+                      } />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {environnementsProduit.map(e => (
+                        <SelectItem key={e.id} value={e.id}>{e.nom}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="space-y-2">

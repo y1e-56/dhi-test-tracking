@@ -167,6 +167,8 @@ export const mapCampagneFromBackend = (c: any): Campagne => ({
   chefTesteurIds: [...new Set((c.test_leads || []).map((id: any) => String(id)))],
   statut: STATUT_CAMPAGNE_EN_TO_FR[c.status] || 'en_preparation',
   dateCreation: c.created_at,
+  versionId: c.release_id != null ? String(c.release_id) : null,
+  environnementId: c.environment_id != null ? String(c.environment_id) : null,
 });
 
 const STATUT_CAMPAGNE_FR_TO_EN: Record<string, string> = {
@@ -195,6 +197,8 @@ export const mapCampagneToBackend = (c: Partial<Campagne>) => ({
   test_lead_ids: c.chefTesteurIds ? [...new Set(c.chefTesteurIds.map(id => parseInt(id)))] : undefined,
   testers: c.equipeTesteurs ? [...new Set(c.equipeTesteurs.map(id => parseInt(id)))] : undefined,
   developers: c.equipeDeveloppeurs ? [...new Set(c.equipeDeveloppeurs.map(id => parseInt(id)))] : undefined,
+  release_id: c.versionId ? parseInt(c.versionId, 10) : null,
+  environment_id: c.environnementId ? parseInt(c.environnementId, 10) : null,
 });
 
 // =====================
