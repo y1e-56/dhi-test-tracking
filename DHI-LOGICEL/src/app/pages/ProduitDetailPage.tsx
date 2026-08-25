@@ -22,9 +22,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../components/ui/alert-dialog';
-import { ArrowLeft, Package, Tag, Server, FolderKanban, Loader2, AlertCircle, Plus, Pencil, Trash2 } from 'lucide-react';
-import { Produit, ReleaseProduit, EnvironnementProduit } from '../types';
+import { ArrowLeft, Package, Tag, Server, FolderKanban, Loader2, AlertCircle, Plus, Pencil, Trash2, ShieldCheck, Activity, AlertTriangle, History } from 'lucide-react';
+import { Produit, ReleaseProduit, EnvironnementProduit, CritereQualite, ScoreQualite, PointCritique, HistoriqueQualite, SanteQualite } from '../types';
 import { productService } from '../services/productService';
+import { qualityService } from '../services/qualityService';
 import { getErrorMessage } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -64,6 +65,23 @@ export function ProduitDetailPage() {
   const [produitASupprimer, setProduitASupprimer] = useState(false);
   const [actionEnCours, setActionEnCours] = useState(false);
 
+  const [criteres, setCriteres] = useState<CritereQualite[]>([]);
+  const [score, setScore] = useState<ScoreQualite | null>(null);
+  const [watchPoints, setWatchPoints] = useState<PointCritique[]>([]);
+  const [historiqueQualite, setHistoriqueQualite] = useState<HistoriqueQualite[]>([]);
+
+  const [dialogCritereOpen, setDialogCritereOpen] = useState(false);
+  const [critereEnEdition, setCritereEnEdition] = useState<CritereQualite | null>(null);
+  const [critereForm, setCritereForm] = useState({ nom: '', description: '', poids: 10, estBloquant: false });
+  const [critereErrors, setCritereErrors] = useState({ nom: '', poids: '' });
+  const [critereASupprimer, setCritereASupprimer] = useState<CritereQualite | null>(null);
+
+  const [dialogWatchpointOpen, setDialogWatchpointOpen] = useState(false);
+  const [watchpointEnEdition, setWatchpointEnEdition] = useState<PointCritique | null>(null);
+  const [watchpointForm, setWatchpointForm] = useState({ description: '', contexte: '', criticite: 'moyenne' as PointCritique['criticite'], consequence: '', responsableId: '', responsableNom: '', criteresValidation: '', recommandations: '', statut: 'a_verifier' as PointCritique['statut'] });
+  const [watchpointErrors, setWatchpointErrors] = useState({ description: '' });
+  const [watchpointASupprimer, setWatchpointASupprimer] = useState<PointCritique | null>(null);
+
   const fetchAll = useCallback(async () => {
     if (!produitId) return;
     setLoading(true);
@@ -79,6 +97,10 @@ export function ProduitDetailPage() {
       setReleases(r);
       setEnvironments(e);
       setProjects(pr);
+      setCriteres(qualityService.getCriteres(produitId));
+      setScore(qualityService.getScore(produitId));
+      setWatchPoints(qualityService.getPointsCritiques(produitId));
+      setHistoriqueQualite(qualityService.getHistorique(produitId));
     } catch (err: any) {
       setError(getErrorMessage(err));
     } finally {
@@ -270,6 +292,70 @@ export function ProduitDetailPage() {
     }
   };
 
+  const soumettreCritere = () => {
+    if (!produitId) return;
+    if (!critereForm.nom.trim()) {
+      setCritereErrors({ nom: t('quality.criteria_name_required'), poids: '' });
+      return;
+    }
+    if (critereForm.poids < 1 || critereForm.poids > 100) {
+      setCritereErrors({ nom: '', poids: t('quality.criteria_weight_invalid') });
+      return;
+    }
+    try {
+      if (critereEnEdition) {
+        qualityService.updateCritere(produitId, critereEnEdition.id, critereForm);
+        toast.success(t('quality.toast.criteria_updated'));
+      } else {
+        qualityService.createCritere(produitId, critereForm);
+        toast.success(t('quality.toast.criteria_created'));
+      }
+      setDialogCritereOpen(false);
+      setCriteres(qualityService.getCriteres(produitId));
+      setScore(qualityService.getScore(produitId));
+    } catch {
+      toast.error(t('products.toast.product_error'));
+    }
+  };
+
+  const confirmerSuppressionCritere = () => {
+    if (!produitId || !critereASupprimer) return;
+    qualityService.deleteCritere(produitId, critereASupprimer.id);
+    toast.success(t('quality.toast.criteria_deleted'));
+    setCritereASupprimer(null);
+    setCriteres(qualityService.getCriteres(produitId));
+    setScore(qualityService.getScore(produitId));
+  };
+
+  const soumettreWatchpoint = () => {
+    if (!produitId) return;
+    if (!watchpointForm.description.trim()) {
+      setWatchpointErrors({ description: t('quality.watchpoint_description_required') });
+      return;
+    }
+    try {
+      if (watchpointEnEdition) {
+        qualityService.updatePointCritique(produitId, watchpointEnEdition.id, watchpointForm);
+        toast.success(t('quality.toast.watchpoint_updated'));
+      } else {
+        qualityService.createPointCritique(produitId, watchpointForm);
+        toast.success(t('quality.toast.watchpoint_created'));
+      }
+      setDialogWatchpointOpen(false);
+      setWatchPoints(qualityService.getPointsCritiques(produitId));
+    } catch {
+      toast.error(t('products.toast.product_error'));
+    }
+  };
+
+  const confirmerSuppressionWatchpoint = () => {
+    if (!produitId || !watchpointASupprimer) return;
+    qualityService.deletePointCritique(produitId, watchpointASupprimer.id);
+    toast.success(t('quality.toast.watchpoint_deleted'));
+    setWatchpointASupprimer(null);
+    setWatchPoints(qualityService.getPointsCritiques(produitId));
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -332,6 +418,13 @@ export function ProduitDetailPage() {
           <Badge variant={produit.estArchive ? 'secondary' : 'default'}>
             {produit.estArchive ? t('products.badge_archived') : t('products.badge_active')}
           </Badge>
+          {score && (
+            <Badge variant={score.sante === 'sain' ? 'default' : score.sante === 'critique' ? 'destructive' : 'secondary'}
+              className={score.sante === 'a_surveiller' ? 'bg-amber-100 text-amber-800' : score.sante === 'a_risque' ? 'bg-orange-100 text-orange-800' : ''}>
+              <Activity className="w-3 h-3 mr-1" />
+              {t('quality.score_label')} {score.score}{t('quality.score_over')}
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -348,6 +441,22 @@ export function ProduitDetailPage() {
           <TabsTrigger value="projets" className="gap-1.5">
             <FolderKanban className="w-4 h-4" />
             {t('products.tab_projects')} ({projects.length})
+          </TabsTrigger>
+          <TabsTrigger value="score" className="gap-1.5">
+            <Activity className="w-4 h-4" />
+            {t('quality.tab_score')}
+          </TabsTrigger>
+          <TabsTrigger value="criteres" className="gap-1.5">
+            <ShieldCheck className="w-4 h-4" />
+            {t('quality.tab_criteria')} ({criteres.length})
+          </TabsTrigger>
+          <TabsTrigger value="watchpoints" className="gap-1.5">
+            <AlertTriangle className="w-4 h-4" />
+            {t('quality.tab_watchpoints')} ({watchPoints.length})
+          </TabsTrigger>
+          <TabsTrigger value="historique" className="gap-1.5">
+            <History className="w-4 h-4" />
+            {t('quality.tab_history')}
           </TabsTrigger>
         </TabsList>
 
@@ -486,6 +595,211 @@ export function ProduitDetailPage() {
                 </Card>
               ))}
             </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="score" className="mt-4">
+          {score && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="w-5 h-5" />
+                    {t('quality.tab_score')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="text-center">
+                    <div className="text-6xl font-bold">{score.score}</div>
+                    <div className="text-lg text-gray-500">{t('quality.score_over')}</div>
+                    <Badge
+                      variant={score.sante === 'sain' ? 'default' : score.sante === 'critique' ? 'destructive' : 'secondary'}
+                      className={`mt-2 text-sm px-3 py-1 ${score.sante === 'a_surveiller' ? 'bg-amber-100 text-amber-800' : score.sante === 'a_risque' ? 'bg-orange-100 text-orange-800' : ''}`}
+                    >
+                      {t(`quality.health_${score.sante}`)}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">{t('products.tab_score')} — {t('quality.criteria_description')}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {[
+                    { key: 'resultatsTests', label: t('quality.detail_results'), value: score.detail.resultatsTests },
+                    { key: 'couverture', label: t('quality.detail_coverage'), value: score.detail.couverture },
+                    { key: 'couvertureCritiques', label: t('quality.detail_critical_coverage'), value: score.detail.couvertureCritiques },
+                    { key: 'incidents', label: t('quality.detail_incidents'), value: score.detail.incidents },
+                    { key: 'nonFonctionnel', label: t('quality.detail_nonfunctional'), value: score.detail.nonFonctionnel },
+                    { key: 'testabilite', label: t('quality.detail_testability'), value: score.detail.testabilite },
+                    { key: 'controlesQualite', label: t('quality.detail_controls'), value: score.detail.controlesQualite },
+                  ].map((item) => (
+                    <div key={item.key} className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">{item.label}</span>
+                        <span className="font-medium">{item.value}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${item.value >= 80 ? 'bg-emerald-500' : item.value >= 60 ? 'bg-amber-500' : item.value >= 40 ? 'bg-orange-500' : 'bg-red-500'}`}
+                          style={{ width: `${item.value}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="criteres" className="mt-4">
+          {peutGerer && (
+            <div className="flex justify-end mb-3">
+              <Button size="sm" onClick={() => { setCritereEnEdition(null); setCritereForm({ nom: '', description: '', poids: 10, estBloquant: false }); setCritereErrors({ nom: '', poids: '' }); setDialogCritereOpen(true); }}>
+                <Plus className="w-4 h-4 mr-2" />
+                {t('quality.criteria_new')}
+              </Button>
+            </div>
+          )}
+          {criteres.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <ShieldCheck className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">{t('quality.criteria_empty')}</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <div className="mb-3 text-sm text-gray-500">
+                {t('quality.criteria_total_weight')} : {criteres.reduce((s, c) => s + c.poids, 0)}%
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {criteres.map((c) => (
+                  <Card key={c.id}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base">{c.nom}</CardTitle>
+                        <Badge variant={c.estBloquant ? 'destructive' : 'secondary'}>
+                          {c.poids}%
+                        </Badge>
+                      </div>
+                      {c.estBloquant && (
+                        <CardDescription className="text-red-600 text-xs font-medium">
+                          {t('quality.criteria_blocking')}
+                        </CardDescription>
+                      )}
+                    </CardHeader>
+                    <CardContent className="text-sm text-gray-600">
+                      <p className="mb-2">{c.description || '—'}</p>
+                      {peutGerer && (
+                        <div className="flex items-center gap-1 pt-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setCritereEnEdition(c); setCritereForm({ nom: c.nom, description: c.description, poids: c.poids, estBloquant: c.estBloquant }); setCritereErrors({ nom: '', poids: '' }); setDialogCritereOpen(true); }}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => setCritereASupprimer(c)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="watchpoints" className="mt-4">
+          {peutGerer && (
+            <div className="flex justify-end mb-3">
+              <Button size="sm" onClick={() => { setWatchpointEnEdition(null); setWatchpointForm({ description: '', contexte: '', criticite: 'moyenne', consequence: '', responsableId: '', responsableNom: '', criteresValidation: '', recommandations: '', statut: 'a_verifier' }); setWatchpointErrors({ description: '' }); setDialogWatchpointOpen(true); }}>
+                <Plus className="w-4 h-4 mr-2" />
+                {t('quality.watchpoint_new')}
+              </Button>
+            </div>
+          )}
+          {watchPoints.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <AlertTriangle className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">{t('quality.watchpoint_empty')}</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {watchPoints.map((wp) => (
+                <Card key={wp.id}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base line-clamp-1">{wp.description}</CardTitle>
+                      <Badge variant={wp.criticite === 'critique' ? 'destructive' : wp.criticite === 'haute' ? 'default' : 'secondary'}>
+                        {t(`quality.criticality_${wp.criticite}`)}
+                      </Badge>
+                    </div>
+                    <CardDescription>
+                      {t(`quality.watchpoint_status_${wp.statut}`)}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="text-sm text-gray-600 space-y-1">
+                    {wp.contexte && <p><span className="font-medium">{t('quality.watchpoint_context')} :</span> {wp.contexte}</p>}
+                    {wp.consequence && <p><span className="font-medium">{t('quality.watchpoint_consequence')} :</span> {wp.consequence}</p>}
+                    {wp.responsableNom && <p><span className="font-medium">{t('quality.watchpoint_owner')} :</span> {wp.responsableNom}</p>}
+                    {wp.criteresValidation && <p><span className="font-medium">{t('quality.watchpoint_validation')} :</span> {wp.criteresValidation}</p>}
+                    {peutGerer && (
+                      <div className="flex items-center gap-1 pt-2">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setWatchpointEnEdition(wp); setWatchpointForm({ description: wp.description, contexte: wp.contexte, criticite: wp.criticite, consequence: wp.consequence, responsableId: wp.responsableId ?? '', responsableNom: wp.responsableNom, criteresValidation: wp.criteresValidation, recommandations: wp.recommandations, statut: wp.statut }); setWatchpointErrors({ description: '' }); setDialogWatchpointOpen(true); }}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => setWatchpointASupprimer(wp)}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="historique" className="mt-4">
+          {historiqueQualite.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <History className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">{t('quality.history_empty')}</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-gray-50">
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">{t('quality.history_date')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">{t('quality.history_score')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">{t('quality.history_health')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historiqueQualite.map((h) => (
+                      <tr key={h.id} className="border-b last:border-0">
+                        <td className="py-3 px-4">{new Date(h.date).toLocaleString('fr-FR')}</td>
+                        <td className="py-3 px-4 font-medium">{h.score}/100</td>
+                        <td className="py-3 px-4">
+                          <Badge variant={h.sante === 'sain' ? 'default' : h.sante === 'critique' ? 'destructive' : 'secondary'}
+                            className={h.sante === 'a_surveiller' ? 'bg-amber-100 text-amber-800' : h.sante === 'a_risque' ? 'bg-orange-100 text-orange-800' : ''}>
+                            {t(`quality.health_${h.sante}`)}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
       </Tabs>
@@ -727,6 +1041,150 @@ export function ProduitDetailPage() {
               }}
             >
               {actionEnCours ? t('common.loading') : t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={dialogCritereOpen} onOpenChange={setDialogCritereOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{critereEnEdition ? t('quality.criteria_edit') : t('quality.criteria_new')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="crit-nom">{t('quality.criteria_name')}</Label>
+              <Input
+                id="crit-nom"
+                value={critereForm.nom}
+                onChange={(e) => { setCritereForm({ ...critereForm, nom: e.target.value }); if (critereErrors.nom) setCritereErrors({ ...critereErrors, nom: '' }); }}
+                className={critereErrors.nom ? 'border-red-500 focus:border-red-500' : ''}
+              />
+              {critereErrors.nom && <p className="text-sm text-red-500">{critereErrors.nom}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="crit-desc">{t('quality.criteria_description')}</Label>
+              <Textarea id="crit-desc" value={critereForm.description} onChange={(e) => setCritereForm({ ...critereForm, description: e.target.value })} rows={3} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="crit-poids">{t('quality.criteria_weight')}</Label>
+              <Input
+                id="crit-poids"
+                type="number"
+                min={1}
+                max={100}
+                value={critereForm.poids}
+                onChange={(e) => { setCritereForm({ ...critereForm, poids: parseInt(e.target.value) || 0 }); if (critereErrors.poids) setCritereErrors({ ...critereErrors, poids: '' }); }}
+                className={critereErrors.poids ? 'border-red-500 focus:border-red-500' : ''}
+              />
+              {critereErrors.poids && <p className="text-sm text-red-500">{critereErrors.poids}</p>}
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label htmlFor="crit-bloquant" className="cursor-pointer">{t('quality.criteria_blocking')}</Label>
+                <p className="text-xs text-gray-500">{t('quality.criteria_blocking_help')}</p>
+              </div>
+              <Switch id="crit-bloquant" checked={critereForm.estBloquant} onCheckedChange={(v) => setCritereForm({ ...critereForm, estBloquant: v })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogCritereOpen(false)}>{t('common.cancel')}</Button>
+            <Button onClick={soumettreCritere}>{critereEnEdition ? t('common.save') : t('common.create')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!critereASupprimer} onOpenChange={(o) => !o && setCritereASupprimer(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('quality.criteria_delete_title')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('quality.criteria_delete_confirm', { nom: critereASupprimer?.nom })}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={(e) => { e.preventDefault(); confirmerSuppressionCritere(); }}>
+              {t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={dialogWatchpointOpen} onOpenChange={setDialogWatchpointOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{watchpointEnEdition ? t('quality.watchpoint_edit') : t('quality.watchpoint_new')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+            <div className="space-y-2">
+              <Label>{t('quality.watchpoint_description')}</Label>
+              <Textarea
+                value={watchpointForm.description}
+                onChange={(e) => { setWatchpointForm({ ...watchpointForm, description: e.target.value }); if (watchpointErrors.description) setWatchpointErrors({ description: '' }); }}
+                rows={2}
+                className={watchpointErrors.description ? 'border-red-500 focus:border-red-500' : ''}
+              />
+              {watchpointErrors.description && <p className="text-sm text-red-500">{watchpointErrors.description}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>{t('quality.watchpoint_context')}</Label>
+              <Textarea value={watchpointForm.contexte} onChange={(e) => setWatchpointForm({ ...watchpointForm, contexte: e.target.value })} rows={2} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{t('quality.watchpoint_criticality')}</Label>
+                <Select value={watchpointForm.criticite} onValueChange={(v) => setWatchpointForm({ ...watchpointForm, criticite: v as PointCritique['criticite'] })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="faible">{t('quality.criticality_faible')}</SelectItem>
+                    <SelectItem value="moyenne">{t('quality.criticality_moyenne')}</SelectItem>
+                    <SelectItem value="haute">{t('quality.criticality_haute')}</SelectItem>
+                    <SelectItem value="critique">{t('quality.criticality_critique')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t('quality.watchpoint_status')}</Label>
+                <Select value={watchpointForm.statut} onValueChange={(v) => setWatchpointForm({ ...watchpointForm, statut: v as PointCritique['statut'] })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="a_verifier">{t('quality.watchpoint_status_a_verifier')}</SelectItem>
+                    <SelectItem value="en_cours">{t('quality.watchpoint_status_en_cours')}</SelectItem>
+                    <SelectItem value="valide">{t('quality.watchpoint_status_valide')}</SelectItem>
+                    <SelectItem value="non_valide">{t('quality.watchpoint_status_non_valide')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>{t('quality.watchpoint_consequence')}</Label>
+              <Textarea value={watchpointForm.consequence} onChange={(e) => setWatchpointForm({ ...watchpointForm, consequence: e.target.value })} rows={2} />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('quality.watchpoint_validation')}</Label>
+              <Textarea value={watchpointForm.criteresValidation} onChange={(e) => setWatchpointForm({ ...watchpointForm, criteresValidation: e.target.value })} rows={2} />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('quality.watchpoint_recommendations')}</Label>
+              <Textarea value={watchpointForm.recommandations} onChange={(e) => setWatchpointForm({ ...watchpointForm, recommandations: e.target.value })} rows={2} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogWatchpointOpen(false)}>{t('common.cancel')}</Button>
+            <Button onClick={soumettreWatchpoint}>{watchpointEnEdition ? t('common.save') : t('common.create')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!watchpointASupprimer} onOpenChange={(o) => !o && setWatchpointASupprimer(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('quality.watchpoint_delete_title')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('quality.watchpoint_delete_confirm')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={(e) => { e.preventDefault(); confirmerSuppressionWatchpoint(); }}>
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

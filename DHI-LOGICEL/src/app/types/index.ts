@@ -208,3 +208,55 @@ export interface HistoryFilters {
   dateDebut?: string;
   dateFin?: string;
 }
+
+export type SanteQualite = 'sain' | 'a_surveiller' | 'a_risque' | 'critique';
+
+export interface CritereQualite {
+  id: string;
+  produitId: string;
+  nom: string;
+  description: string;
+  poids: number;
+  estBloquant: boolean;
+  dateCreation: string;
+}
+
+export interface ScoreQualite {
+  id: string;
+  produitId: string;
+  score: number;
+  sante: SanteQualite;
+  detail: {
+    resultatsTests: number;
+    couverture: number;
+    couvertureCritiques: number;
+    incidents: number;
+    nonFonctionnel: number;
+    testabilite: number;
+    controlesQualite: number;
+  };
+  dateCalcul: string;
+}
+
+export interface PointCritique {
+  id: string;
+  produitId: string;
+  description: string;
+  contexte: string;
+  criticite: 'faible' | 'moyenne' | 'haute' | 'critique';
+  consequence: string;
+  responsableId: string | null;
+  responsableNom: string;
+  criteresValidation: string;
+  recommandations: string;
+  statut: 'a_verifier' | 'en_cours' | 'valide' | 'non_valide';
+  dateCreation: string;
+}
+
+export interface HistoriqueQualite {
+  id: string;
+  produitId: string;
+  score: number;
+  sante: SanteQualite;
+  date: string;
+}
