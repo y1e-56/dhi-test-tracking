@@ -311,7 +311,7 @@ export function ProjetDetailPage() {
                   </thead>
                   <tbody>
                     {fonctionnalites.map((f) => (
-                      <tr key={f.id} className="border-b last:border-0 hover:bg-gray-50">
+                      <tr key={f.id} className="border-b last:border-0 hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/fonctionnalites/${f.id}?campaignId=${f.campagneId}`)}>
                         <td className="py-3 px-4 font-medium">{f.nom}</td>
                         <td className="py-3 px-4 text-gray-500">{f.module || '—'}</td>
                         <td className="py-3 px-4">

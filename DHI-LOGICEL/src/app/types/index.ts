@@ -260,3 +260,37 @@ export interface HistoriqueQualite {
   sante: SanteQualite;
   date: string;
 }
+
+export type TypeExigence = 'fonctionnelle' | 'securite' | 'performance' | 'disponibilite' | 'ergonomie' | 'accessibilite' | 'maintenabilite' | 'compatibilite' | 'resilience' | 'observabilite' | 'documentation' | 'testabilite' | 'personnalisee';
+
+export interface Exigence {
+  id: string;
+  fonctionnaliteId: string;
+  campagneId: string;
+  titre: string;
+  description: string;
+  type: TypeExigence;
+  criticite: Priorite;
+  statut: 'a_verifier' | 'validee' | 'non_validee';
+  dateCreation: string;
+}
+
+export type TypeTest = 'fonctionnel' | 'integration' | 'end_to_end' | 'regression' | 'unitaire' | 'api' | 'interface' | 'securite' | 'performance' | 'charge' | 'stress' | 'endurance' | 'resilience' | 'compatibilite' | 'accessibilite' | 'ergonomie' | 'disponibilite' | 'recuperation' | 'installation' | 'migration' | 'documentation' | 'testabilite' | 'personnalise';
+
+export interface Scenario {
+  id: string;
+  fonctionnaliteId: string;
+  campagneId: string;
+  nom: string;
+  description: string;
+  priorite: Priorite;
+  dateCreation: string;
+}
+
+export interface Dependence {
+  id: string;
+  casTestIdSource: string;
+  casTestIdCible: string;
+  type: 'avant' | 'apres' | 'requiert_reussite' | 'bloque' | 'depend_fonctionnellement';
+  dateCreation: string;
+}
