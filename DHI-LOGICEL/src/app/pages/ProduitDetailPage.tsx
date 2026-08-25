@@ -29,6 +29,7 @@ import { getErrorMessage } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const ENV_TYPES: EnvironnementProduit['type'][] = ['development', 'integration', 'staging', 'production'];
+const RELEASE_STATUTS: ReleaseProduit['statut'][] = ['planned', 'in_progress', 'released', 'cancelled'];
 
 export function ProduitDetailPage() {
   const { t } = useTranslation();
@@ -36,13 +37,7 @@ export function ProduitDetailPage() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const peutGerer = currentUser?.role === 'admin' || currentUser?.role === 'chef_testeur';
-
-  const [dialogEnvOpen, setDialogEnvOpen] = useState(false);
-  const [envEnEdition, setEnvEnEdition] = useState<EnvironnementProduit | null>(null);
-  const [envForm, setEnvForm] = useState({ nom: '', type: 'development' as EnvironnementProduit['type'], description: '', actif: true });
-  const [envErrors, setEnvErrors] = useState({ nom: '' });
-  const [envASupprimer, setEnvASupprimer] = useState<EnvironnementProduit | null>(null);
-  const [suppressionEnCours, setSuppressionEnCours] = useState(false);
+  const estAdmin = currentUser?.role === 'admin';
 
   const [produit, setProduit] = useState<Produit | null>(null);
   const [releases, setReleases] = useState<ReleaseProduit[]>([]);
@@ -50,6 +45,24 @@ export function ProduitDetailPage() {
   const [projects, setProjects] = useState<{ id: string; nom: string; description: string; statut: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [dialogEnvOpen, setDialogEnvOpen] = useState(false);
+  const [envEnEdition, setEnvEnEdition] = useState<EnvironnementProduit | null>(null);
+  const [envForm, setEnvForm] = useState({ nom: '', type: 'development' as EnvironnementProduit['type'], description: '', actif: true });
+  const [envErrors, setEnvErrors] = useState({ nom: '' });
+  const [envASupprimer, setEnvASupprimer] = useState<EnvironnementProduit | null>(null);
+
+  const [dialogRelOpen, setDialogRelOpen] = useState(false);
+  const [relEnEdition, setRelEnEdition] = useState<ReleaseProduit | null>(null);
+  const [relForm, setRelForm] = useState({ version: '', statut: 'planned' as ReleaseProduit['statut'], datePrevue: '', description: '' });
+  const [relErrors, setRelErrors] = useState({ version: '' });
+  const [relASupprimer, setRelASupprimer] = useState<ReleaseProduit | null>(null);
+
+  const [dialogEditOpen, setDialogEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ nom: '', description: '' });
+  const [editErrors, setEditErrors] = useState({ nom: '' });
+  const [produitASupprimer, setProduitASupprimer] = useState(false);
+  const [actionEnCours, setActionEnCours] = useState(false);
 
   const fetchAll = useCallback(async () => {
     if (!produitId) return;
@@ -121,7 +134,7 @@ export function ProduitDetailPage() {
 
   const confirmerSuppressionEnv = async () => {
     if (!produitId || !envASupprimer) return;
-    setSuppressionEnCours(true);
+    setActionEnCours(true);
     try {
       await productService.deleteEnvironment(produitId, envASupprimer.id);
       toast.success(t('products.toast.env_deleted'));
@@ -130,7 +143,130 @@ export function ProduitDetailPage() {
     } catch (error: any) {
       toast.error(getErrorMessage(error) || t('products.toast.env_error'));
     } finally {
-      setSuppressionEnCours(false);
+      setActionEnCours(false);
+    }
+  };
+
+  const ouvrirDialogRel = (rel?: ReleaseProduit) => {
+    setRelEnEdition(rel ?? null);
+    setRelForm(rel
+      ? {
+          version: rel.version,
+          statut: rel.statut,
+          datePrevue: rel.datePrevue ? rel.datePrevue.substring(0, 10) : '',
+          description: rel.description,
+        }
+      : { version: '', statut: 'planned', datePrevue: '', description: '' });
+    setRelErrors({ version: '' });
+    setDialogRelOpen(true);
+  };
+
+  const soumettreRel = async () => {
+    if (!produitId) return;
+    if (!relForm.version.trim()) {
+      setRelErrors({ version: t('products.release_version_required') });
+      return;
+    }
+    try {
+      if (relEnEdition) {
+        await productService.updateRelease(produitId, relEnEdition.id, {
+          version: relForm.version.trim(),
+          statut: relForm.statut,
+          datePrevue: relForm.datePrevue || null,
+          description: relForm.description.trim(),
+        });
+        toast.success(t('products.toast.release_updated'));
+      } else {
+        await productService.createRelease(produitId, {
+          version: relForm.version.trim(),
+          statut: relForm.statut,
+          datePrevue: relForm.datePrevue || null,
+          description: relForm.description.trim() || undefined,
+        });
+        toast.success(t('products.toast.release_created'));
+      }
+      setDialogRelOpen(false);
+      fetchAll();
+    } catch (error: any) {
+      if (error?.response?.status === 409) {
+        setRelErrors({ version: getErrorMessage(error) });
+        return;
+      }
+      toast.error(getErrorMessage(error) || t('products.toast.release_error'));
+    }
+  };
+
+  const confirmerSuppressionRel = async () => {
+    if (!produitId || !relASupprimer) return;
+    setActionEnCours(true);
+    try {
+      await productService.deleteRelease(produitId, relASupprimer.id);
+      toast.success(t('products.toast.release_deleted'));
+      setRelASupprimer(null);
+      fetchAll();
+    } catch (error: any) {
+      toast.error(getErrorMessage(error) || t('products.toast.release_error'));
+    } finally {
+      setActionEnCours(false);
+    }
+  };
+
+  const ouvrirDialogEdit = () => {
+    if (!produit) return;
+    setEditForm({ nom: produit.nom, description: produit.description });
+    setEditErrors({ nom: '' });
+    setDialogEditOpen(true);
+  };
+
+  const soumettreEdit = async () => {
+    if (!produitId) return;
+    if (!editForm.nom.trim()) {
+      setEditErrors({ nom: t('products.name_required') });
+      return;
+    }
+    try {
+      await productService.update(produitId, {
+        nom: editForm.nom.trim(),
+        description: editForm.description.trim(),
+      });
+      toast.success(t('products.toast.product_updated'));
+      setDialogEditOpen(false);
+      fetchAll();
+    } catch (error: any) {
+      toast.error(getErrorMessage(error) || t('products.toast.product_error'));
+    }
+  };
+
+  const confirmerSuppressionProduit = async () => {
+    if (!produitId) return;
+    setActionEnCours(true);
+    try {
+      await productService.delete(produitId);
+      toast.success(t('products.toast.product_deleted'));
+      navigate('/produits');
+    } catch (error: any) {
+      toast.error(getErrorMessage(error) || t('products.toast.product_error'));
+    } finally {
+      setActionEnCours(false);
+    }
+  };
+
+  const gererArchivage = async () => {
+    if (!produitId || !produit) return;
+    setActionEnCours(true);
+    try {
+      if (produit.estArchive) {
+        await productService.unarchive(produitId);
+        toast.success(t('products.toast.product_restored'));
+      } else {
+        await productService.archive(produitId);
+        toast.success(t('products.toast.product_archived'));
+      }
+      fetchAll();
+    } catch (error: any) {
+      toast.error(getErrorMessage(error) || t('products.toast.product_error'));
+    } finally {
+      setActionEnCours(false);
     }
   };
 
@@ -175,9 +311,28 @@ export function ProduitDetailPage() {
             <p className="text-sm text-gray-500 line-clamp-1">{produit.description || '—'}</p>
           </div>
         </div>
-        <Badge variant={produit.estArchive ? 'secondary' : 'default'}>
-          {produit.estArchive ? t('products.badge_archived') : t('products.badge_active')}
-        </Badge>
+        <div className="flex items-center gap-2 shrink-0">
+          {peutGerer && (
+            <>
+              <Button variant="outline" size="sm" onClick={ouvrirDialogEdit}>
+                <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                {t('common.edit')}
+              </Button>
+              <Button variant="outline" size="sm" onClick={gererArchivage} disabled={actionEnCours}>
+                {produit.estArchive ? t('products.restore') : t('products.archive')}
+              </Button>
+              {estAdmin && (
+                <Button variant="outline" size="sm" className="text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => setProduitASupprimer(true)}>
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                  {t('common.delete')}
+                </Button>
+              )}
+            </>
+          )}
+          <Badge variant={produit.estArchive ? 'secondary' : 'default'}>
+            {produit.estArchive ? t('products.badge_archived') : t('products.badge_active')}
+          </Badge>
+        </div>
       </div>
 
       <Tabs defaultValue="versions">
@@ -197,6 +352,14 @@ export function ProduitDetailPage() {
         </TabsList>
 
         <TabsContent value="versions" className="mt-4">
+          {peutGerer && (
+            <div className="flex justify-end mb-3">
+              <Button size="sm" onClick={() => ouvrirDialogRel()}>
+                <Plus className="w-4 h-4 mr-2" />
+                {t('products.release_new')}
+              </Button>
+            </div>
+          )}
           {releases.length === 0 ? (
             <Card>
               <CardContent className="py-10 text-center">
@@ -223,6 +386,16 @@ export function ProduitDetailPage() {
                     {r.description && <CardDescription>{r.description}</CardDescription>}
                     {r.datePrevue && (
                       <p>{t('products.planned_date')} : {new Date(r.datePrevue).toLocaleDateString('fr-FR')}</p>
+                    )}
+                    {peutGerer && (
+                      <div className="flex items-center gap-1 pt-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => ouvrirDialogRel(r)} title={t('common.edit')}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => setRelASupprimer(r)} title={t('common.delete')}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -317,6 +490,97 @@ export function ProduitDetailPage() {
         </TabsContent>
       </Tabs>
 
+      <Dialog open={dialogRelOpen} onOpenChange={setDialogRelOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{relEnEdition ? t('products.release_edit_title') : t('products.release_create_title')}</DialogTitle>
+            <DialogDescription>{t('products.release_dialog_desc')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="rel-version">{t('products.release_version_label')}</Label>
+              <Input
+                id="rel-version"
+                value={relForm.version}
+                onChange={(e) => {
+                  setRelForm({ ...relForm, version: e.target.value });
+                  if (relErrors.version) setRelErrors({ version: '' });
+                }}
+                placeholder="4.13.0"
+                className={relErrors.version ? 'border-red-500 focus:border-red-500' : ''}
+              />
+              {relErrors.version && <p className="text-sm text-red-500">{relErrors.version}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>{t('products.release_status_label')}</Label>
+              <Select value={relForm.statut} onValueChange={(v) => setRelForm({ ...relForm, statut: v as ReleaseProduit['statut'] })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RELEASE_STATUTS.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {t(`products.release_status.${s}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rel-date">{t('products.planned_date')}</Label>
+              <Input
+                id="rel-date"
+                type="date"
+                value={relForm.datePrevue}
+                onChange={(e) => setRelForm({ ...relForm, datePrevue: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rel-description">{t('common.description')}</Label>
+              <Textarea
+                id="rel-description"
+                value={relForm.description}
+                onChange={(e) => setRelForm({ ...relForm, description: e.target.value })}
+                placeholder={t('products.description_placeholder')}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogRelOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={soumettreRel}>
+              {relEnEdition ? t('common.save') : t('common.create')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!relASupprimer} onOpenChange={(o) => !o && setRelASupprimer(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('products.release_delete_title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('products.release_delete_confirm', { version: relASupprimer?.version })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionEnCours}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              disabled={actionEnCours}
+              onClick={(e) => {
+                e.preventDefault();
+                confirmerSuppressionRel();
+              }}
+            >
+              {actionEnCours ? t('common.loading') : t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Dialog open={dialogEnvOpen} onOpenChange={setDialogEnvOpen}>
         <DialogContent>
           <DialogHeader>
@@ -388,16 +652,81 @@ export function ProduitDetailPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={suppressionEnCours}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogCancel disabled={actionEnCours}>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
-              disabled={suppressionEnCours}
+              disabled={actionEnCours}
               onClick={(e) => {
                 e.preventDefault();
                 confirmerSuppressionEnv();
               }}
             >
-              {suppressionEnCours ? t('common.loading') : t('common.delete')}
+              {actionEnCours ? t('common.loading') : t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={dialogEditOpen} onOpenChange={setDialogEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('products.edit_title')}</DialogTitle>
+            <DialogDescription>{t('products.edit_desc')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-nom">{t('products.name_label')}</Label>
+              <Input
+                id="edit-nom"
+                value={editForm.nom}
+                onChange={(e) => {
+                  setEditForm({ ...editForm, nom: e.target.value });
+                  if (editErrors.nom) setEditErrors({ nom: '' });
+                }}
+                className={editErrors.nom ? 'border-red-500 focus:border-red-500' : ''}
+              />
+              {editErrors.nom && <p className="text-sm text-red-500">{editErrors.nom}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">{t('common.description')}</Label>
+              <Textarea
+                id="edit-description"
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogEditOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={soumettreEdit}>
+              {t('common.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={produitASupprimer} onOpenChange={(o) => !o && setProduitASupprimer(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('products.delete_title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('products.delete_confirm', { nom: produit.nom })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionEnCours}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              disabled={actionEnCours}
+              onClick={(e) => {
+                e.preventDefault();
+                confirmerSuppressionProduit();
+              }}
+            >
+              {actionEnCours ? t('common.loading') : t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

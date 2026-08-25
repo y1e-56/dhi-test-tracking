@@ -201,4 +201,101 @@ export const productService = {
       throw e;
     }
   },
+
+  async update(id: string, data: { nom?: string; description?: string }): Promise<Produit> {
+    try {
+      const response = await api.put<{ product: ProduitBackend }>(`/products/${id}`, {
+        ...(data.nom !== undefined ? { name: data.nom } : {}),
+        ...(data.description !== undefined ? { description: data.description } : {}),
+      });
+      return mapProduitFromBackend(response.data.product);
+    } catch (e) {
+      console.error('[productService] Erreur update:', e);
+      throw e;
+    }
+  },
+
+  async delete(id: string): Promise<void> {
+    try {
+      await api.delete(`/products/${id}`);
+    } catch (e) {
+      console.error('[productService] Erreur delete:', e);
+      throw e;
+    }
+  },
+
+  async archive(id: string): Promise<Produit> {
+    try {
+      const response = await api.patch<{ product: ProduitBackend }>(`/products/${id}/archive`);
+      return mapProduitFromBackend(response.data.product);
+    } catch (e) {
+      console.error('[productService] Erreur archive:', e);
+      throw e;
+    }
+  },
+
+  async unarchive(id: string): Promise<Produit> {
+    try {
+      const response = await api.patch<{ product: ProduitBackend }>(`/products/${id}/unarchive`);
+      return mapProduitFromBackend(response.data.product);
+    } catch (e) {
+      console.error('[productService] Erreur unarchive:', e);
+      throw e;
+    }
+  },
+
+  async createRelease(
+    produitId: string,
+    release: { version: string; description?: string; statut?: ReleaseProduit['statut']; datePrevue?: string | null }
+  ): Promise<ReleaseProduit> {
+    try {
+      const response = await api.post<{ release: any }>(`/products/${produitId}/releases`, {
+        version: release.version,
+        description: release.description || undefined,
+        status: release.statut,
+        planned_date: release.datePrevue ?? undefined,
+      });
+      const r = response.data.release;
+      return {
+        id: String(r.id),
+        produitId: String(r.product_id),
+        version: r.version,
+        description: r.description ?? '',
+        statut: r.status ?? 'planned',
+        datePrevue: r.planned_date ?? null,
+        livreeLe: r.released_at ?? null,
+        dateCreation: r.created_at,
+      };
+    } catch (e) {
+      console.error('[productService] Erreur createRelease:', e);
+      throw e;
+    }
+  },
+
+  async updateRelease(
+    produitId: string,
+    releaseId: string,
+    release: { version?: string; description?: string; statut?: ReleaseProduit['statut']; datePrevue?: string | null }
+  ): Promise<void> {
+    try {
+      await api.put(`/products/${produitId}/releases/${releaseId}`, {
+        ...(release.version !== undefined ? { version: release.version } : {}),
+        ...(release.description !== undefined ? { description: release.description } : {}),
+        ...(release.statut !== undefined ? { status: release.statut } : {}),
+        ...(release.datePrevue !== undefined ? { planned_date: release.datePrevue } : {}),
+      });
+    } catch (e) {
+      console.error('[productService] Erreur updateRelease:', e);
+      throw e;
+    }
+  },
+
+  async deleteRelease(produitId: string, releaseId: string): Promise<void> {
+    try {
+      await api.delete(`/products/${produitId}/releases/${releaseId}`);
+    } catch (e) {
+      console.error('[productService] Erreur deleteRelease:', e);
+      throw e;
+    }
+  },
 };
