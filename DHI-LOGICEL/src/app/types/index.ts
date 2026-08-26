@@ -454,3 +454,58 @@ export interface DashboardData {
 // S6: Rapports
 export type FormatRapport = 'pdf' | 'excel' | 'csv';
 export type TypeRapport = 'couverture' | 'anomalies' | 'qualite' | 'go_nogo' | 'projet' | 'produit';
+
+// S7: Alertes configurables
+export type SeuilAlerte = number;
+
+export interface RegleAlerte {
+  id: string;
+  nom: string;
+  description: string;
+  type: 'anomalie_critique' | 'anomalie_ouverte' | 'couverture_basse' | 'delai_depasse' | 'score_basse' | 'campagne_retard' | 'personnalise';
+  seuil: SeuilAlerte;
+  active: boolean;
+  destinataires: string[]; // user IDs
+  projetId?: string;
+  dateCreation: string;
+  derniereDeclenchement?: string;
+}
+
+export interface AlerteDeclenchee {
+  id: string;
+  regleId: string;
+  type: string;
+  titre: string;
+  message: string;
+  projetId?: string;
+  priorite: 'info' | 'warning' | 'critical';
+  lue: boolean;
+  dateDeclenchement: string;
+}
+
+// S7: Audit trail
+export interface AuditEntry {
+  id: string;
+  userId: string;
+  userName: string;
+  action: string;
+  entityType: 'anomalie' | 'campagne' | 'projet' | 'produit' | 'utilisateur' | 'test_case' | 'fonctionnalite' | 'rapport' | 'alerte' | 'systeme';
+  entityId: string;
+  details: string;
+  ancienValeur?: string;
+  nouvelleValeur?: string;
+  date: string;
+  ip?: string;
+}
+
+// S7: Configuration notifications
+export interface ConfigNotifications {
+  emailActif: boolean;
+  emailAdress?: string;
+  anomaliesCritiques: boolean;
+  anomaliesOuvertes: boolean;
+  retardCampagnes: boolean;
+  scoreQualite: boolean;
+  allocations: boolean;
+  frequence: 'instantane' | 'quotidien' | 'hebdomadaire';
+}

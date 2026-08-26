@@ -11,6 +11,9 @@ import { DetteQualitePage } from './pages/DetteQualitePage';
 import { GoNogoPage } from './pages/GoNogoPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { RapportsPage } from './pages/RapportsPage';
+import { AlertesPage } from './pages/AlertesPage';
+import { AuditTrailPage } from './pages/AuditTrailPage';
+import { NotificationsConfigPage } from './pages/NotificationsConfigPage';
 import { CampagnesPage } from './pages/CampagnesPage';
 import { AdminUtilisateursPage } from './pages/AdminUtilisateursPage';
 import { AdminHistoryPage } from './pages/AdminHistoryPage';
@@ -52,6 +55,9 @@ export const router = createBrowserRouter([
       { path: '/go-nogo', element: <GoNogoPage /> },
       { path: '/dashboard', element: <DashboardPage /> },
       { path: '/rapports', element: <RapportsPage /> },
+      { path: '/alertes', element: <AlertesPage /> },
+      { path: '/audit-trail', element: <AuditTrailPage /> },
+      { path: '/notifications-config', element: <NotificationsConfigPage /> },
       { path: '/campagnes', element: <CampagnesPage /> },
       { path: '/campagnes/:campagneId', element: <CampagneDetailPage /> },
       { path: '/admin/utilisateurs', element: <AdminUtilisateursPage /> },

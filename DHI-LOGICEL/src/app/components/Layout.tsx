@@ -156,6 +156,9 @@ export function Layout() {
         { path: '/go-nogo', label: 'Go / No-Go', icon: Rocket, roles: ['admin', 'chef_testeur', 'directeur'] },
         { path: '/dashboard', label: 'Tableau de bord', icon: BarChart3, roles: ['admin', 'chef_testeur', 'directeur'] },
         { path: '/rapports', label: 'Rapports', icon: FileText, roles: ['admin', 'chef_testeur', 'directeur'] },
+        { path: '/alertes', label: 'Alertes', icon: Bell, roles: ['admin', 'chef_testeur', 'testeur'] },
+        { path: '/audit-trail', label: 'Audit trail', icon: Clock, roles: ['admin', 'chef_testeur'] },
+        { path: '/notifications-config', label: 'Notifications', icon: Bell, roles: ['admin', 'chef_testeur', 'testeur', 'developpeur'] },
       ],
     },
   ];
