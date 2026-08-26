@@ -264,6 +264,25 @@ export function TesteurTachesPage() {
         dateCreation: new Date().toISOString(),
         lienUrl: `/anomalies/${nouvelleAnomalie.id}`
       });
+
+      // Notifier le(s) chef(s) testeur de la campagne
+      const campagne = campagnes.find((c: any) => c.id === fonctionnalite.campagneId);
+      if (campagne?.chefTesteurIds) {
+        campagne.chefTesteurIds.forEach((chefId: string) => {
+          if (chefId !== currentUser.id) {
+            ajouterNotification({
+              id: `n_${Date.now()}_${chefId}`,
+              userId: chefId,
+              type: 'anomalie',
+              titre: 'Nouvelle anomalie dans votre campagne',
+              message: `Une anomalie "${titreAnomalie}" a été créée dans la campagne "${campagne.nom}"`,
+              lue: false,
+              dateCreation: new Date().toISOString(),
+              lienUrl: `/anomalies/${nouvelleAnomalie.id}`
+            });
+          }
+        });
+      }
     }
 
     await changerStatutFonctionnalite(fonctionnalite.id, nouveauStatut, currentUser.id);

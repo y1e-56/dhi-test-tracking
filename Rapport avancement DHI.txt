@@ -1,0 +1,60 @@
+=================================================================
+RAPPORT D'AVANCEMENT - PLATEFORME DE SUIVI DES TESTS DHI
+Cahier des charges : Quality Management System (plan binome 8 semaines)
+Date : 23 aout 2026
+=================================================================
+
+AVANCEMENT GLOBAL
+-----------------
+Semaine 1 sur 8 en cours : Produits / Releases / Environnements
+
+PISTE A - BACKEND (terminee)
+----------------------------
+- Migrations 020 et 021 appliquees :
+    * Tables products, releases, environments (+ enums release_status,
+      environment_type)
+    * Nouveau role quality_manager
+    * Liens projet <-> produit et campagne <-> release / environnement
+- API REST complete /api/products avec sous-routes releases et
+  environments : CRUD, archivage, compteurs, gardes par role, audit
+  automatique dans l'historique
+- Backfill execute : un "Produit par defaut" cree, les projets existants
+  y ont ete rattaches automatiquement
+- Tests de fume valides :
+    * CRUD complet produit / release / environnement : OK
+    * Suppression d'un produit utilise -> refusee (409), conforme
+    * Ecriture par un simple testeur -> refusee (403), conforme
+
+PISTE B - FRONTEND (etape 1/8 terminee)
+---------------------------------------
+- Nouvelle section "Portefeuille" dans le menu + route /produits
+- Page Produits (squelette), fil d'Ariane et palette de commandes (Cmd+K)
+- Traductions FR/EN ajoutees
+- Prochaines etapes front : liste produits branchee sur l'API, dialog de
+  creation, fiche produit a onglets (versions, environnements, projets),
+  CRUD environnements, selecteurs produit / release / environnement dans
+  les formulaires projet et campagne
+
+VERIFICATIONS ET ENVIRONNEMENT
+------------------------------
+- Build frontend : OK
+- Serveurs verifies et operationnels : backend port 5000,
+  frontend port 5173
+- Problemes d'environnement rencontres puis corriges (sans impact sur
+  le code du projet) :
+    * node_modules corrompus (binaires tronques) -> reinstalles proprement
+      avec un store pnpm isole
+    * Navigateurs Playwright absents -> installes
+    * Bug preexistant dans les tests e2e : les selecteurs de login n'etaient
+      compatibles qu'avec l'interface anglaise -> corrige avec des
+      selecteurs stables (#email / #password), independants de la langue
+
+PROCHAINES ETAPES
+-----------------
+1. Relancer la suite e2e pour la validation finale de la semaine 1
+2. Frontend etape 2/8 : page Portefeuille produits connectee aux donnees
+   reelles de l'API
+3. Poursuite du plan : semaines 2 a 8 (fonctionnalites/exigences et points
+   de vigilance, executions de tests et preuves, multi-testeurs et
+   duplication, dependances, couverture, scoring et rapports, Go/No-Go
+   Center)

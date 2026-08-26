@@ -1,6 +1,6 @@
 export type UserRole = 'admin' | 'chef_testeur' | 'testeur' | 'developpeur';
 
-export type StatutFonctionnalite = 'non_testee' | 'conforme' | 'anomalie';
+export type StatutFonctionnalite = 'non_testee' | 'en_cours' | 'conforme' | 'anomalie';
 
 export type StatutAnomalie = 'nouvelle' | 'en_cours' | 'resolution_signalee' | 'validee' | 'cloturee';
 
@@ -73,10 +73,12 @@ export interface Campagne {
   nom: string;
   projetId: string;
   description: string;
+  objectif: string;
+  modeOrganisation: 'fonctionnalites' | 'modules';
   dateDebut: string;
   dateFin: string;
-  equipeTesteurs: string[]; // IDs des testeurs
-  equipeDeveloppeurs: string[]; // IDs des développeurs
+  equipeTesteurs: string[];
+  equipeDeveloppeurs: string[];
   chefTesteurIds: string[];
   statut: 'en_preparation' | 'en_cours' | 'terminee' | 'archive';
   dateCreation: string;

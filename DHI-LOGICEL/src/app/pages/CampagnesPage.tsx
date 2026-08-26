@@ -50,6 +50,8 @@ export function CampagnesPage() {
     nom: '',
     projetId: '',
     description: '',
+    objectif: '',
+    modeOrganisation: 'fonctionnalites' as 'fonctionnalites' | 'modules',
     dateDebut: '',
     dateFin: '',
     chefTesteurIds: [] as string[],
@@ -139,6 +141,8 @@ export function CampagnesPage() {
         nom: campagne.nom,
         projetId: campagne.projetId,
         description: campagne.description,
+        objectif: (campagne as any).objectif || '',
+        modeOrganisation: (campagne as any).modeOrganisation || 'fonctionnalites',
         dateDebut: toDateInput(campagne.dateDebut),
         dateFin: toDateInput(campagne.dateFin),
         chefTesteurIds: campagne.chefTesteurIds || [],
@@ -154,6 +158,8 @@ export function CampagnesPage() {
         nom: '',
         projetId: '',
         description: '',
+        objectif: '',
+        modeOrganisation: 'fonctionnalites',
         dateDebut: '',
         dateFin: '',
         chefTesteurIds: [currentUser.id],
@@ -261,7 +267,7 @@ export function CampagnesPage() {
 
       setDialogOpen(false);
       setErrors({ nom: '', projetId: '', chefTesteurIds: '', dateDebut: '', dateFin: '' });
-      setFormData(prev => ({ ...prev, nom: '', description: '', dateDebut: '', dateFin: '', versionId: '', environnementId: '' }));
+      setFormData(prev => ({ ...prev, nom: '', description: '', objectif: '', modeOrganisation: 'fonctionnalites', dateDebut: '', dateFin: '', versionId: '', environnementId: '' }));
       fetchCampagnes();
     } catch (error: any) {
       if (error?.response?.status === 409) {
@@ -424,6 +430,27 @@ export function CampagnesPage() {
                   placeholder={t('campagne.list.description_placeholder')}
                   rows={3}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="objectif">Objectif de la campagne *</Label>
+                <Input
+                  id="objectif"
+                  value={formData.objectif}
+                  onChange={(e) => setFormData({ ...formData, objectif: e.target.value })}
+                  placeholder="Ex: Valider la conformité de la release v2.0"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Mode d'organisation *</Label>
+                <Select value={formData.modeOrganisation} onValueChange={(v: 'fonctionnalites' | 'modules') => setFormData({ ...formData, modeOrganisation: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fonctionnalites">Par fonctionnalités</SelectItem>
+                    <SelectItem value="modules">Par modules</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-3">

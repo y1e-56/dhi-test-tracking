@@ -348,6 +348,18 @@ export function CampagneDetailPage() {
         dateAssignation: new Date().toISOString(),
         dureeJours: dureeChoisie
       });
+      const testeurAssignee = users.find((u: any) => u.id === assignData.testeurAssigneId);
+      if (testeurAssignee) {
+        ajouterNotification({
+          id: `notif_${Date.now()}`,
+          destinataireId: assignData.testeurAssigneId,
+          type: 'assignation',
+          titre: 'Nouvelle tâche assignée',
+          message: `Vous avez été assigné à la fonctionnalité "${existante?.nom || ''}" dans la campagne "${campagne?.nom}"`,
+          lue: false,
+          dateCreation: new Date().toISOString(),
+        });
+      }
       setAssignDialogOpen(false);
     } catch (error) {
       console.error('Erreur lors de l\'assignation:', error);
