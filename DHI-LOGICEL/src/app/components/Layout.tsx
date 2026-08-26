@@ -7,7 +7,7 @@ import { useNavigate, useLocation, Outlet } from 'react-router';
 import {
   Bell, LogOut, Menu, Home, FolderKanban, TestTube,
   BarChart3, ChevronRight, Bug, Users, Sparkles, Languages, KeyRound, Eye, EyeOff, Search,
-  ClipboardList, FileText, Settings, Shield, Clock, UserPlus, Package, Layers, AlertTriangle
+  ClipboardList, FileText, Settings, Shield, Clock, UserPlus, Package, Layers, AlertTriangle, Rocket
 } from 'lucide-react';
 import { CommandPalette } from './CommandPalette';
 import { Breadcrumbs } from './ui/Breadcrumbs';
@@ -153,6 +153,9 @@ export function Layout() {
         { path: '/reporting', label: t('nav.reporting'), icon: BarChart3, roles: ['admin', 'chef_testeur'] },
         { path: '/couverture', label: 'Couverture', icon: Layers, roles: ['admin', 'chef_testeur'] },
         { path: '/dette-qualite', label: 'Dette qualité', icon: AlertTriangle, roles: ['admin', 'chef_testeur'] },
+        { path: '/go-nogo', label: 'Go / No-Go', icon: Rocket, roles: ['admin', 'chef_testeur', 'directeur'] },
+        { path: '/dashboard', label: 'Tableau de bord', icon: BarChart3, roles: ['admin', 'chef_testeur', 'directeur'] },
+        { path: '/rapports', label: 'Rapports', icon: FileText, roles: ['admin', 'chef_testeur', 'directeur'] },
       ],
     },
   ];

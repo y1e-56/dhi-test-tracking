@@ -384,3 +384,73 @@ export interface ScoreQualiteAvance {
   detailParType: { type: string; score: number }[];
   dateCalcul: string;
 }
+
+// S6: Go/No-Go Live
+export type VerdictGoNogo = 'go' | 'no_go' | 'go_reserve';
+export type StatutChecklistItem = 'a_faire' | 'en_cours' | 'fait' | 'na';
+
+export interface CheckListItem {
+  id: string;
+  description: string;
+  statut: StatutChecklistItem;
+  responsableId?: string;
+  commentaire?: string;
+}
+
+export interface Derogation {
+  id: string;
+  reference: string;
+  description: string;
+  risque: string;
+  mesures: string;
+  demandeurId: string;
+  approbateurId?: string;
+  statut: 'en_attente' | 'approuvee' | 'rejetee';
+  dateDemande: string;
+  dateReponse?: string;
+}
+
+export interface DecisionGoNogo {
+  id: string;
+  projetId: string;
+  versionId: string;
+  verdict: VerdictGoNogo;
+  dateDecision: string;
+  decisionParId: string;
+  commentaires: string;
+  checklist: CheckListItem[];
+  derogations: Derogation[];
+  scoreQualite: number;
+  anomaliesOuvertes: number;
+  anomaliesCritiques: number;
+  tauxCouverture: number;
+}
+
+// S6: Dashboard
+export interface DashboardKPI {
+  label: string;
+  valeur: number | string;
+  unite?: string;
+  tendance?: 'up' | 'down' | 'stable';
+  delta?: number;
+  icon?: string;
+  color?: string;
+}
+
+export interface GraphiqueDonnee {
+  label: string;
+  valeur: number;
+  couleur?: string;
+}
+
+export interface DashboardData {
+  kpis: DashboardKPI[];
+  graphiqueAnomalies: GraphiqueDonnee[];
+  graphiqueCouverture: GraphiqueDonnee[];
+  graphiqueEvolution: { date: string; valeur: number }[];
+  activiteRecente: { id: string; type: string; titre: string; date: string; userId: string }[];
+}
+
+// S6: Rapports
+export type FormatRapport = 'pdf' | 'excel' | 'csv';
+export type TypeRapport = 'couverture' | 'anomalies' | 'qualite' | 'go_nogo' | 'projet' | 'produit';

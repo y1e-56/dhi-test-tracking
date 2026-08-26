@@ -8,6 +8,9 @@ import { ProjetDetailPage } from './pages/ProjetDetailPage';
 import { FeatureDetailPage } from './pages/FeatureDetailPage';
 import { CouverturePage } from './pages/CouverturePage';
 import { DetteQualitePage } from './pages/DetteQualitePage';
+import { GoNogoPage } from './pages/GoNogoPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { RapportsPage } from './pages/RapportsPage';
 import { CampagnesPage } from './pages/CampagnesPage';
 import { AdminUtilisateursPage } from './pages/AdminUtilisateursPage';
 import { AdminHistoryPage } from './pages/AdminHistoryPage';
@@ -46,6 +49,9 @@ export const router = createBrowserRouter([
       { path: '/fonctionnalites/:featureId', element: <FeatureDetailPage /> },
       { path: '/couverture', element: <CouverturePage /> },
       { path: '/dette-qualite', element: <DetteQualitePage /> },
+      { path: '/go-nogo', element: <GoNogoPage /> },
+      { path: '/dashboard', element: <DashboardPage /> },
+      { path: '/rapports', element: <RapportsPage /> },
       { path: '/campagnes', element: <CampagnesPage /> },
       { path: '/campagnes/:campagneId', element: <CampagneDetailPage /> },
       { path: '/admin/utilisateurs', element: <AdminUtilisateursPage /> },
