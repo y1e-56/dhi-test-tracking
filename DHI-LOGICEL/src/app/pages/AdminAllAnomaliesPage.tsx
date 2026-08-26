@@ -5,7 +5,6 @@ import { useData } from '../contexts/DataContext';
 import { useNavigate } from 'react-router';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Input } from '../components/ui/input';
 import { AlertTriangle, Clock, CheckCircle2, Bug, Search, Loader2, ArrowRight, X, ExternalLink } from 'lucide-react';

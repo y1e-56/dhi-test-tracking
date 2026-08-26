@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { ArrowLeft, AlertTriangle, TrendingUp, Clock, Layers } from 'lucide-react';
+import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { detteQualiteService, DetteQualite, ResumeDette } from '../services/detteQualiteService';
 

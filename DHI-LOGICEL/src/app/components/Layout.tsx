@@ -46,7 +46,6 @@ export function Layout() {
   const [pwdVisible, setPwdVisible] = useState({ current: false, next: false, confirm: false });
   const [pwdLoading, setPwdLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [recentOpen, setRecentOpen] = useState(false);
   const [recentPages, setRecentPages] = useState<{ path: string; label: string; time: number }[]>([]);
   const breadcrumbItems = useBreadcrumbs();
 
@@ -154,7 +153,6 @@ export function Layout() {
         { path: '/couverture', label: 'Couverture', icon: Layers, roles: ['admin', 'chef_testeur'] },
         { path: '/dette-qualite', label: 'Dette qualité', icon: AlertTriangle, roles: ['admin', 'chef_testeur'] },
         { path: '/go-nogo', label: 'Go / No-Go', icon: Rocket, roles: ['admin', 'chef_testeur', 'directeur'] },
-        { path: '/dashboard', label: 'Tableau de bord', icon: BarChart3, roles: ['admin', 'chef_testeur', 'directeur'] },
         { path: '/rapports', label: 'Rapports', icon: FileText, roles: ['admin', 'chef_testeur', 'directeur'] },
         { path: '/alertes', label: 'Alertes', icon: Bell, roles: ['admin', 'chef_testeur', 'testeur'] },
         { path: '/audit-trail', label: 'Audit trail', icon: Clock, roles: ['admin', 'chef_testeur'] },
@@ -374,7 +372,7 @@ export function Layout() {
                   {recentPages.slice(0, 5).map((page, i) => (
                     <DropdownMenuItem
                       key={`${page.path}-${i}`}
-                      onClick={() => { navigate(page.path); setRecentOpen(false); }}
+                      onClick={() => { navigate(page.path); }}
                       className="flex items-center gap-2 cursor-pointer"
                     >
                       <Clock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />

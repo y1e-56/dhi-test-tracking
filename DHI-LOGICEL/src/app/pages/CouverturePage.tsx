@@ -6,7 +6,7 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Progress } from '../components/ui/progress';
-import { ArrowLeft, Loader2, AlertTriangle, Layers, TestTube, Shield, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Layers, TestTube, Shield, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { CouvertureModule, CouvertureTypeTest, CouvertureCriticite, TrouTest, ScoreQualiteAvance } from '../types';
 import { couvertureService } from '../services/couvertureService';
 import { useData } from '../contexts/DataContext';
