@@ -9,7 +9,6 @@ import { FeatureDetailPage } from './pages/FeatureDetailPage';
 import { CouverturePage } from './pages/CouverturePage';
 import { DetteQualitePage } from './pages/DetteQualitePage';
 import { GoNogoPage } from './pages/GoNogoPage';
-import { DashboardPage } from './pages/DashboardPage';
 import { RapportsPage } from './pages/RapportsPage';
 import { AlertesPage } from './pages/AlertesPage';
 import { AuditTrailPage } from './pages/AuditTrailPage';
@@ -53,7 +52,6 @@ export const router = createBrowserRouter([
       { path: '/couverture', element: <CouverturePage /> },
       { path: '/dette-qualite', element: <DetteQualitePage /> },
       { path: '/go-nogo', element: <GoNogoPage /> },
-      { path: '/dashboard', element: <DashboardPage /> },
       { path: '/rapports', element: <RapportsPage /> },
       { path: '/alertes', element: <AlertesPage /> },
       { path: '/audit-trail', element: <AuditTrailPage /> },
