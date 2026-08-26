@@ -7,6 +7,7 @@ import { ProduitDetailPage } from './pages/ProduitDetailPage';
 import { ProjetDetailPage } from './pages/ProjetDetailPage';
 import { FeatureDetailPage } from './pages/FeatureDetailPage';
 import { CouverturePage } from './pages/CouverturePage';
+import { DetteQualitePage } from './pages/DetteQualitePage';
 import { CampagnesPage } from './pages/CampagnesPage';
 import { AdminUtilisateursPage } from './pages/AdminUtilisateursPage';
 import { AdminHistoryPage } from './pages/AdminHistoryPage';
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
       { path: '/projets/:projetId', element: <ProjetDetailPage /> },
       { path: '/fonctionnalites/:featureId', element: <FeatureDetailPage /> },
       { path: '/couverture', element: <CouverturePage /> },
+      { path: '/dette-qualite', element: <DetteQualitePage /> },
       { path: '/campagnes', element: <CampagnesPage /> },
       { path: '/campagnes/:campagneId', element: <CampagneDetailPage /> },
       { path: '/admin/utilisateurs', element: <AdminUtilisateursPage /> },
