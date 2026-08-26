@@ -7,7 +7,7 @@ import { useNavigate, useLocation, Outlet } from 'react-router';
 import {
   Bell, LogOut, Menu, Home, FolderKanban, TestTube,
   BarChart3, ChevronRight, Bug, Users, Sparkles, Languages, KeyRound, Eye, EyeOff, Search,
-  ClipboardList, FileText, Settings, Shield, Clock, UserPlus, Package
+  ClipboardList, FileText, Settings, Shield, Clock, UserPlus, Package, Layers
 } from 'lucide-react';
 import { CommandPalette } from './CommandPalette';
 import { Breadcrumbs } from './ui/Breadcrumbs';
@@ -151,6 +151,7 @@ export function Layout() {
         { path: '/admin/utilisateurs', label: t('nav.users'), icon: Users, roles: ['admin'] },
         { path: '/admin/history', label: t('nav.history'), icon: FileText, roles: ['admin'] },
         { path: '/reporting', label: t('nav.reporting'), icon: BarChart3, roles: ['admin', 'chef_testeur'] },
+        { path: '/couverture', label: 'Couverture', icon: Layers, roles: ['admin', 'chef_testeur'] },
       ],
     },
   ];

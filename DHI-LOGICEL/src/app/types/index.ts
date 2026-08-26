@@ -338,3 +338,47 @@ export interface CampagneEnrichie {
   version: number;
   campagneParentId: string | null;
 }
+
+export interface CouvertureModule {
+  module: string;
+  totalFonctionnalites: number;
+  couvertes: number;
+  avecAnomalies: number;
+  nonTestees: number;
+  tauxCouverture: number;
+}
+
+export interface CouvertureTypeTest {
+  type: string;
+  totalCasTests: number;
+  executes: number;
+  reussis: number;
+  echecs: number;
+  tauxReussite: number;
+}
+
+export interface CouvertureCriticite {
+  criticite: string;
+  totalFonctionnalites: number;
+  couvertes: number;
+  tauxCouverture: number;
+}
+
+export interface TrouTest {
+  id: string;
+  module: string;
+  typeTest: string;
+  criticite: string;
+  description: string;
+  recommandation: string;
+  dateDetection: string;
+}
+
+export interface ScoreQualiteAvance {
+  produitId: string;
+  scoreGlobal: number;
+  tendance: 'amelioration' | 'stable' | 'deterioration';
+  detailParModule: { module: string; score: number }[];
+  detailParType: { type: string; score: number }[];
+  dateCalcul: string;
+}

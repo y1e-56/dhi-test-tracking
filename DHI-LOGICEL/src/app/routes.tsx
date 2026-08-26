@@ -6,6 +6,7 @@ import { ProduitsPage } from './pages/ProduitsPage';
 import { ProduitDetailPage } from './pages/ProduitDetailPage';
 import { ProjetDetailPage } from './pages/ProjetDetailPage';
 import { FeatureDetailPage } from './pages/FeatureDetailPage';
+import { CouverturePage } from './pages/CouverturePage';
 import { CampagnesPage } from './pages/CampagnesPage';
 import { AdminUtilisateursPage } from './pages/AdminUtilisateursPage';
 import { AdminHistoryPage } from './pages/AdminHistoryPage';
@@ -42,6 +43,7 @@ export const router = createBrowserRouter([
       { path: '/projets', element: <ProjetsPage /> },
       { path: '/projets/:projetId', element: <ProjetDetailPage /> },
       { path: '/fonctionnalites/:featureId', element: <FeatureDetailPage /> },
+      { path: '/couverture', element: <CouverturePage /> },
       { path: '/campagnes', element: <CampagnesPage /> },
       { path: '/campagnes/:campagneId', element: <CampagneDetailPage /> },
       { path: '/admin/utilisateurs', element: <AdminUtilisateursPage /> },
