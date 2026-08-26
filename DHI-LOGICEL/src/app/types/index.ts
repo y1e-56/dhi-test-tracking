@@ -294,3 +294,47 @@ export interface Dependence {
   type: 'avant' | 'apres' | 'requiert_reussite' | 'bloque' | 'depend_fonctionnellement';
   dateCreation: string;
 }
+
+export type Verdict = 'pass' | 'fail' | 'blocked' | 'na' | 'non_execute';
+
+export interface TestExecution {
+  id: string;
+  campagneId: string;
+  casTestId: string;
+  featureId: string;
+  testeurId: string;
+  verdict: Verdict;
+  notes: string;
+  dateExecution: string;
+}
+
+export type TypePreuve = 'capture' | 'log' | 'document' | 'video' | 'email' | 'autre';
+
+export interface Preuve {
+  id: string;
+  executionId: string;
+  casTestId: string;
+  campagneId: string;
+  nom: string;
+  type: TypePreuve;
+  description: string;
+  contenu: string;
+  dateAjout: string;
+  tags: string[];
+}
+
+export interface CampagneEnrichie {
+  id: string;
+  projetId: string;
+  nom: string;
+  description: string;
+  dateDebut: string;
+  dateFin: string;
+  statut: string;
+  versionId: string | null;
+  environnementId: string | null;
+  testLeadIds: string[];
+  dateCreation: string;
+  version: number;
+  campagneParentId: string | null;
+}

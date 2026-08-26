@@ -13,16 +13,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { ArrowLeft, Plus, TestTube, AlertTriangle, CheckCircle2, Clock, User, Play, Flag, X, Users, Trash2, Search, Loader2, Sparkles, FileText } from 'lucide-react';
-import { Fonctionnalite, Priorite, StatutFonctionnalite, StatutAnomalie, TestCase, HistoriqueAction } from '../types';
+import { Fonctionnalite, Priorite, StatutFonctionnalite, StatutAnomalie, TestCase, HistoriqueAction, TestExecution, Verdict } from '../types';
 import { useDebounce } from '../hooks/useDebounce';
 import { useAsyncAction } from '../hooks/useAsyncAction';
 import { campaignService } from '../services/campaignService';
 import { testCaseService } from '../services/testCaseService';
 import { featureService } from '../services/featureService';
 import { dashboardService } from '../services/dashboardService';
+import { campagneExecutionService } from '../services/campagneExecutionService';
 import { toast } from 'sonner';
 import { getErrorMessage } from '../services/api';
 import { HistoriqueTimeline } from '../components/HistoriqueTimeline';
+import { Progress } from '../components/ui/progress';
 
 function joursRestants(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
@@ -76,6 +78,13 @@ export function CampagneDetailPage() {
   const [newTestCase, setNewTestCase] = useState({ nom: '', steps: '', expectedResult: '', priority: 'moyenne' as Priorite });
   const [erreurNomFonctionnalite, setErreurNomFonctionnalite] = useState('');
   const [erreurNomTestCase, setErreurNomTestCase] = useState('');
+  const [executions, setExecutions] = useState<TestExecution[]>([]);
+  const [filtreTesteur, setFiltreTesteur] = useState<string>('tous');
+  const [dialogPreuveOpen, setDialogPreuveOpen] = useState(false);
+  const [preuveExecId, setPreuveExecId] = useState<string | null>(null);
+  const [formPreuve, setFormPreuve] = useState({ nom: '', type: 'capture' as const, description: '', contenu: '', tags: '' });
+  const [dialogDupliqueOpen, setDialogDupliqueOpen] = useState(false);
+  const [nomDuplique, setNomDuplique] = useState('');
 
   // Charger les cas de test quand une fonctionnalité est sélectionnée
   useEffect(() => {
@@ -106,6 +115,11 @@ export function CampagneDetailPage() {
       }
     })();
   }, [activeTab, campagneId]);
+
+  useEffect(() => {
+    if (!campagneId) return;
+    setExecutions(campagneExecutionService.listExecutions(campagneId));
+  }, [campagneId]);
 
   const campagne = campagnes.find((c: any) => c.id === campagneId);
   const projet = projets.find((p: any) => p.id === campagne?.projetId);
@@ -161,6 +175,51 @@ export function CampagneDetailPage() {
       }
     } catch (error) {
       console.error('Erreur lors du retrait du membre:', error);
+    }
+  };
+
+  const gererVerdict = (casTestId: string, verdict: Verdict) => {
+    if (!campagneId || !currentUser) return;
+    campagneExecutionService.upsertExecution({
+      campagneId, casTestId, featureId: '', testeurId: currentUser.id, verdict, notes: '',
+    });
+    setExecutions(campagneExecutionService.listExecutions(campagneId));
+  };
+
+  const preuves = campagneId ? campagneExecutionService.listPreuvesByCampagne(campagneId) : [];
+  const progression = campagneExecutionService.getProgression(campagneId || '', testCases.length);
+
+  const ouvrirPreuve = (execId: string) => {
+    setPreuveExecId(execId);
+    setFormPreuve({ nom: '', type: 'capture', description: '', contenu: '', tags: '' });
+    setDialogPreuveOpen(true);
+  };
+
+  const sauvegarderPreuve = () => {
+    if (!preuveExecId || !formPreuve.nom.trim()) return;
+    campagneExecutionService.createPreuve({
+      executionId: preuveExecId,
+      casTestId: '',
+      campagneId: campagneId || '',
+      nom: formPreuve.nom.trim(),
+      type: formPreuve.type as any,
+      description: formPreuve.description.trim(),
+      contenu: formPreuve.contenu.trim(),
+      tags: formPreuve.tags.split(',').map((t) => t.trim()).filter(Boolean),
+    });
+    toast.success(t('quality.toast.criteria_updated'));
+    setDialogPreuveOpen(false);
+  };
+
+  const handleDupliquerCampagne = async () => {
+    if (!nomDuplique.trim() || !campagneId || !projet) return;
+    try {
+      campagneExecutionService.duplicuerCampagne(campagneId, nomDuplique.trim(), projet.id);
+      toast.success(t('quality.toast.criteria_updated'));
+      setDialogDupliqueOpen(false);
+      navigate('/campagnes');
+    } catch (e: any) {
+      toast.error(getErrorMessage(e));
     }
   };
 
@@ -551,6 +610,9 @@ export function CampagneDetailPage() {
               onClick={() => { if (confirm(t('campagne.detail.delete_confirm'))) handleSupprimerCampagne(); }}>
               <Trash2 className="w-4 h-4" />{t('campagne.detail.delete')}
             </Button>
+            <Button variant="outline" onClick={() => { setNomDuplique(campagne.nom + ' (copie)'); setDialogDupliqueOpen(true); }}>
+              <Plus className="w-4 h-4 mr-1.5" />Dupliquer
+            </Button>
           </>
         )}
       </div>
@@ -564,9 +626,11 @@ export function CampagneDetailPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="fonctionnalites">{t('campagne.detail.features_tab')}</TabsTrigger>
           <TabsTrigger value="testcases">{t('campagne.detail.testcases_tab')}</TabsTrigger>
+          <TabsTrigger value="execution">Exécution</TabsTrigger>
+          <TabsTrigger value="preuves">Preuves ({preuves.length})</TabsTrigger>
           <TabsTrigger value="anomalies">{t('campagne.detail.anomalies_tab')}</TabsTrigger>
           <TabsTrigger value="equipe">{t('campagne.detail.team_tab')}</TabsTrigger>
           <TabsTrigger value="historique">{t('campagne.detail.history_tab')}</TabsTrigger>
@@ -775,6 +839,89 @@ export function CampagneDetailPage() {
               </div>
             )}
           </div>
+        </TabsContent>
+
+        {/* ─── ONGLET EXÉCUTION ─── */}
+        <TabsContent value="execution" className="space-y-4">
+          <Card>
+            <CardHeader><CardTitle className="text-sm font-medium text-gray-600">Progression des tests</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4">
+                <Progress value={progression.pourcentage} className="flex-1" />
+                <span className="text-sm font-medium">{progression.pourcentage}%</span>
+              </div>
+              <div className="grid grid-cols-5 gap-3 text-center text-xs">
+                <div><div className="text-lg font-bold text-gray-600">{progression.total}</div>Total</div>
+                <div><div className="text-lg font-bold text-green-600">{progression.pass}</div>Pass</div>
+                <div><div className="text-lg font-bold text-red-600">{progression.fail}</div>Fail</div>
+                <div><div className="text-lg font-bold text-orange-600">{progression.blocked}</div>Blocked</div>
+                <div><div className="text-lg font-bold text-gray-400">{progression.na}</div>N/A</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {selectedFonctionnalite ? (
+            <div className="space-y-2">
+              {testCases.map((tc) => {
+                const exec = executions.find((e) => e.casTestId === tc.id);
+                const verdict = exec?.verdict || 'non_execute';
+                return (
+                  <Card key={tc.id}>
+                    <CardContent className="py-3 px-4 flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{tc.nom}</p>
+                        <p className="text-xs text-gray-500 truncate">{tc.expectedResult}</p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {(['pass', 'fail', 'blocked', 'na'] as Verdict[]).map((v) => (
+                          <Button
+                            key={v}
+                            size="sm"
+                            variant={verdict === v ? 'default' : 'outline'}
+                            className={`h-7 px-2 text-xs ${verdict === v ? (v === 'pass' ? 'bg-green-600 hover:bg-green-700' : v === 'fail' ? 'bg-red-600 hover:bg-red-700' : v === 'blocked' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-500 hover:bg-gray-600') : ''}`}
+                            onClick={() => gererVerdict(tc.id, v)}
+                          >
+                            {v.toUpperCase()}
+                          </Button>
+                        ))}
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => ouvrirPreuve(exec?.id || '')}>Preuve</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              {testCases.length === 0 && (
+                <Card><CardContent className="py-10 text-center"><p className="text-gray-500">Sélectionnez une fonctionnalité dans l'onglet "Cas de test" d'abord</p></CardContent></Card>
+              )}
+            </div>
+          ) : (
+            <Card><CardContent className="py-10 text-center"><p className="text-gray-500">Sélectionnez une fonctionnalité pour voir les cas de test à exécuter</p></CardContent></Card>
+          )}
+        </TabsContent>
+
+        {/* ─── ONGLET PREUVES ─── */}
+        <TabsContent value="preuves" className="space-y-4">
+          {preuves.length === 0 ? (
+            <Card><CardContent className="py-10 text-center"><FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" /><p className="text-gray-500">Aucune preuve ajoutée</p></CardContent></Card>
+          ) : (
+            <div className="space-y-2">
+              {preuves.map((pr) => (
+                <Card key={pr.id}>
+                  <CardContent className="py-3 px-4 flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{pr.nom}</p>
+                      <p className="text-xs text-gray-500">{pr.description}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge variant="outline">{pr.type}</Badge>
+                      {pr.tags?.map((tag) => <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>)}
+                      <span className="text-xs text-gray-400">{new Date(pr.dateAjout).toLocaleDateString('fr-FR')}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="anomalies" className="space-y-4">
@@ -1025,6 +1172,43 @@ export function CampagneDetailPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setAjoutMembreDialogOpen(false)}>{t('campagne.detail.cancel')}</Button>
             <Button onClick={ajouterMembre} disabled={ajoutMembrePending}>{t('campagne.detail.add')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog preuve */}
+      <Dialog open={dialogPreuveOpen} onOpenChange={setDialogPreuveOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Ajouter une preuve</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2"><Label>Nom *</Label><Input value={formPreuve.nom} onChange={(e) => setFormPreuve({ ...formPreuve, nom: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Type</Label>
+              <Select value={formPreuve.type} onValueChange={(v) => setFormPreuve({ ...formPreuve, type: v as any })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {['capture', 'log', 'document', 'video', 'email', 'autre'].map((tp) => <SelectItem key={tp} value={tp}>{tp}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2"><Label>Description</Label><Textarea value={formPreuve.description} onChange={(e) => setFormPreuve({ ...formPreuve, description: e.target.value })} rows={2} /></div>
+            <div className="space-y-2"><Label>Contenu / URL</Label><Input value={formPreuve.contenu} onChange={(e) => setFormPreuve({ ...formPreuve, contenu: e.target.value })} placeholder="Lien ou description du fichier" /></div>
+            <div className="space-y-2"><Label>Tags (séparés par virgule)</Label><Input value={formPreuve.tags} onChange={(e) => setFormPreuve({ ...formPreuve, tags: e.target.value })} placeholder="screenshot, bug, UI" /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogPreuveOpen(false)}>{t('common.cancel')}</Button>
+            <Button onClick={sauvegarderPreuve}>{t('common.save')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog dupliquer campagne */}
+      <Dialog open={dialogDupliqueOpen} onOpenChange={setDialogDupliqueOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Dupliquer la campagne</DialogTitle><DialogDescription>Crée une copie avec les mêmes paramètres (en statut "En préparation")</DialogDescription></DialogHeader>
+          <div className="py-4"><Label>Nom de la copie</Label><Input value={nomDuplique} onChange={(e) => setNomDuplique(e.target.value)} className="mt-2" /></div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogDupliqueOpen(false)}>{t('common.cancel')}</Button>
+            <Button onClick={handleDupliquerCampagne}>{t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
