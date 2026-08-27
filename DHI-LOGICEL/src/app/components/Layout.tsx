@@ -119,7 +119,7 @@ export function Layout() {
     {
       label: '',
       items: [
-        { path: '/dashboard', label: t('nav.dashboard'), icon: Home, roles: ['admin', 'chef_testeur', 'testeur', 'developpeur'] },
+        { path: '/dashboard', label: t('nav.dashboard'), icon: Home, roles: ['admin', 'chef_testeur', 'testeur', 'developpeur', 'directeur'] },
       ],
     },
     {
