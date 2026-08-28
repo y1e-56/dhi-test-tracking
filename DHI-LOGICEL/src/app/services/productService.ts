@@ -86,7 +86,7 @@ export const productService = {
   async listPaginated(filters: { page?: number; limit?: number; recherche?: string; statut?: 'actif' | 'archive' } = {}): Promise<{ data: Produit[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
     let produits: Produit[] = [];
     try {
-      const response = await api.get<ProduitBackend[]>('/products');
+      const response = await api.get<ProduitBackend[]>('/products', { params: { include_archived: true } });
       produits = response.data.map(mapProduitFromBackend);
     } catch {
       produits = [];
