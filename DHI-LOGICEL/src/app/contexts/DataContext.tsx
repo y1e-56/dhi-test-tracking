@@ -1,6 +1,6 @@
 import { createContext, useContext, ReactNode, useEffect, useCallback, useState } from 'react';
 import { toast } from 'sonner';
-import { Projet, Campagne, Fonctionnalite, Anomalie, Notification, HistoriqueAction, StatutFonctionnalite, StatutAnomalie, User } from '../types';
+import { Projet, Campagne, Fonctionnalite, Anomalie, Notification, HistoriqueAction, StatutFonctionnalite, StatutAnomalie, User, TestCase, Produit } from '../types';
 import { useAuth } from './AuthContext';
 import { useSocket } from './SocketProvider';
 import { useProjets } from './ProjetContext';
@@ -11,6 +11,9 @@ import { useNotifications } from './NotificationContext';
 import { useHistorique } from './HistoriqueContext';
 import { mapCampagneFromBackend, mapNotificationFromBackend } from '../utils/mappers';
 import { userService } from '../services/userService';
+import { demoDataService } from '../services/demoDataService';
+import { testCaseService } from '../services/testCaseService';
+import { productService } from '../services/productService';
 
 interface DataContextType {
   projets: Projet[];
@@ -20,6 +23,8 @@ interface DataContextType {
   notifications: Notification[];
   historiqueActions: HistoriqueAction[];
   users: User[];
+  testCases: TestCase[];
+  produits: Produit[];
   ajouterProjet: (projet: Projet) => Promise<void>;
   modifierProjet: (id: string, projet: Partial<Projet>) => Promise<void>;
   archiverProjet: (id: string) => Promise<void>;
@@ -34,7 +39,7 @@ interface DataContextType {
   changerStatutAnomalie: (id: string, statut: StatutAnomalie, userId: string, commentaire?: string) => Promise<void>;
   signalerResolution: (id: string, developpeurId: string, commentaire: string) => Promise<void>;
   validerCloture: (id: string, testeurId: string) => Promise<void>;
-  ajouterNotification: (notification: Notification) => Promise<void>;
+  ajouterNotification: (notification: Notification) => void;
   marquerNotificationLue: (id: string) => Promise<void>;
   getNotificationsNonLues: (userId: string) => number;
   ajouterHistorique: (action: HistoriqueAction) => void;
@@ -75,11 +80,39 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const { historiqueActions, ajouterHistorique } = useHistorique();
 
   const [users, setUsers] = useState<User[]>([]);
+  const [testCases, setTestCases] = useState<TestCase[]>([]);
+  const [produits, setProduits] = useState<Produit[]>([]);
   const refreshUsers = useCallback(async () => {
     try {
       setUsers(await userService.getAll());
     } catch {
       setUsers([]);
+    }
+  }, []);
+
+  const refreshTestCases = useCallback(async () => {
+    try {
+      const data = await testCaseService.list();
+      if (data && data.length > 0) {
+        setTestCases(data);
+      } else {
+        setTestCases(demoDataService.getTestCases());
+      }
+    } catch {
+      setTestCases(demoDataService.getTestCases());
+    }
+  }, []);
+
+  const refreshProduits = useCallback(async () => {
+    try {
+      const { data } = await productService.listPaginated();
+      if (data && data.length > 0) {
+        setProduits(data);
+      } else {
+        setProduits(JSON.parse(localStorage.getItem('dhi_demo_produits') || '[]'));
+      }
+    } catch {
+      setProduits(JSON.parse(localStorage.getItem('dhi_demo_produits') || '[]'));
     }
   }, []);
 
@@ -90,12 +123,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
       refreshFonctionnalites(),
       refreshAnomalies(),
       refreshNotifications(),
-      refreshUsers()
+      refreshUsers(),
+      refreshTestCases(),
+      refreshProduits()
     ]);
-  }, [refreshProjets, refreshCampagnes, refreshFonctionnalites, refreshAnomalies, refreshNotifications, refreshUsers]);
+  }, [refreshProjets, refreshCampagnes, refreshFonctionnalites, refreshAnomalies, refreshNotifications, refreshUsers, refreshTestCases, refreshProduits]);
 
   useEffect(() => {
     if (currentUser && !dataLoaded) {
+      demoDataService.seedTout();
       refreshAll();
       setDataLoaded(true);
     }
@@ -177,7 +213,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const value: DataContextType = {
     projets, campagnes, fonctionnalites, anomalies, notifications, historiqueActions,
-    users,
+    users, testCases, produits,
     ajouterProjet, modifierProjet, archiverProjet, restaurerProjet, supprimerProjet,
     ajouterCampagne, modifierCampagne,
     ajouterFonctionnalite, modifierFonctionnalite, changerStatutFonctionnalite,

@@ -352,6 +352,7 @@ export function CampagneDetailPage() {
       if (testeurAssignee) {
         ajouterNotification({
           id: `notif_${Date.now()}`,
+          userId: assignData.testeurAssigneId,
           destinataireId: assignData.testeurAssigneId,
           type: 'assignation',
           titre: 'Nouvelle tâche assignée',
@@ -487,8 +488,9 @@ export function CampagneDetailPage() {
   const { pending: ajoutFonctionnalitePending, run: ajouterFonctionnaliteAction } = useAsyncAction(handleAjouterFonctionnalite);
 
   const getStatutBadge = (statut: StatutFonctionnalite) => {
-    const config = {
+    const config: Record<StatutFonctionnalite, { labelKey: string; className: string }> = {
       non_testee: { labelKey: 'campagne.detail.not_tested', className: 'bg-gray-100 text-gray-700' },
+      en_cours: { labelKey: 'statut.en_cours', className: 'bg-blue-100 text-blue-700' },
       conforme: { labelKey: 'campagne.detail.compliant', className: 'bg-green-100 text-green-700' },
       anomalie: { labelKey: 'common.anomalies', className: 'bg-red-100 text-red-700' }
     };
@@ -820,7 +822,7 @@ export function CampagneDetailPage() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <h4 className="font-medium">{tc.nom}</h4>
-                              <Badge className={getPrioriteBadge(tc.priority)}>{t(`priorite.${tc.priority}`)}</Badge>
+                              <Badge className={getPrioriteBadge(tc.priority || 'moyenne')}>{t(`priorite.${tc.priority || 'moyenne'}`)}</Badge>
                             </div>
                             {tc.steps && (
                               <div className="mb-2">

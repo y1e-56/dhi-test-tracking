@@ -5,6 +5,7 @@ import { taskService } from '../services/taskService';
 import { campaignService } from '../services/campaignService';
 import api, { getErrorMessage } from '../services/api';
 import { mapFonctionnaliteToBackend } from '../utils/mappers';
+import { demoDataService } from '../services/demoDataService';
 
 interface FonctionnaliteContextType {
   fonctionnalites: Fonctionnalite[];
@@ -26,9 +27,21 @@ export function FonctionnaliteProvider({ children }: { children: ReactNode }) {
       const results = await Promise.all(
         allCampagnes.map(c => taskService.getCampaignFeatures(c.id).catch(() => []))
       );
-      setFonctionnalites(results.flat());
+      const data = results.flat();
+      if (data && data.length > 0) {
+        setFonctionnalites(data);
+        demoDataService.setFonctionnalites(data);
+      } else {
+        const demo = demoDataService.getFonctionnalites();
+        if (demo.length > 0) setFonctionnalites(demo);
+      }
     } catch (e) {
-      toast.error('Erreur refreshFonctionnalites : ' + getErrorMessage(e as any));
+      const demo = demoDataService.getFonctionnalites();
+      if (demo.length > 0) {
+        setFonctionnalites(demo);
+      } else {
+        toast.error('Erreur refreshFonctionnalites : ' + getErrorMessage(e as any));
+      }
     }
   }, []);
 
@@ -57,7 +70,11 @@ export function FonctionnaliteProvider({ children }: { children: ReactNode }) {
       toast.success('Fonctionnalité ajoutée avec succès');
     } catch (e) {
       if ((e as any)?.response?.status === 409) throw e;
-      toast.error(getErrorMessage(e as any));
+      const demo = demoDataService.getFonctionnalites();
+      demo.push({ ...fonctionnalite, id: fonctionnalite.id || `id_demo_${Date.now()}` });
+      demoDataService.setFonctionnalites(demo);
+      setFonctionnalites(demo);
+      toast.success('Fonctionnalité ajoutée (mode démo)');
     }
   };
 
@@ -106,7 +123,10 @@ export function FonctionnaliteProvider({ children }: { children: ReactNode }) {
       toast.success('Fonctionnalité modifiée avec succès');
     } catch (e) {
       if ((e as any)?.response?.status === 409) throw e;
-      toast.error(getErrorMessage(e as any));
+      const demo = demoDataService.getFonctionnalites().map(f => f.id === id ? { ...f, ...fonctionnalitePartielle } : f);
+      demoDataService.setFonctionnalites(demo);
+      setFonctionnalites(demo);
+      toast.success('Fonctionnalité modifiée (mode démo)');
     }
   };
 
@@ -121,7 +141,9 @@ export function FonctionnaliteProvider({ children }: { children: ReactNode }) {
         return merged;
       }));
     } catch (e) {
-      toast.error(getErrorMessage(e as any));
+      const demo = demoDataService.getFonctionnalites().map(f => f.id === id ? { ...f, statut } : f);
+      demoDataService.setFonctionnalites(demo);
+      setFonctionnalites(demo);
     }
   };
 

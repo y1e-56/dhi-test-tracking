@@ -137,6 +137,7 @@ export interface HistoriqueAction {
 export interface Notification {
   id: string;
   userId: string;
+  destinataireId?: string;
   type: 'assignation' | 'anomalie' | 'resolution' | 'validation' | 'information' | 'autre';
   titre: string;
   message: string;

@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { Campagne } from '../types';
 import { campaignService } from '../services/campaignService';
 import { getErrorMessage } from '../services/api';
+import { demoDataService } from '../services/demoDataService';
 
 interface CampagneContextType {
   campagnes: Campagne[];
@@ -20,9 +21,20 @@ export function CampagneProvider({ children }: { children: ReactNode }) {
   const refreshCampagnes = useCallback(async () => {
     try {
       const data = await campaignService.getAll();
-      setCampagnes(data);
+      if (data && data.length > 0) {
+        setCampagnes(data);
+        demoDataService.setCampagnes(data);
+      } else {
+        const demo = demoDataService.getCampagnes();
+        if (demo.length > 0) setCampagnes(demo);
+      }
     } catch (e) {
-      toast.error('Erreur refreshCampagnes : ' + getErrorMessage(e as any));
+      const demo = demoDataService.getCampagnes();
+      if (demo.length > 0) {
+        setCampagnes(demo);
+      } else {
+        toast.error('Erreur refreshCampagnes : ' + getErrorMessage(e as any));
+      }
     }
   }, []);
 
@@ -33,7 +45,11 @@ export function CampagneProvider({ children }: { children: ReactNode }) {
       toast.success('Campagne créée avec succès');
     } catch (e) {
       if ((e as any)?.response?.status === 409) throw e;
-      toast.error(getErrorMessage(e as any));
+      const demo = demoDataService.getCampagnes();
+      demo.push(campagne);
+      demoDataService.setCampagnes(demo);
+      setCampagnes(demo);
+      toast.success('Campagne créée (mode démo)');
     }
   };
 
@@ -44,7 +60,10 @@ export function CampagneProvider({ children }: { children: ReactNode }) {
       toast.success('Campagne modifiée avec succès');
     } catch (e) {
       if ((e as any)?.response?.status === 409) throw e;
-      toast.error(getErrorMessage(e as any));
+      const demo = demoDataService.getCampagnes().map(c => c.id === id ? { ...c, ...campagnePartielle } : c);
+      demoDataService.setCampagnes(demo);
+      setCampagnes(demo);
+      toast.success('Campagne modifiée (mode démo)');
     }
   };
 

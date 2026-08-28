@@ -30,7 +30,7 @@ export function GoNogoPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const { projets, campagnes, anomalies, testCases, produits } = useData();
+  const { projets, campagnes, anomalies, testCases, produits, fonctionnalites } = useData();
 
   const [projetId, setProjetId] = useState('');
   const [decision, setDecision] = useState<DecisionGoNogo | null>(null);
@@ -43,14 +43,18 @@ export function GoNogoPage() {
 
   const statsProjet = useMemo(() => {
     if (!projetId) return null;
-    const projAnomalies = anomalies.filter((a) => campagnes.some((c) => c.projetId === projetId && c.id === a.campagneId));
-    const projTC = testCases.filter((tc) => campagnes.some((c) => c.projetId === projetId && c.id === tc.campagneId));
+    const campagnesProjet = campagnes.filter((c) => c.projetId === projetId);
+    const campagnesIds = campagnesProjet.map((c) => c.id);
+    const featuresProjet = fonctionnalites.filter((f) => campagnesIds.includes(f.campagneId));
+    const featureIds = featuresProjet.map((f) => f.id);
+    const projAnomalies = anomalies.filter((a) => campagnesIds.includes(a.campagneId));
+    const projTC = testCases.filter((tc) => featureIds.includes(tc.featureId));
     const ouvertes = projAnomalies.filter((a) => !['cloturee', 'validee'].includes(a.statut)).length;
     const critiques = projAnomalies.filter((a) => a.priorite === 'critique' && !['cloturee', 'validee'].includes(a.statut)).length;
-    const passants = projTC.filter((tc) => tc.statut === 'passe').length;
+    const passants = projTC.filter((tc) => tc.status === 'passe').length;
     const taux = projTC.length > 0 ? Math.round((passants / projTC.length) * 100) : 0;
     return { total: projAnomalies.length, ouvertes, critiques, taux, totalTC: projTC.length };
-  }, [projetId, anomalies, testCases, campagnes]);
+  }, [projetId, anomalies, testCases, campagnes, fonctionnalites]);
 
   const initDecision = () => {
     if (!projetId || !statsProjet) return;

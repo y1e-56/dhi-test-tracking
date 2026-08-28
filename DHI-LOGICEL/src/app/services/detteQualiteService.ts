@@ -26,7 +26,7 @@ export interface DetteQualite {
 export interface ResumeDette {
   total: number;
   parImpact: { faible: number; moyen: number; eleve: number; critique: number };
-  parModule: { module: number; count: number }[];
+  parModule: { module: string; count: number }[];
   ancienneteMoyenne: number;
   detteCritique: number;
 }

@@ -63,8 +63,8 @@ export const rapportService = {
       );
     } else if (config.type === 'qualite') {
       csv = genererCSV(
-        ['ID', 'Titre', 'Type', 'Résultat', 'Criticité'],
-        data.testCases.map((tc) => [tc.id, tc.titre, tc.type, tc.statut, tc.criticite])
+        ['ID', 'Nom', 'Statut', 'Priorité'],
+        data.testCases.map((tc) => [tc.id, tc.nom, tc.status || '', tc.priority || ''])
       );
     }
     telechargerCSV(csv, filename);

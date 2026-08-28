@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../components/ui/alert-dialog';
 import { ArrowLeft, Activity, AlertCircle, Loader2, Plus, Pencil, Trash2, Link2, Target, FileText } from 'lucide-react';
 import { FeatureDetail, TestCaseItem, AnomalyItem, featureDetailService } from '../services/featureDetailService';
-import { Exigence, Scenario, TypeExigence, TypeTest } from '../types';
+import { Exigence, Scenario, TypeExigence, TypeTest, Priorite } from '../types';
 import { getErrorMessage } from '../services/api';
 
 const TYPES_EXIGENCE: TypeExigence[] = ['fonctionnelle', 'securite', 'performance', 'disponibilite', 'ergonomie', 'accessibilite', 'maintenabilite', 'compatibilite', 'resilience', 'observabilite', 'documentation', 'testabilite', 'personnalisee'];
@@ -56,9 +56,9 @@ export function FeatureDetailPage() {
   const [idASupprimer, setIdASupprimer] = useState<{ type: string; id: string } | null>(null);
 
   // Form exigence
-  const [formExigence, setFormExigence] = useState({ titre: '', description: '', type: 'fonctionnelle' as TypeExigence, criticite: 'moyenne' as const });
+  const [formExigence, setFormExigence] = useState({ titre: '', description: '', type: 'fonctionnelle' as TypeExigence, criticite: 'moyenne' as Priorite });
   // Form scenario
-  const [formScenario, setFormScenario] = useState({ nom: '', description: '', priorite: 'moyenne' as const });
+  const [formScenario, setFormScenario] = useState({ nom: '', description: '', priorite: 'moyenne' as Priorite });
   // Form test case
   const [formTC, setFormTC] = useState({ name: '', description: '', type: 'fonctionnel', expected_result: '', priority: 'medium' });
 

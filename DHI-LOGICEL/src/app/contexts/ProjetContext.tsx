@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { Projet } from '../types';
 import { projectService } from '../services/projectService';
 import { getErrorMessage } from '../services/api';
+import { demoDataService } from '../services/demoDataService';
 
 interface ProjetContextType {
   projets: Projet[];
@@ -23,9 +24,20 @@ export function ProjetProvider({ children }: { children: ReactNode }) {
   const refreshProjets = useCallback(async () => {
     try {
       const data = await projectService.getAll();
-      setProjets(data);
+      if (data && data.length > 0) {
+        setProjets(data);
+        demoDataService.setProjets(data);
+      } else {
+        const demo = demoDataService.getProjets();
+        if (demo.length > 0) setProjets(demo);
+      }
     } catch (e) {
-      toast.error('Erreur refreshProjets : ' + getErrorMessage(e as any));
+      const demo = demoDataService.getProjets();
+      if (demo.length > 0) {
+        setProjets(demo);
+      } else {
+        toast.error('Erreur refreshProjets : ' + getErrorMessage(e as any));
+      }
     }
   }, []);
 
@@ -36,7 +48,11 @@ export function ProjetProvider({ children }: { children: ReactNode }) {
       toast.success('Projet créé avec succès');
     } catch (e) {
       if ((e as any)?.response?.status === 409) throw e;
-      toast.error(getErrorMessage(e as any));
+      const demo = demoDataService.getProjets();
+      demo.push(projet);
+      demoDataService.setProjets(demo);
+      setProjets(demo);
+      toast.success('Projet créé (mode démo)');
     }
   };
 
@@ -47,7 +63,10 @@ export function ProjetProvider({ children }: { children: ReactNode }) {
       toast.success('Projet modifié avec succès');
     } catch (e) {
       if ((e as any)?.response?.status === 409) throw e;
-      toast.error(getErrorMessage(e as any));
+      const demo = demoDataService.getProjets().map(p => p.id === id ? { ...p, ...projetPartiel } : p);
+      demoDataService.setProjets(demo);
+      setProjets(demo);
+      toast.success('Projet modifié (mode démo)');
     }
   };
 

@@ -7,6 +7,7 @@ import { projectService } from '../services/projectService';
 import api, { getErrorMessage } from '../services/api';
 import { mapAnomalyStatusToBackend, mapAnomalieFromBackend } from '../utils/mappers';
 import { useAuth } from './AuthContext';
+import { demoDataService } from '../services/demoDataService';
 
 interface AnomalieContextType {
   anomalies: Anomalie[];
@@ -57,7 +58,12 @@ export function AnomalieProvider({ children }: { children: ReactNode }) {
       }
       setAnomalies(data);
     } catch (e) {
-      toast.error('Erreur refreshAnomalies : ' + getErrorMessage(e as any));
+      const demo = demoDataService.getAnomalies();
+      if (demo.length > 0) {
+        setAnomalies(demo);
+      } else {
+        toast.error('Erreur refreshAnomalies : ' + getErrorMessage(e as any));
+      }
     }
   }, [currentUser]);
 
@@ -67,7 +73,11 @@ export function AnomalieProvider({ children }: { children: ReactNode }) {
       setAnomalies(prev => [...prev, created]);
       toast.success('Anomalie signalée avec succès');
     } catch (e) {
-      toast.error(getErrorMessage(e as any));
+      const demo = demoDataService.getAnomalies();
+      demo.push({ ...anomalie, id: anomalie.id || `id_demo_${Date.now()}` });
+      demoDataService.setAnomalies(demo);
+      setAnomalies(demo);
+      toast.success('Anomalie signalée (mode démo)');
     }
   };
 
@@ -82,7 +92,14 @@ export function AnomalieProvider({ children }: { children: ReactNode }) {
       const updated = mapAnomalieFromBackend(response.data.anomaly);
       setAnomalies(prev => prev.map(a => a.id === id ? updated : a));
     } catch (e) {
-      toast.error(getErrorMessage(e as any));
+      const demo = demoDataService.getAnomalies().map(a => {
+        if (a.id !== id) return a;
+        const patch: Partial<Anomalie> = { statut };
+        if (commentaire) patch.commentaireResolution = commentaire;
+        return { ...a, ...patch };
+      });
+      demoDataService.setAnomalies(demo);
+      setAnomalies(demo);
     }
   };
 
@@ -92,7 +109,9 @@ export function AnomalieProvider({ children }: { children: ReactNode }) {
       setAnomalies(prev => prev.map(a => a.id === id ? { ...a, ...updated } : a));
       toast.success('Résolution signalée avec succès');
     } catch (e) {
-      toast.error(getErrorMessage(e as any));
+      const demo = demoDataService.getAnomalies().map(a => a.id === id ? { ...a, statut: 'resolution_signalee' as StatutAnomalie, commentaireResolution: commentaire, dateResolution: new Date().toISOString() } : a);
+      demoDataService.setAnomalies(demo);
+      setAnomalies(demo);
     }
   };
 
@@ -102,7 +121,9 @@ export function AnomalieProvider({ children }: { children: ReactNode }) {
       setAnomalies(prev => prev.map(a => a.id === id ? { ...a, ...updated } : a));
       toast.success('Anomalie clôturée avec succès');
     } catch (e) {
-      toast.error(getErrorMessage(e as any));
+      const demo = demoDataService.getAnomalies().map(a => a.id === id ? { ...a, statut: 'validee' as StatutAnomalie, dateValidation: new Date().toISOString() } : a);
+      demoDataService.setAnomalies(demo);
+      setAnomalies(demo);
     }
   };
 

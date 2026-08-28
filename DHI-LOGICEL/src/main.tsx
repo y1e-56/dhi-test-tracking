@@ -2,9 +2,9 @@ import Clarity from "@microsoft/clarity";
 import * as Sentry from "@sentry/react";
 
 const origRemoveChild = Node.prototype.removeChild;
-Node.prototype.removeChild = function (child) {
+Node.prototype.removeChild = function <T extends Node>(child: T): T {
   if (child.parentNode !== this) return child;
-  return origRemoveChild.call(this, child);
+  return origRemoveChild.call(this, child) as T;
 };
 
 import { createRoot } from "react-dom/client";

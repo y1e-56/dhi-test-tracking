@@ -186,7 +186,10 @@ export function ProjetsPage() {
         await ajouterProjet({
           ...formData,
           produitId: formData.produitId || null,
-          statut: 'actif' as const
+          statut: 'actif' as const,
+          id: `id_${Date.now()}`,
+          creePar: currentUser?.id || 'admin',
+          dateCreation: new Date().toISOString()
         });
       }
 

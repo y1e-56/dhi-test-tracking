@@ -62,7 +62,7 @@ function DialogContent({
           className,
         )}
         onPointerDownOutside={(e) => {
-          if (e.target?.closest('[data-slot="select-content"]')) {
+          if ((e.target as Element | null)?.closest('[data-slot="select-content"]')) {
             e.preventDefault();
           }
           onPointerDownOutside?.(e);

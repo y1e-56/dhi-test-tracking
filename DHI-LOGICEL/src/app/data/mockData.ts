@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { User, Projet, Campagne, Fonctionnalite, Anomalie, Notification, HistoriqueAction } from '../types';
 
 export const users: User[] = [

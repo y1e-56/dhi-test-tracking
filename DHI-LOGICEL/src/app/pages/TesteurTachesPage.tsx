@@ -304,6 +304,7 @@ export function TesteurTachesPage() {
 
   const statutBadgeConfigTester: Record<StatutFonctionnalite, { labelKey: string; className: string }> = {
     non_testee: { labelKey: 'testeur.tasks.not_tested', className: 'bg-gray-100 text-gray-700' },
+    en_cours: { labelKey: 'statut.en_cours', className: 'bg-blue-100 text-blue-700' },
     conforme: { labelKey: 'testeur.tasks.mark_compliant', className: 'bg-green-100 text-green-700' },
     anomalie: { labelKey: 'testeur.tasks.report_anomaly', className: 'bg-red-100 text-red-700' }
   };
