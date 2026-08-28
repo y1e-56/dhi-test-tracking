@@ -1,5 +1,6 @@
 import api from './api';
 import { Produit, ReleaseProduit, EnvironnementProduit } from '../types';
+import { DEMO_STORAGE_KEYS } from './demoDataService';
 
 interface ProduitBackend {
   id: number | string;
@@ -33,44 +34,85 @@ function mapProduitFromBackend(p: ProduitBackend): Produit {
   };
 }
 
+// ─── Fallback local (mode démo sans backend) ───
+
+function demoLoad<T>(key: string): T[] {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function demoSave<T>(key: string, data: T[]) {
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
+function uid(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+}
+
+function isoNow(): string {
+  return new Date().toISOString();
+}
+
+function recomputeCounts(p: Produit): Produit {
+  const nbVersions = demoLoad<ReleaseProduit>(DEMO_STORAGE_KEYS.releases).filter(r => r.produitId === p.id).length;
+  const nbEnvironnements = demoLoad<EnvironnementProduit>(DEMO_STORAGE_KEYS.environnements).filter(e => e.produitId === p.id).length;
+  const nbProjets = demoLoad<any>(DEMO_STORAGE_KEYS.projets).filter(pr => pr.produitId === p.id).length;
+  return { ...p, nbProjets, nbVersions, nbEnvironnements };
+}
+
+function demoProduits(): Produit[] {
+  return demoLoad<Produit>(DEMO_STORAGE_KEYS.produits).map(recomputeCounts);
+}
+
+function applyTransitionRelease(r: ReleaseProduit): ReleaseProduit {
+  if (r.statut === 'released' && !r.livreeLe) return { ...r, livreeLe: isoNow() };
+  if (r.statut !== 'released' && r.livreeLe) return { ...r, livreeLe: null };
+  return r;
+}
+
+function notFound(): never {
+  throw new Error('Ressource introuvable');
+}
+
 export const productService = {
   /**
    * Liste les produits avec recherche / filtre / pagination geres cote client.
-   * NOTE pour le backend : seul GET /products sans parametre renvoie un tableau
-   * plat incluant projects_count / releases_count / environments_count ; des
-   * qu'un parametre est passe, la reponse est enveloppee et sans compteurs.
-   * Si le backend ajoute les compteurs dans la liste paginee, cette methode
-   * pourra repasser sur des requetes serveur.
+   * Dispose d'un fallback local (mode démo) lorsque le backend est indisponible.
    */
   async listPaginated(filters: { page?: number; limit?: number; recherche?: string; statut?: 'actif' | 'archive' } = {}): Promise<{ data: Produit[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+    let produits: Produit[] = [];
     try {
       const response = await api.get<ProduitBackend[]>('/products');
-      let produits = response.data.map(mapProduitFromBackend);
-
-      if (filters.statut === 'actif') produits = produits.filter(p => !p.estArchive);
-      else if (filters.statut === 'archive') produits = produits.filter(p => p.estArchive);
-
-      if (filters.recherche) {
-        const q = filters.recherche.toLowerCase();
-        produits = produits.filter(p =>
-          p.nom.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q)
-        );
-      }
-
-      const limit = filters.limit ?? 20;
-      const page = filters.page ?? 1;
-      const total = produits.length;
-      const totalPages = Math.max(1, Math.ceil(total / limit));
-
-      return {
-        data: produits.slice((page - 1) * limit, page * limit),
-        pagination: { page, limit, total, totalPages },
-      };
-    } catch (e) {
-      console.error('[productService] Erreur listPaginated:', e);
-      throw e;
+      produits = response.data.map(mapProduitFromBackend);
+    } catch {
+      produits = [];
     }
+    if (produits.length === 0) produits = demoProduits();
+
+    if (filters.statut === 'actif') produits = produits.filter(p => !p.estArchive);
+    else if (filters.statut === 'archive') produits = produits.filter(p => p.estArchive);
+
+    if (filters.recherche) {
+      const q = filters.recherche.toLowerCase();
+      produits = produits.filter(p =>
+        p.nom.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q)
+      );
+    }
+
+    const limit = filters.limit ?? 20;
+    const page = filters.page ?? 1;
+    const total = produits.length;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+
+    return {
+      data: produits.slice((page - 1) * limit, page * limit),
+      pagination: { page, limit, total, totalPages },
+    };
   },
 
   async create(produit: { nom: string; description?: string }): Promise<Produit> {
@@ -80,9 +122,22 @@ export const productService = {
         description: produit.description || undefined,
       });
       return mapProduitFromBackend(response.data.product);
-    } catch (e) {
-      console.error('[productService] Erreur create:', e);
-      throw e;
+    } catch {
+      const all = demoLoad<Produit>(DEMO_STORAGE_KEYS.produits);
+      const p: Produit = {
+        id: uid(),
+        nom: produit.nom,
+        description: produit.description || '',
+        estArchive: false,
+        dateCreation: isoNow(),
+        dateModification: isoNow(),
+        nbProjets: 0,
+        nbVersions: 0,
+        nbEnvironnements: 0,
+      };
+      all.push(p);
+      demoSave(DEMO_STORAGE_KEYS.produits, all);
+      return p;
     }
   },
 
@@ -90,47 +145,52 @@ export const productService = {
     try {
       const response = await api.get<ProduitBackend>(`/products/${id}`);
       return mapProduitFromBackend(response.data);
-    } catch (e) {
-      console.error('[productService] Erreur getById:', e);
-      throw e;
+    } catch {
+      const found = demoProduits().find(p => p.id === id);
+      if (!found) notFound();
+      return found;
     }
   },
 
   async getReleases(id: string): Promise<ReleaseProduit[]> {
     try {
       const response = await api.get<any[]>(`/products/${id}/releases`);
-      return response.data.map((r: any) => ({
-        id: String(r.id),
-        produitId: String(r.product_id),
-        version: r.version,
-        description: r.description ?? '',
-        statut: r.status ?? 'planned',
-        datePrevue: r.planned_date ?? null,
-        livreeLe: r.released_at ?? null,
-        dateCreation: r.created_at,
-      }));
-    } catch (e) {
-      console.error('[productService] Erreur getReleases:', e);
-      throw e;
+      if (response.data.length > 0) {
+        return response.data.map((r: any) => ({
+          id: String(r.id),
+          produitId: String(r.product_id),
+          version: r.version,
+          description: r.description ?? '',
+          statut: r.status ?? 'planned',
+          datePrevue: r.planned_date ?? null,
+          livreeLe: r.released_at ?? null,
+          dateCreation: r.created_at,
+        }));
+      }
+    } catch {
+      // fallback ci-dessous
     }
+    return demoLoad<ReleaseProduit>(DEMO_STORAGE_KEYS.releases).filter(r => r.produitId === id);
   },
 
   async getEnvironments(id: string): Promise<EnvironnementProduit[]> {
     try {
       const response = await api.get<any[]>(`/products/${id}/environments`, { params: { includeInactive: true } });
-      return response.data.map((e: any) => ({
-        id: String(e.id),
-        produitId: String(e.product_id),
-        nom: e.name,
-        type: e.type,
-        description: e.description ?? '',
-        actif: Boolean(e.is_active),
-        dateCreation: e.created_at,
-      }));
-    } catch (err) {
-      console.error('[productService] Erreur getEnvironments:', err);
-      throw err;
+      if (response.data.length > 0) {
+        return response.data.map((e: any) => ({
+          id: String(e.id),
+          produitId: String(e.product_id),
+          nom: e.name,
+          type: e.type,
+          description: e.description ?? '',
+          actif: Boolean(e.is_active),
+          dateCreation: e.created_at,
+        }));
+      }
+    } catch {
+      // fallback ci-dessous
     }
+    return demoLoad<EnvironnementProduit>(DEMO_STORAGE_KEYS.environnements).filter(e => e.produitId === id);
   },
 
   async createEnvironment(
@@ -154,9 +214,20 @@ export const productService = {
         actif: Boolean(e.is_active),
         dateCreation: e.created_at,
       };
-    } catch (e) {
-      console.error('[productService] Erreur createEnvironment:', e);
-      throw e;
+    } catch {
+      const all = demoLoad<EnvironnementProduit>(DEMO_STORAGE_KEYS.environnements);
+      const created: EnvironnementProduit = {
+        id: uid(),
+        produitId,
+        nom: env.nom,
+        type: env.type,
+        description: env.description || '',
+        actif: env.actif ?? true,
+        dateCreation: isoNow(),
+      };
+      all.push(created);
+      demoSave(DEMO_STORAGE_KEYS.environnements, all);
+      return created;
     }
   },
 
@@ -172,34 +243,45 @@ export const productService = {
         ...(env.description !== undefined ? { description: env.description } : {}),
         ...(env.actif !== undefined ? { is_active: env.actif } : {}),
       });
-    } catch (e) {
-      console.error('[productService] Erreur updateEnvironment:', e);
-      throw e;
+    } catch {
+      const all = demoLoad<EnvironnementProduit>(DEMO_STORAGE_KEYS.environnements);
+      const idx = all.findIndex(e => e.id === envId && e.produitId === produitId);
+      if (idx !== -1) all[idx] = { ...all[idx], ...env };
+      demoSave(DEMO_STORAGE_KEYS.environnements, all);
     }
   },
 
   async deleteEnvironment(produitId: string, envId: string): Promise<void> {
     try {
       await api.delete(`/products/${produitId}/environments/${envId}`);
-    } catch (e) {
-      console.error('[productService] Erreur deleteEnvironment:', e);
-      throw e;
+    } catch {
+      const all = demoLoad<EnvironnementProduit>(DEMO_STORAGE_KEYS.environnements);
+      demoSave(DEMO_STORAGE_KEYS.environnements, all.filter(e => !(e.id === envId && e.produitId === produitId)));
     }
   },
 
   async getProjects(id: string): Promise<{ id: string; nom: string; description: string; statut: string }[]> {
     try {
       const response = await api.get<any[]>(`/products/${id}/projects`);
-      return response.data.map((p: any) => ({
-        id: String(p.id),
-        nom: p.name,
-        description: p.description ?? '',
-        statut: p.status === 'archive' ? 'archive' : 'actif',
-      }));
-    } catch (e) {
-      console.error('[productService] Erreur getProjects:', e);
-      throw e;
+      if (response.data.length > 0) {
+        return response.data.map((p: any) => ({
+          id: String(p.id),
+          nom: p.name,
+          description: p.description ?? '',
+          statut: p.status === 'archive' ? 'archive' : 'actif',
+        }));
+      }
+    } catch {
+      // fallback ci-dessous
     }
+    return demoLoad<any>(DEMO_STORAGE_KEYS.projets)
+      .filter((p: any) => p.produitId === id)
+      .map((p: any) => ({
+        id: String(p.id),
+        nom: p.nom,
+        description: p.description ?? '',
+        statut: p.statut,
+      }));
   },
 
   async update(id: string, data: { nom?: string; description?: string }): Promise<Produit> {
@@ -209,18 +291,21 @@ export const productService = {
         ...(data.description !== undefined ? { description: data.description } : {}),
       });
       return mapProduitFromBackend(response.data.product);
-    } catch (e) {
-      console.error('[productService] Erreur update:', e);
-      throw e;
+    } catch {
+      const all = demoLoad<Produit>(DEMO_STORAGE_KEYS.produits);
+      const idx = all.findIndex(p => p.id === id);
+      if (idx !== -1) all[idx] = { ...all[idx], ...data, dateModification: isoNow() };
+      demoSave(DEMO_STORAGE_KEYS.produits, all);
+      return recomputeCounts(all[idx] ?? { id } as Produit);
     }
   },
 
   async delete(id: string): Promise<void> {
     try {
       await api.delete(`/products/${id}`);
-    } catch (e) {
-      console.error('[productService] Erreur delete:', e);
-      throw e;
+    } catch {
+      const all = demoLoad<Produit>(DEMO_STORAGE_KEYS.produits);
+      demoSave(DEMO_STORAGE_KEYS.produits, all.filter(p => p.id !== id));
     }
   },
 
@@ -228,9 +313,12 @@ export const productService = {
     try {
       const response = await api.patch<{ product: ProduitBackend }>(`/products/${id}/archive`);
       return mapProduitFromBackend(response.data.product);
-    } catch (e) {
-      console.error('[productService] Erreur archive:', e);
-      throw e;
+    } catch {
+      const all = demoLoad<Produit>(DEMO_STORAGE_KEYS.produits);
+      const idx = all.findIndex(p => p.id === id);
+      if (idx !== -1) all[idx] = { ...all[idx], estArchive: true, dateModification: isoNow() };
+      demoSave(DEMO_STORAGE_KEYS.produits, all);
+      return recomputeCounts(all[idx] ?? { id } as Produit);
     }
   },
 
@@ -238,9 +326,12 @@ export const productService = {
     try {
       const response = await api.patch<{ product: ProduitBackend }>(`/products/${id}/unarchive`);
       return mapProduitFromBackend(response.data.product);
-    } catch (e) {
-      console.error('[productService] Erreur unarchive:', e);
-      throw e;
+    } catch {
+      const all = demoLoad<Produit>(DEMO_STORAGE_KEYS.produits);
+      const idx = all.findIndex(p => p.id === id);
+      if (idx !== -1) all[idx] = { ...all[idx], estArchive: false, dateModification: isoNow() };
+      demoSave(DEMO_STORAGE_KEYS.produits, all);
+      return recomputeCounts(all[idx] ?? { id } as Produit);
     }
   },
 
@@ -266,9 +357,21 @@ export const productService = {
         livreeLe: r.released_at ?? null,
         dateCreation: r.created_at,
       };
-    } catch (e) {
-      console.error('[productService] Erreur createRelease:', e);
-      throw e;
+    } catch {
+      const all = demoLoad<ReleaseProduit>(DEMO_STORAGE_KEYS.releases);
+      const created: ReleaseProduit = applyTransitionRelease({
+        id: uid(),
+        produitId,
+        version: release.version,
+        description: release.description || '',
+        statut: release.statut ?? 'planned',
+        datePrevue: release.datePrevue ?? null,
+        livreeLe: null,
+        dateCreation: isoNow(),
+      });
+      all.push(created);
+      demoSave(DEMO_STORAGE_KEYS.releases, all);
+      return created;
     }
   },
 
@@ -284,18 +387,20 @@ export const productService = {
         ...(release.statut !== undefined ? { status: release.statut } : {}),
         ...(release.datePrevue !== undefined ? { planned_date: release.datePrevue } : {}),
       });
-    } catch (e) {
-      console.error('[productService] Erreur updateRelease:', e);
-      throw e;
+    } catch {
+      const all = demoLoad<ReleaseProduit>(DEMO_STORAGE_KEYS.releases);
+      const idx = all.findIndex(r => r.id === releaseId && r.produitId === produitId);
+      if (idx !== -1) all[idx] = applyTransitionRelease({ ...all[idx], ...release });
+      demoSave(DEMO_STORAGE_KEYS.releases, all);
     }
   },
 
   async deleteRelease(produitId: string, releaseId: string): Promise<void> {
     try {
       await api.delete(`/products/${produitId}/releases/${releaseId}`);
-    } catch (e) {
-      console.error('[productService] Erreur deleteRelease:', e);
-      throw e;
+    } catch {
+      const all = demoLoad<ReleaseProduit>(DEMO_STORAGE_KEYS.releases);
+      demoSave(DEMO_STORAGE_KEYS.releases, all.filter(r => !(r.id === releaseId && r.produitId === produitId)));
     }
   },
 };

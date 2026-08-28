@@ -10,9 +10,10 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { Loader2, Package, Search, FolderKanban, Tag, Server, AlertCircle, Plus } from 'lucide-react';
+import { Loader2, Package, Search, FolderKanban, Tag, Server, AlertCircle, Plus, Activity } from 'lucide-react';
 import { Produit } from '../types';
 import { productService } from '../services/productService';
+import { qualityService } from '../services/qualityService';
 import { getErrorMessage } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { useAsyncAction } from '../hooks/useAsyncAction';
@@ -234,6 +235,20 @@ export function ProduitsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  <div className="flex flex-wrap gap-2 items-center">
+                    {!produit.estArchive && (() => {
+                      const s = qualityService.getScore(produit.id);
+                      return (
+                        <Badge
+                          variant={s.sante === 'sain' ? 'default' : s.sante === 'critique' ? 'destructive' : 'secondary'}
+                          className={`gap-1 px-2 py-1 text-xs ${s.sante === 'a_surveiller' ? 'bg-amber-100 text-amber-800' : s.sante === 'a_risque' ? 'bg-orange-100 text-orange-800' : ''}`}
+                        >
+                          <Activity className="w-3 h-3" />
+                          {t('quality.score_label')} {s.score}{t('quality.score_over')}
+                        </Badge>
+                      );
+                    })()}
+                  </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
                     <span className="flex items-center gap-1.5">
                       <FolderKanban className="w-4 h-4 text-blue-500" />

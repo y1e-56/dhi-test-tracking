@@ -1,6 +1,6 @@
-import { Projet, Campagne, Fonctionnalite, Anomalie, User, Notification, HistoriqueAction, TestCase, Produit } from '../types';
+import { Projet, Campagne, Fonctionnalite, Anomalie, User, Notification, HistoriqueAction, TestCase, Produit, ReleaseProduit, EnvironnementProduit } from '../types';
 
-const KEYS = {
+export const DEMO_STORAGE_KEYS = {
   projets: 'dhi_demo_projets',
   campagnes: 'dhi_demo_campagnes',
   fonctionnalites: 'dhi_demo_fonctionnalites',
@@ -8,7 +8,11 @@ const KEYS = {
   utilisateurs: 'dhi_demo_utilisateurs',
   testCases: 'dhi_demo_testcases',
   produits: 'dhi_demo_produits',
+  releases: 'dhi_demo_releases',
+  environnements: 'dhi_demo_environnements',
 };
+
+const KEYS = DEMO_STORAGE_KEYS;
 
 const today = (offset = 0) => new Date(Date.now() + offset * 86400000).toISOString();
 
@@ -67,6 +71,22 @@ export const demoDataService = {
     ];
     localStorage.setItem(KEYS.produits, JSON.stringify(produits));
 
+    const releases: ReleaseProduit[] = [
+      { id: 'id_rel_1', produitId: 'id_prod_1', version: '1.0', description: 'Version initiale du portail', statut: 'released', datePrevue: today(-60), livreeLe: today(-55), dateCreation: today(-62) },
+      { id: 'id_rel_2', produitId: 'id_prod_1', version: '1.2', description: 'Refonte connexion et virements', statut: 'in_progress', datePrevue: today(10), livreeLe: null, dateCreation: today(-25) },
+      { id: 'id_rel_3', produitId: 'id_prod_2', version: '2.0', description: 'Première version de l\'app mobile', statut: 'planned', datePrevue: today(30), livreeLe: null, dateCreation: today(-20) },
+    ];
+    localStorage.setItem(KEYS.releases, JSON.stringify(releases));
+
+    const environnements: EnvironnementProduit[] = [
+      { id: 'id_env_1', produitId: 'id_prod_1', nom: 'Dev Web', type: 'development', description: 'Environnement de développement', actif: true, dateCreation: today(-50) },
+      { id: 'id_env_2', produitId: 'id_prod_1', nom: 'Recette Web', type: 'staging', description: 'Environnement de recette', actif: true, dateCreation: today(-49) },
+      { id: 'id_env_3', produitId: 'id_prod_1', nom: 'Production', type: 'production', description: 'Environnement de production', actif: true, dateCreation: today(-48) },
+      { id: 'id_env_4', produitId: 'id_prod_2', nom: 'Dev Mobile', type: 'development', description: 'Environnement de développement mobile', actif: false, dateCreation: today(-39) },
+      { id: 'id_env_5', produitId: 'id_prod_2', nom: 'Recette Mobile', type: 'staging', description: 'Environnement de recette mobile', actif: true, dateCreation: today(-38) },
+    ];
+    localStorage.setItem(KEYS.environnements, JSON.stringify(environnements));
+
     const utilisateurs: User[] = (() => {
       const storage = JSON.parse(localStorage.getItem('dhi_users') || '[]');
       if (storage.length > 0) return storage;
@@ -86,4 +106,10 @@ export const demoDataService = {
   getAnomalies(): Anomalie[] { return JSON.parse(localStorage.getItem(KEYS.anomalies) || '[]'); },
   setAnomalies(d: Anomalie[]): void { localStorage.setItem(KEYS.anomalies, JSON.stringify(d)); },
   getTestCases(): TestCase[] { return JSON.parse(localStorage.getItem(KEYS.testCases) || '[]'); },
+  getProduits(): Produit[] { return JSON.parse(localStorage.getItem(KEYS.produits) || '[]'); },
+  setProduits(d: Produit[]): void { localStorage.setItem(KEYS.produits, JSON.stringify(d)); },
+  getReleases(): ReleaseProduit[] { return JSON.parse(localStorage.getItem(KEYS.releases) || '[]'); },
+  setReleases(d: ReleaseProduit[]): void { localStorage.setItem(KEYS.releases, JSON.stringify(d)); },
+  getEnvironnements(): EnvironnementProduit[] { return JSON.parse(localStorage.getItem(KEYS.environnements) || '[]'); },
+  setEnvironnements(d: EnvironnementProduit[]): void { localStorage.setItem(KEYS.environnements, JSON.stringify(d)); },
 };

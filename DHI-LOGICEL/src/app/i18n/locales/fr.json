@@ -72,6 +72,7 @@
   "products.env_active": "Actif",
   "products.env_inactive": "Inactif",
   "products.planned_date": "Prévue le",
+  "products.released_on": "Livrée le",
   "products.env_new": "Nouvel environnement",
   "products.env_create_title": "Créer un environnement",
   "products.env_edit_title": "Modifier l'environnement",

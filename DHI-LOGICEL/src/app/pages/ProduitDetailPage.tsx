@@ -496,6 +496,11 @@ export function ProduitDetailPage() {
                     {r.datePrevue && (
                       <p>{t('products.planned_date')} : {new Date(r.datePrevue).toLocaleDateString('fr-FR')}</p>
                     )}
+                    {r.livreeLe && (
+                      <p className="text-emerald-600 font-medium">
+                        {t('products.released_on')} : {new Date(r.livreeLe).toLocaleDateString('fr-FR')}
+                      </p>
+                    )}
                     {peutGerer && (
                       <div className="flex items-center gap-1 pt-1">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => ouvrirDialogRel(r)} title={t('common.edit')}>
