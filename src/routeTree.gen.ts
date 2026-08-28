@@ -10,33 +10,139 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AnomaliesRouteImport } from './routes/anomalies'
+import { Route as CampagnesRouteImport } from './routes/campagnes'
+import { Route as CouvertureRouteImport } from './routes/couverture'
+import { Route as FonctionnalitesRouteImport } from './routes/fonctionnalites'
+import { Route as ProduitsRouteImport } from './routes/produits'
+import { Route as CampagnesCampaignIdRouteImport } from './routes/campagnes.$campaignId'
+import { Route as ExecutionTestIdRouteImport } from './routes/execution.$testId'
+import { Route as ProduitsProductIdRouteImport } from './routes/produits.$productId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnomaliesRoute = AnomaliesRouteImport.update({
+  id: '/anomalies',
+  path: '/anomalies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CampagnesRoute = CampagnesRouteImport.update({
+  id: '/campagnes',
+  path: '/campagnes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CouvertureRoute = CouvertureRouteImport.update({
+  id: '/couverture',
+  path: '/couverture',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FonctionnalitesRoute = FonctionnalitesRouteImport.update({
+  id: '/fonctionnalites',
+  path: '/fonctionnalites',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProduitsRoute = ProduitsRouteImport.update({
+  id: '/produits',
+  path: '/produits',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CampagnesCampaignIdRoute = CampagnesCampaignIdRouteImport.update({
+  id: '/$campaignId',
+  path: '/$campaignId',
+  getParentRoute: () => CampagnesRoute,
+} as any)
+const ExecutionTestIdRoute = ExecutionTestIdRouteImport.update({
+  id: '/execution/$testId',
+  path: '/execution/$testId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProduitsProductIdRoute = ProduitsProductIdRouteImport.update({
+  id: '/$productId',
+  path: '/$productId',
+  getParentRoute: () => ProduitsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/anomalies': typeof AnomaliesRoute
+  '/campagnes': typeof CampagnesRouteWithChildren
+  '/couverture': typeof CouvertureRoute
+  '/fonctionnalites': typeof FonctionnalitesRoute
+  '/produits': typeof ProduitsRouteWithChildren
+  '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
+  '/execution/$testId': typeof ExecutionTestIdRoute
+  '/produits/$productId': typeof ProduitsProductIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/anomalies': typeof AnomaliesRoute
+  '/campagnes': typeof CampagnesRouteWithChildren
+  '/couverture': typeof CouvertureRoute
+  '/fonctionnalites': typeof FonctionnalitesRoute
+  '/produits': typeof ProduitsRouteWithChildren
+  '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
+  '/execution/$testId': typeof ExecutionTestIdRoute
+  '/produits/$productId': typeof ProduitsProductIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/anomalies': typeof AnomaliesRoute
+  '/campagnes': typeof CampagnesRouteWithChildren
+  '/couverture': typeof CouvertureRoute
+  '/fonctionnalites': typeof FonctionnalitesRoute
+  '/produits': typeof ProduitsRouteWithChildren
+  '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
+  '/execution/$testId': typeof ExecutionTestIdRoute
+  '/produits/$productId': typeof ProduitsProductIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/anomalies'
+    | '/campagnes'
+    | '/couverture'
+    | '/fonctionnalites'
+    | '/produits'
+    | '/campagnes/$campaignId'
+    | '/execution/$testId'
+    | '/produits/$productId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/anomalies'
+    | '/campagnes'
+    | '/couverture'
+    | '/fonctionnalites'
+    | '/produits'
+    | '/campagnes/$campaignId'
+    | '/execution/$testId'
+    | '/produits/$productId'
+  id:
+    | '__root__'
+    | '/'
+    | '/anomalies'
+    | '/campagnes'
+    | '/couverture'
+    | '/fonctionnalites'
+    | '/produits'
+    | '/campagnes/$campaignId'
+    | '/execution/$testId'
+    | '/produits/$productId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AnomaliesRoute: typeof AnomaliesRoute
+  CampagnesRoute: typeof CampagnesRouteWithChildren
+  CouvertureRoute: typeof CouvertureRoute
+  FonctionnalitesRoute: typeof FonctionnalitesRoute
+  ProduitsRoute: typeof ProduitsRouteWithChildren
+  ExecutionTestIdRoute: typeof ExecutionTestIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +154,97 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/anomalies': {
+      id: '/anomalies'
+      path: '/anomalies'
+      fullPath: '/anomalies'
+      preLoaderRoute: typeof AnomaliesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/campagnes': {
+      id: '/campagnes'
+      path: '/campagnes'
+      fullPath: '/campagnes'
+      preLoaderRoute: typeof CampagnesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/couverture': {
+      id: '/couverture'
+      path: '/couverture'
+      fullPath: '/couverture'
+      preLoaderRoute: typeof CouvertureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fonctionnalites': {
+      id: '/fonctionnalites'
+      path: '/fonctionnalites'
+      fullPath: '/fonctionnalites'
+      preLoaderRoute: typeof FonctionnalitesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/produits': {
+      id: '/produits'
+      path: '/produits'
+      fullPath: '/produits'
+      preLoaderRoute: typeof ProduitsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/campagnes/$campaignId': {
+      id: '/campagnes/$campaignId'
+      path: '/$campaignId'
+      fullPath: '/campagnes/$campaignId'
+      preLoaderRoute: typeof CampagnesCampaignIdRouteImport
+      parentRoute: typeof CampagnesRoute
+    }
+    '/execution/$testId': {
+      id: '/execution/$testId'
+      path: '/execution/$testId'
+      fullPath: '/execution/$testId'
+      preLoaderRoute: typeof ExecutionTestIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/produits/$productId': {
+      id: '/produits/$productId'
+      path: '/$productId'
+      fullPath: '/produits/$productId'
+      preLoaderRoute: typeof ProduitsProductIdRouteImport
+      parentRoute: typeof ProduitsRoute
+    }
   }
 }
 
+interface CampagnesRouteChildren {
+  CampagnesCampaignIdRoute: typeof CampagnesCampaignIdRoute
+}
+
+const CampagnesRouteChildren: CampagnesRouteChildren = {
+  CampagnesCampaignIdRoute: CampagnesCampaignIdRoute,
+}
+
+const CampagnesRouteWithChildren = CampagnesRoute._addFileChildren(
+  CampagnesRouteChildren,
+)
+
+interface ProduitsRouteChildren {
+  ProduitsProductIdRoute: typeof ProduitsProductIdRoute
+}
+
+const ProduitsRouteChildren: ProduitsRouteChildren = {
+  ProduitsProductIdRoute: ProduitsProductIdRoute,
+}
+
+const ProduitsRouteWithChildren = ProduitsRoute._addFileChildren(
+  ProduitsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AnomaliesRoute: AnomaliesRoute,
+  CampagnesRoute: CampagnesRouteWithChildren,
+  CouvertureRoute: CouvertureRoute,
+  FonctionnalitesRoute: FonctionnalitesRoute,
+  ProduitsRoute: ProduitsRouteWithChildren,
+  ExecutionTestIdRoute: ExecutionTestIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
