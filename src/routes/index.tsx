@@ -68,11 +68,11 @@ function Dashboard() {
         />
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <Panel
           title="Produits supervisés"
           actions={
-            <Link to="/produits" className="text-xs font-medium text-primary hover:underline">
+            <Link to="/produits" className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
               Tout voir
             </Link>
           }
@@ -85,7 +85,7 @@ function Dashboard() {
                   <Link
                     to="/produits/$productId"
                     params={{ productId: p.id }}
-                    className="flex items-center gap-3 py-2.5 transition-colors hover:bg-muted/50"
+                    className="-mx-4 flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-subtle"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{p.name}</p>
@@ -103,7 +103,7 @@ function Dashboard() {
         <Panel
           title="Campagnes en cours"
           actions={
-            <Link to="/campagnes" className="text-xs font-medium text-primary hover:underline">
+            <Link to="/campagnes" className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
               Tout voir
             </Link>
           }
@@ -116,7 +116,7 @@ function Dashboard() {
                   <Link
                     to="/campagnes/$campaignId"
                     params={{ campaignId: c.id }}
-                    className="block py-2.5 transition-colors hover:bg-muted/50"
+                    className="-mx-4 block px-4 py-2.5 transition-colors hover:bg-subtle"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium">{c.name}</p>
@@ -136,44 +136,44 @@ function Dashboard() {
         </Panel>
       </div>
 
-      <Panel title="Alertes actives" className="mt-4">
+      <Panel title="Alertes actives">
         <ul className="space-y-2">
           {failedCritical.slice(0, 3).map((t) => (
             <li
               key={t.id}
-              className="flex items-start gap-3 rounded-md border border-danger/30 bg-danger-soft px-3 py-2"
+              className="flex items-start gap-3 rounded-md border border-border bg-card px-3 py-2.5 shadow-[inset_2px_0_0_0_var(--color-danger)]"
             >
               <AlertTriangle className="mt-0.5 size-4 text-danger" />
               <div className="text-sm">
-                <p className="font-medium text-danger">Test critique en FAIL — {t.id}</p>
+                <p className="font-medium text-foreground">Test critique en FAIL — {t.id}</p>
                 <p className="text-muted-foreground">{t.name}</p>
               </div>
               <Link
                 to="/execution/$testId"
                 params={{ testId: t.id }}
-                className="ml-auto text-xs font-medium text-primary hover:underline"
+                className="ml-auto text-xs font-medium text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground"
               >
                 Ouvrir
               </Link>
             </li>
           ))}
-          <li className="flex items-start gap-3 rounded-md border border-warning/40 bg-warning-soft px-3 py-2">
+          <li className="flex items-start gap-3 rounded-md border border-border bg-card px-3 py-2.5 shadow-[inset_2px_0_0_0_var(--color-warning)]">
             <AlertTriangle className="mt-0.5 size-4 text-warning" />
             <div className="text-sm">
               <p className="font-medium">Couverture &lt; 80 % — Portail Agence</p>
               <p className="text-muted-foreground">52 % de couverture fonctionnelle mesurée</p>
             </div>
-            <Link to="/couverture" className="ml-auto text-xs font-medium text-primary hover:underline">
+            <Link to="/couverture" className="ml-auto text-xs font-medium text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground">
               Matrice
             </Link>
           </li>
-          <li className="flex items-start gap-3 rounded-md border border-danger/30 bg-danger-soft px-3 py-2">
+          <li className="flex items-start gap-3 rounded-md border border-border bg-card px-3 py-2.5 shadow-[inset_2px_0_0_0_var(--color-danger)]">
             <ShieldAlert className="mt-0.5 size-4 text-danger" />
             <div className="text-sm">
-              <p className="font-medium text-danger">Point critique non validé — Sécurité</p>
+              <p className="font-medium text-foreground">Point critique non validé — Sécurité</p>
               <p className="text-muted-foreground">2 points critiques en attente de validation</p>
             </div>
-            <Link to="/anomalies" className="ml-auto text-xs font-medium text-primary hover:underline">
+            <Link to="/anomalies" className="ml-auto text-xs font-medium text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground">
               Anomalies
             </Link>
           </li>
