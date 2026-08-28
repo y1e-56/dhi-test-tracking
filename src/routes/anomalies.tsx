@@ -134,6 +134,7 @@ function DefectsPage() {
     <AppShell
       title="Anomalies & Incidents"
       subtitle="Tracer, affecter et capitaliser les bugs"
+      breadcrumb={["Système", "Anomalies"]}
       actions={
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={exportCsv}>

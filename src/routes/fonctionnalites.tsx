@@ -38,6 +38,12 @@ import {
 } from "@/lib/dhi-data";
 import { useStore } from "@/lib/dhi-store";
 
+const QUALITY_TABS = [
+  { to: "/produits", label: "Produits" },
+  { to: "/fonctionnalites", label: "Fonctionnalités" },
+  { to: "/couverture", label: "Couverture" },
+];
+
 export const Route = createFileRoute("/fonctionnalites")({
   head: () => ({
     meta: [
@@ -103,6 +109,8 @@ function FeaturesPage() {
     <AppShell
       title="Registre des fonctionnalités"
       subtitle="Fonctionnalités, criticité et couverture de tests"
+      breadcrumb={["Qualité", "Fonctionnalités"]}
+      tabs={QUALITY_TABS}
       actions={
         <Button size="sm" onClick={() => setOpen(true)}>
           <Plus className="size-4" /> Nouvelle fonctionnalité

@@ -32,6 +32,12 @@ import {
 import { PEOPLE, healthOf } from "@/lib/dhi-data";
 import { productScore, useStore } from "@/lib/dhi-store";
 
+const QUALITY_TABS = [
+  { to: "/produits", label: "Produits" },
+  { to: "/fonctionnalites", label: "Fonctionnalités" },
+  { to: "/couverture", label: "Couverture" },
+];
+
 export const Route = createFileRoute("/produits")({
   head: () => ({
     meta: [
@@ -101,6 +107,8 @@ function ProductsPage() {
     <AppShell
       title="Produits & Projets"
       subtitle="Portefeuille de produits logiciels"
+      breadcrumb={["Qualité", "Produits & projets"]}
+      tabs={QUALITY_TABS}
       actions={
         <Button size="sm" onClick={() => setOpen(true)}>
           <Plus className="size-4" /> Nouveau produit

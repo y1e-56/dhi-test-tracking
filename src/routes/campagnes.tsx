@@ -98,6 +98,7 @@ function CampaignsPage() {
     <AppShell
       title="Campagnes de tests"
       subtitle="Créer, gérer et suivre les campagnes"
+      breadcrumb={["Exécution", "Campagnes"]}
       actions={
         <Button size="sm" onClick={() => setOpen(true)}>
           <Plus className="size-4" /> Nouvelle campagne

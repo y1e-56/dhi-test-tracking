@@ -21,6 +21,12 @@ import {
 import { TEST_TYPES } from "@/lib/dhi-data";
 import { useStore } from "@/lib/dhi-store";
 
+const QUALITY_TABS = [
+  { to: "/produits", label: "Produits" },
+  { to: "/fonctionnalites", label: "Fonctionnalités" },
+  { to: "/couverture", label: "Couverture" },
+];
+
 export const Route = createFileRoute("/couverture")({
   head: () => ({
     meta: [
@@ -52,7 +58,12 @@ function CoveragePage() {
   const missingPct = totalCells ? Math.round((missingCells.length / totalCells) * 100) : 0;
 
   return (
-    <AppShell title="Matrice de couverture" subtitle="Fonctionnalités × types de tests">
+    <AppShell
+      title="Matrice de couverture"
+      subtitle="Fonctionnalités × types de tests"
+      breadcrumb={["Qualité", "Couverture"]}
+      tabs={QUALITY_TABS}
+    >
       <Panel
         title="Grille de couverture"
         actions={
