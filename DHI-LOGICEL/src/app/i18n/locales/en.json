@@ -944,6 +944,8 @@
   "search.recent": "Recently visited",
   "quality.tab_criteria": "Quality criteria",
   "quality.tab_score": "Quality score",
+  "quality.score_edit_title": "Edit quality score",
+  "quality.score_edit_desc": "Adjust the indicators: the score is recalculated automatically and the history is populated at each save.",
   "quality.tab_watchpoints": "Critical points",
   "quality.tab_history": "Quality history",
   "quality.score_label": "Score",

@@ -32,6 +32,35 @@ import { useAuth } from '../contexts/AuthContext';
 const ENV_TYPES: EnvironnementProduit['type'][] = ['development', 'integration', 'staging', 'production'];
 const RELEASE_STATUTS: ReleaseProduit['statut'][] = ['planned', 'in_progress', 'released', 'cancelled'];
 
+const SCORE_FIELDS: { key: keyof ScoreQualite['detail']; i18n: string }[] = [
+  { key: 'resultatsTests', i18n: 'quality.detail_results' },
+  { key: 'couverture', i18n: 'quality.detail_coverage' },
+  { key: 'couvertureCritiques', i18n: 'quality.detail_critical_coverage' },
+  { key: 'incidents', i18n: 'quality.detail_incidents' },
+  { key: 'nonFonctionnel', i18n: 'quality.detail_nonfunctional' },
+  { key: 'testabilite', i18n: 'quality.detail_testability' },
+  { key: 'controlesQualite', i18n: 'quality.detail_controls' },
+];
+
+function calculerScorePreview(d: ScoreQualite['detail']): number {
+  return Math.round(
+    d.resultatsTests * 0.25 +
+    d.couverture * 0.2 +
+    d.couvertureCritiques * 0.2 +
+    d.incidents * 0.15 +
+    d.nonFonctionnel * 0.1 +
+    d.testabilite * 0.05 +
+    d.controlesQualite * 0.05
+  );
+}
+
+function santeDeScore(score: number): SanteQualite {
+  if (score >= 80) return 'sain';
+  if (score >= 60) return 'a_surveiller';
+  if (score >= 40) return 'a_risque';
+  return 'critique';
+}
+
 export function ProduitDetailPage() {
   const { t } = useTranslation();
   const { produitId } = useParams<{ produitId: string }>();
@@ -81,6 +110,9 @@ export function ProduitDetailPage() {
   const [watchpointForm, setWatchpointForm] = useState({ description: '', contexte: '', criticite: 'moyenne' as PointCritique['criticite'], consequence: '', responsableId: '', responsableNom: '', criteresValidation: '', recommandations: '', statut: 'a_verifier' as PointCritique['statut'] });
   const [watchpointErrors, setWatchpointErrors] = useState({ description: '' });
   const [watchpointASupprimer, setWatchpointASupprimer] = useState<PointCritique | null>(null);
+
+  const [dialogScoreOpen, setDialogScoreOpen] = useState(false);
+  const [scoreForm, setScoreForm] = useState<ScoreQualite['detail'] | null>(null);
 
   const fetchAll = useCallback(async () => {
     if (!produitId) return;
@@ -356,6 +388,25 @@ export function ProduitDetailPage() {
     setWatchPoints(qualityService.getPointsCritiques(produitId));
   };
 
+  const ouvrirDialogScore = () => {
+    if (!score) return;
+    setScoreForm({ ...score.detail });
+    setDialogScoreOpen(true);
+  };
+
+  const soumettreScore = () => {
+    if (!produitId || !scoreForm) return;
+    try {
+      const nouveau = qualityService.updateScoreDetail(produitId, scoreForm);
+      setScore(nouveau);
+      setHistoriqueQualite(qualityService.getHistorique(produitId));
+      setDialogScoreOpen(false);
+      toast.success(t('quality.toast.score_updated'));
+    } catch {
+      toast.error(t('products.toast.product_error'));
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -605,6 +656,15 @@ export function ProduitDetailPage() {
 
         <TabsContent value="score" className="mt-4">
           {score && (
+            <>
+              {peutGerer && (
+                <div className="flex justify-end mb-3">
+                  <Button size="sm" onClick={ouvrirDialogScore}>
+                    <Pencil className="w-4 h-4 mr-2" />
+                    {t('common.edit')}
+                  </Button>
+                </div>
+              )}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
@@ -656,6 +716,7 @@ export function ProduitDetailPage() {
                 </CardContent>
               </Card>
             </div>
+            </>
           )}
         </TabsContent>
 
@@ -1194,6 +1255,52 @@ export function ProduitDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={dialogScoreOpen} onOpenChange={setDialogScoreOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t('quality.score_edit_title')}</DialogTitle>
+            <DialogDescription>{t('quality.score_edit_desc')}</DialogDescription>
+          </DialogHeader>
+          {scoreForm && (
+            <div className="space-y-3 py-4 max-h-[60vh] overflow-y-auto">
+              {SCORE_FIELDS.map((f) => (
+                <div key={f.key} className="flex items-center justify-between gap-4">
+                  <Label htmlFor={`score-${f.key}`} className="cursor-pointer">{t(f.i18n)}</Label>
+                  <Input
+                    id={`score-${f.key}`}
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={scoreForm[f.key]}
+                    onChange={(e) => setScoreForm({ ...scoreForm, [f.key]: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) })}
+                    className="w-20 text-right"
+                  />
+                </div>
+              ))}
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <p className="text-sm font-medium">{t('quality.score_label')}</p>
+                  <p className="text-xs text-gray-500">{t('quality.score_over')}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl font-bold">{calculerScorePreview(scoreForm)}</span>
+                  <Badge
+                    variant={santeDeScore(calculerScorePreview(scoreForm)) === 'sain' ? 'default' : santeDeScore(calculerScorePreview(scoreForm)) === 'critique' ? 'destructive' : 'secondary'}
+                    className={santeDeScore(calculerScorePreview(scoreForm)) === 'a_surveiller' ? 'bg-amber-100 text-amber-800' : santeDeScore(calculerScorePreview(scoreForm)) === 'a_risque' ? 'bg-orange-100 text-orange-800' : ''}
+                  >
+                    {t(`quality.health_${santeDeScore(calculerScorePreview(scoreForm))}`)}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogScoreOpen(false)}>{t('common.cancel')}</Button>
+            <Button onClick={soumettreScore}>{t('common.save')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

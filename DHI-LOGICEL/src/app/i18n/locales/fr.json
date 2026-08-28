@@ -943,6 +943,8 @@
   "search.recent": "Récemment visité",
   "quality.tab_criteria": "Critères qualité",
   "quality.tab_score": "Score qualité",
+  "quality.score_edit_title": "Modifier le score qualité",
+  "quality.score_edit_desc": "Ajustez les indicateurs : le score est recalculé automatiquement et l'historique est alimenté à chaque enregistrement.",
   "quality.tab_watchpoints": "Points critiques",
   "quality.tab_history": "Historique qualité",
   "quality.score_label": "Score",
