@@ -5,6 +5,7 @@ import {
   CAMPAIGN_STATUS_LABEL,
   DEFECT_STATUS_LABEL,
   SEVERITY_LABEL,
+  VERDICT_LABEL,
   healthOf,
   type CampaignStatus,
   type Criticality,
