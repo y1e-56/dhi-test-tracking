@@ -16,7 +16,7 @@ import {
 import type { ReactNode } from "react";
 
 const pill =
-  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap";
+  "inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[11px] font-medium leading-4 whitespace-nowrap";
 
 export function HealthBadge({ score }: { score: number }) {
   const h = healthOf(score);
@@ -25,7 +25,7 @@ export function HealthBadge({ score }: { score: number }) {
       className={cn(
         pill,
         h === "sain" && "border-success/30 bg-success-soft text-success",
-        h === "risque" && "border-warning/40 bg-warning-soft text-warning",
+        h === "risque" && "border-warning/40 bg-warning-soft text-warning-foreground",
         h === "critique" && "border-danger/30 bg-danger-soft text-danger",
       )}
     >
@@ -46,8 +46,8 @@ export function ScoreValue({
   return (
     <span
       className={cn(
-        "num font-semibold",
-        size === "sm" && "text-sm",
+        "num font-semibold tracking-tight",
+        size === "sm" && "text-[13px]",
         size === "md" && "text-base",
         size === "lg" && "text-4xl",
         h === "sain" && "text-success",
@@ -154,7 +154,7 @@ export function QualityBar({
 }) {
   const tone = neutral
     ? value > 0
-      ? "bg-info"
+      ? "bg-foreground"
       : "bg-border"
     : value >= 85
       ? "bg-success"
@@ -164,7 +164,7 @@ export function QualityBar({
           ? "bg-danger"
           : "bg-border";
   return (
-    <div className={cn("h-2 w-full overflow-hidden rounded-full bg-muted", className)}>
+    <div className={cn("h-1 w-full overflow-hidden rounded-full bg-border/70", className)}>
       <div className={cn("h-full rounded-full transition-all", tone)} style={{ width: `${value}%` }} />
     </div>
   );
@@ -185,34 +185,35 @@ export function KpiCard({
   icon?: ReactNode;
   onClick?: () => void;
 }) {
+  const dot =
+    tone === "success"
+      ? "bg-success"
+      : tone === "warning"
+        ? "bg-warning"
+        : tone === "danger"
+          ? "bg-danger"
+          : tone === "info"
+            ? "bg-info"
+            : "bg-border-strong";
   return (
     <div
       onClick={onClick}
       className={cn(
-        "panel p-4 transition-shadow",
-        onClick && "cursor-pointer hover:shadow-md",
-        tone === "success" && "border-success/30",
-        tone === "warning" && "border-warning/40",
-        tone === "danger" && "border-danger/30",
-        tone === "info" && "border-info/30",
+        "panel-flat flex flex-col gap-2 px-4 py-3.5 transition-colors",
+        onClick && "cursor-pointer hover:border-border-strong hover:bg-subtle",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-        {icon ? <span className="text-muted-foreground">{icon}</span> : null}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className={cn("size-1.5 shrink-0 rounded-full", dot)} />
+          <p className="label-eyebrow">{label}</p>
+        </div>
+        {icon ? <span className="text-muted-foreground/70">{icon}</span> : null}
       </div>
-      <div
-        className={cn(
-          "num mt-2 text-3xl font-semibold",
-          tone === "success" && "text-success",
-          tone === "warning" && "text-warning",
-          tone === "danger" && "text-danger",
-          tone === "info" && "text-info",
-        )}
-      >
+      <div className="num text-[26px] font-semibold leading-none tracking-tight text-foreground">
         {value}
       </div>
-      {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
+      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }
@@ -229,9 +230,9 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={cn("panel", className)}>
-      <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
-        <h2 className="text-sm font-semibold">{title}</h2>
+    <section className={cn("panel-flat overflow-hidden", className)}>
+      <header className="flex h-11 items-center justify-between gap-2 border-b border-border bg-subtle px-4">
+        <h2 className="text-[13px] font-semibold tracking-tight">{title}</h2>
         {actions}
       </header>
       <div className="p-4">{children}</div>
