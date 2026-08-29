@@ -10,10 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AlertesRouteImport } from './routes/alertes'
 import { Route as AnomaliesRouteImport } from './routes/anomalies'
 import { Route as CampagnesRouteImport } from './routes/campagnes'
 import { Route as CouvertureRouteImport } from './routes/couverture'
+import { Route as ExigencesRouteImport } from './routes/exigences'
 import { Route as FonctionnalitesRouteImport } from './routes/fonctionnalites'
+import { Route as PointsASurveillerRouteImport } from './routes/points-a-surveiller'
 import { Route as ProduitsRouteImport } from './routes/produits'
 import { Route as CampagnesCampaignIdRouteImport } from './routes/campagnes.$campaignId'
 import { Route as ExecutionTestIdRouteImport } from './routes/execution.$testId'
@@ -22,6 +25,11 @@ import { Route as ProduitsProductIdRouteImport } from './routes/produits.$produc
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlertesRoute = AlertesRouteImport.update({
+  id: '/alertes',
+  path: '/alertes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnomaliesRoute = AnomaliesRouteImport.update({
@@ -39,9 +47,19 @@ const CouvertureRoute = CouvertureRouteImport.update({
   path: '/couverture',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ExigencesRoute = ExigencesRouteImport.update({
+  id: '/exigences',
+  path: '/exigences',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FonctionnalitesRoute = FonctionnalitesRouteImport.update({
   id: '/fonctionnalites',
   path: '/fonctionnalites',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PointsASurveillerRoute = PointsASurveillerRouteImport.update({
+  id: '/points-a-surveiller',
+  path: '/points-a-surveiller',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProduitsRoute = ProduitsRouteImport.update({
@@ -67,10 +85,13 @@ const ProduitsProductIdRoute = ProduitsProductIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/alertes': typeof AlertesRoute
   '/anomalies': typeof AnomaliesRoute
   '/campagnes': typeof CampagnesRouteWithChildren
   '/couverture': typeof CouvertureRoute
+  '/exigences': typeof ExigencesRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
+  '/points-a-surveiller': typeof PointsASurveillerRoute
   '/produits': typeof ProduitsRouteWithChildren
   '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
   '/execution/$testId': typeof ExecutionTestIdRoute
@@ -78,10 +99,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/alertes': typeof AlertesRoute
   '/anomalies': typeof AnomaliesRoute
   '/campagnes': typeof CampagnesRouteWithChildren
   '/couverture': typeof CouvertureRoute
+  '/exigences': typeof ExigencesRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
+  '/points-a-surveiller': typeof PointsASurveillerRoute
   '/produits': typeof ProduitsRouteWithChildren
   '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
   '/execution/$testId': typeof ExecutionTestIdRoute
@@ -90,10 +114,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/alertes': typeof AlertesRoute
   '/anomalies': typeof AnomaliesRoute
   '/campagnes': typeof CampagnesRouteWithChildren
   '/couverture': typeof CouvertureRoute
+  '/exigences': typeof ExigencesRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
+  '/points-a-surveiller': typeof PointsASurveillerRoute
   '/produits': typeof ProduitsRouteWithChildren
   '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
   '/execution/$testId': typeof ExecutionTestIdRoute
@@ -103,10 +130,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/alertes'
     | '/anomalies'
     | '/campagnes'
     | '/couverture'
+    | '/exigences'
     | '/fonctionnalites'
+    | '/points-a-surveiller'
     | '/produits'
     | '/campagnes/$campaignId'
     | '/execution/$testId'
@@ -114,10 +144,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/alertes'
     | '/anomalies'
     | '/campagnes'
     | '/couverture'
+    | '/exigences'
     | '/fonctionnalites'
+    | '/points-a-surveiller'
     | '/produits'
     | '/campagnes/$campaignId'
     | '/execution/$testId'
@@ -125,10 +158,13 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/alertes'
     | '/anomalies'
     | '/campagnes'
     | '/couverture'
+    | '/exigences'
     | '/fonctionnalites'
+    | '/points-a-surveiller'
     | '/produits'
     | '/campagnes/$campaignId'
     | '/execution/$testId'
@@ -137,10 +173,13 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AlertesRoute: typeof AlertesRoute
   AnomaliesRoute: typeof AnomaliesRoute
   CampagnesRoute: typeof CampagnesRouteWithChildren
   CouvertureRoute: typeof CouvertureRoute
+  ExigencesRoute: typeof ExigencesRoute
   FonctionnalitesRoute: typeof FonctionnalitesRoute
+  PointsASurveillerRoute: typeof PointsASurveillerRoute
   ProduitsRoute: typeof ProduitsRouteWithChildren
   ExecutionTestIdRoute: typeof ExecutionTestIdRoute
 }
@@ -152,6 +191,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/alertes': {
+      id: '/alertes'
+      path: '/alertes'
+      fullPath: '/alertes'
+      preLoaderRoute: typeof AlertesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/anomalies': {
@@ -175,11 +221,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CouvertureRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/exigences': {
+      id: '/exigences'
+      path: '/exigences'
+      fullPath: '/exigences'
+      preLoaderRoute: typeof ExigencesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/fonctionnalites': {
       id: '/fonctionnalites'
       path: '/fonctionnalites'
       fullPath: '/fonctionnalites'
       preLoaderRoute: typeof FonctionnalitesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/points-a-surveiller': {
+      id: '/points-a-surveiller'
+      path: '/points-a-surveiller'
+      fullPath: '/points-a-surveiller'
+      preLoaderRoute: typeof PointsASurveillerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/produits': {
@@ -239,10 +299,13 @@ const ProduitsRouteWithChildren = ProduitsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AlertesRoute: AlertesRoute,
   AnomaliesRoute: AnomaliesRoute,
   CampagnesRoute: CampagnesRouteWithChildren,
   CouvertureRoute: CouvertureRoute,
+  ExigencesRoute: ExigencesRoute,
   FonctionnalitesRoute: FonctionnalitesRoute,
+  PointsASurveillerRoute: PointsASurveillerRoute,
   ProduitsRoute: ProduitsRouteWithChildren,
   ExecutionTestIdRoute: ExecutionTestIdRoute,
 }
