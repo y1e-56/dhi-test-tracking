@@ -105,7 +105,32 @@ function CampaignsPage() {
         </Button>
       }
     >
-      <div className="panel">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard label="Campagnes" value={campaigns.length} hint="Toutes versions" />
+        <KpiCard
+          label="En cours"
+          value={campaigns.filter((c) => c.status === "encours").length}
+          tone="info"
+          hint="Exécution active"
+        />
+        <KpiCard
+          label="Planifiées"
+          value={campaigns.filter((c) => c.status === "planifiee" || c.status === "avenir").length}
+          hint="À démarrer"
+        />
+        <KpiCard
+          label="Exécution moyenne"
+          value={`${avgExecution} %`}
+          tone={avgExecution >= 85 ? "success" : avgExecution >= 60 ? "warning" : "danger"}
+          hint="Tous périmètres"
+        />
+      </div>
+
+      <div className="panel overflow-hidden">
+        <div className="flex h-11 items-center justify-between gap-2 border-b border-border bg-subtle px-4">
+          <h2 className="text-[13px] font-semibold tracking-tight">Toutes les campagnes</h2>
+          <p className="label-eyebrow">{campaigns.length} entrées</p>
+        </div>
         <Table>
           <TableHeader>
             <TableRow>
