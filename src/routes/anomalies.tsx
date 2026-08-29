@@ -3,7 +3,7 @@ import { Download, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
-import { DefectStatusBadge, SeverityBadge } from "@/components/dhi/indicators";
+import { DefectStatusBadge, KpiCard, SeverityBadge } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
