@@ -16,6 +16,7 @@ import { Route as CampagnesRouteImport } from './routes/campagnes'
 import { Route as CouvertureRouteImport } from './routes/couverture'
 import { Route as ExigencesRouteImport } from './routes/exigences'
 import { Route as FonctionnalitesRouteImport } from './routes/fonctionnalites'
+import { Route as PointsASurveillerRouteImport } from './routes/points-a-surveiller'
 import { Route as ProduitsRouteImport } from './routes/produits'
 import { Route as CampagnesCampaignIdRouteImport } from './routes/campagnes.$campaignId'
 import { Route as ExecutionTestIdRouteImport } from './routes/execution.$testId'
@@ -56,6 +57,11 @@ const FonctionnalitesRoute = FonctionnalitesRouteImport.update({
   path: '/fonctionnalites',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PointsASurveillerRoute = PointsASurveillerRouteImport.update({
+  id: '/points-a-surveiller',
+  path: '/points-a-surveiller',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProduitsRoute = ProduitsRouteImport.update({
   id: '/produits',
   path: '/produits',
@@ -85,6 +91,7 @@ export interface FileRoutesByFullPath {
   '/couverture': typeof CouvertureRoute
   '/exigences': typeof ExigencesRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
+  '/points-a-surveiller': typeof PointsASurveillerRoute
   '/produits': typeof ProduitsRouteWithChildren
   '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
   '/execution/$testId': typeof ExecutionTestIdRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByTo {
   '/couverture': typeof CouvertureRoute
   '/exigences': typeof ExigencesRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
+  '/points-a-surveiller': typeof PointsASurveillerRoute
   '/produits': typeof ProduitsRouteWithChildren
   '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
   '/execution/$testId': typeof ExecutionTestIdRoute
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   '/couverture': typeof CouvertureRoute
   '/exigences': typeof ExigencesRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
+  '/points-a-surveiller': typeof PointsASurveillerRoute
   '/produits': typeof ProduitsRouteWithChildren
   '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
   '/execution/$testId': typeof ExecutionTestIdRoute
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/couverture'
     | '/exigences'
     | '/fonctionnalites'
+    | '/points-a-surveiller'
     | '/produits'
     | '/campagnes/$campaignId'
     | '/execution/$testId'
@@ -140,6 +150,7 @@ export interface FileRouteTypes {
     | '/couverture'
     | '/exigences'
     | '/fonctionnalites'
+    | '/points-a-surveiller'
     | '/produits'
     | '/campagnes/$campaignId'
     | '/execution/$testId'
@@ -153,6 +164,7 @@ export interface FileRouteTypes {
     | '/couverture'
     | '/exigences'
     | '/fonctionnalites'
+    | '/points-a-surveiller'
     | '/produits'
     | '/campagnes/$campaignId'
     | '/execution/$testId'
@@ -167,6 +179,7 @@ export interface RootRouteChildren {
   CouvertureRoute: typeof CouvertureRoute
   ExigencesRoute: typeof ExigencesRoute
   FonctionnalitesRoute: typeof FonctionnalitesRoute
+  PointsASurveillerRoute: typeof PointsASurveillerRoute
   ProduitsRoute: typeof ProduitsRouteWithChildren
   ExecutionTestIdRoute: typeof ExecutionTestIdRoute
 }
@@ -220,6 +233,13 @@ declare module '@tanstack/react-router' {
       path: '/fonctionnalites'
       fullPath: '/fonctionnalites'
       preLoaderRoute: typeof FonctionnalitesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/points-a-surveiller': {
+      id: '/points-a-surveiller'
+      path: '/points-a-surveiller'
+      fullPath: '/points-a-surveiller'
+      preLoaderRoute: typeof PointsASurveillerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/produits': {
@@ -285,6 +305,7 @@ const rootRouteChildren: RootRouteChildren = {
   CouvertureRoute: CouvertureRoute,
   ExigencesRoute: ExigencesRoute,
   FonctionnalitesRoute: FonctionnalitesRoute,
+  PointsASurveillerRoute: PointsASurveillerRoute,
   ProduitsRoute: ProduitsRouteWithChildren,
   ExecutionTestIdRoute: ExecutionTestIdRoute,
 }
