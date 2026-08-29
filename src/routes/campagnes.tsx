@@ -3,7 +3,7 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
-import { QualityBar, StatusBadge } from "@/components/dhi/indicators";
+import { KpiCard, QualityBar, StatusBadge } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
