@@ -14,6 +14,7 @@ import { Route as AlertesRouteImport } from './routes/alertes'
 import { Route as AnomaliesRouteImport } from './routes/anomalies'
 import { Route as CampagnesRouteImport } from './routes/campagnes'
 import { Route as CouvertureRouteImport } from './routes/couverture'
+import { Route as ExigencesRouteImport } from './routes/exigences'
 import { Route as FonctionnalitesRouteImport } from './routes/fonctionnalites'
 import { Route as ProduitsRouteImport } from './routes/produits'
 import { Route as CampagnesCampaignIdRouteImport } from './routes/campagnes.$campaignId'
@@ -43,6 +44,11 @@ const CampagnesRoute = CampagnesRouteImport.update({
 const CouvertureRoute = CouvertureRouteImport.update({
   id: '/couverture',
   path: '/couverture',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExigencesRoute = ExigencesRouteImport.update({
+  id: '/exigences',
+  path: '/exigences',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FonctionnalitesRoute = FonctionnalitesRouteImport.update({
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/anomalies': typeof AnomaliesRoute
   '/campagnes': typeof CampagnesRouteWithChildren
   '/couverture': typeof CouvertureRoute
+  '/exigences': typeof ExigencesRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
   '/produits': typeof ProduitsRouteWithChildren
   '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/anomalies': typeof AnomaliesRoute
   '/campagnes': typeof CampagnesRouteWithChildren
   '/couverture': typeof CouvertureRoute
+  '/exigences': typeof ExigencesRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
   '/produits': typeof ProduitsRouteWithChildren
   '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/anomalies': typeof AnomaliesRoute
   '/campagnes': typeof CampagnesRouteWithChildren
   '/couverture': typeof CouvertureRoute
+  '/exigences': typeof ExigencesRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
   '/produits': typeof ProduitsRouteWithChildren
   '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/anomalies'
     | '/campagnes'
     | '/couverture'
+    | '/exigences'
     | '/fonctionnalites'
     | '/produits'
     | '/campagnes/$campaignId'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/anomalies'
     | '/campagnes'
     | '/couverture'
+    | '/exigences'
     | '/fonctionnalites'
     | '/produits'
     | '/campagnes/$campaignId'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/anomalies'
     | '/campagnes'
     | '/couverture'
+    | '/exigences'
     | '/fonctionnalites'
     | '/produits'
     | '/campagnes/$campaignId'
@@ -153,6 +165,7 @@ export interface RootRouteChildren {
   AnomaliesRoute: typeof AnomaliesRoute
   CampagnesRoute: typeof CampagnesRouteWithChildren
   CouvertureRoute: typeof CouvertureRoute
+  ExigencesRoute: typeof ExigencesRoute
   FonctionnalitesRoute: typeof FonctionnalitesRoute
   ProduitsRoute: typeof ProduitsRouteWithChildren
   ExecutionTestIdRoute: typeof ExecutionTestIdRoute
@@ -193,6 +206,13 @@ declare module '@tanstack/react-router' {
       path: '/couverture'
       fullPath: '/couverture'
       preLoaderRoute: typeof CouvertureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exigences': {
+      id: '/exigences'
+      path: '/exigences'
+      fullPath: '/exigences'
+      preLoaderRoute: typeof ExigencesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/fonctionnalites': {
@@ -263,6 +283,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnomaliesRoute: AnomaliesRoute,
   CampagnesRoute: CampagnesRouteWithChildren,
   CouvertureRoute: CouvertureRoute,
+  ExigencesRoute: ExigencesRoute,
   FonctionnalitesRoute: FonctionnalitesRoute,
   ProduitsRoute: ProduitsRouteWithChildren,
   ExecutionTestIdRoute: ExecutionTestIdRoute,
