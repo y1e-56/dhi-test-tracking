@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AlertesRouteImport } from './routes/alertes'
 import { Route as AnomaliesRouteImport } from './routes/anomalies'
 import { Route as CampagnesRouteImport } from './routes/campagnes'
 import { Route as CouvertureRouteImport } from './routes/couverture'
@@ -22,6 +23,11 @@ import { Route as ProduitsProductIdRouteImport } from './routes/produits.$produc
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlertesRoute = AlertesRouteImport.update({
+  id: '/alertes',
+  path: '/alertes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnomaliesRoute = AnomaliesRouteImport.update({
@@ -67,6 +73,7 @@ const ProduitsProductIdRoute = ProduitsProductIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/alertes': typeof AlertesRoute
   '/anomalies': typeof AnomaliesRoute
   '/campagnes': typeof CampagnesRouteWithChildren
   '/couverture': typeof CouvertureRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/alertes': typeof AlertesRoute
   '/anomalies': typeof AnomaliesRoute
   '/campagnes': typeof CampagnesRouteWithChildren
   '/couverture': typeof CouvertureRoute
@@ -90,6 +98,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/alertes': typeof AlertesRoute
   '/anomalies': typeof AnomaliesRoute
   '/campagnes': typeof CampagnesRouteWithChildren
   '/couverture': typeof CouvertureRoute
@@ -103,6 +112,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/alertes'
     | '/anomalies'
     | '/campagnes'
     | '/couverture'
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/alertes'
     | '/anomalies'
     | '/campagnes'
     | '/couverture'
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/alertes'
     | '/anomalies'
     | '/campagnes'
     | '/couverture'
@@ -137,6 +149,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AlertesRoute: typeof AlertesRoute
   AnomaliesRoute: typeof AnomaliesRoute
   CampagnesRoute: typeof CampagnesRouteWithChildren
   CouvertureRoute: typeof CouvertureRoute
@@ -152,6 +165,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/alertes': {
+      id: '/alertes'
+      path: '/alertes'
+      fullPath: '/alertes'
+      preLoaderRoute: typeof AlertesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/anomalies': {
@@ -239,6 +259,7 @@ const ProduitsRouteWithChildren = ProduitsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AlertesRoute: AlertesRoute,
   AnomaliesRoute: AnomaliesRoute,
   CampagnesRoute: CampagnesRouteWithChildren,
   CouvertureRoute: CouvertureRoute,
