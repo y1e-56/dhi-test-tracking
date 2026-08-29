@@ -146,8 +146,35 @@ function DefectsPage() {
         </div>
       }
     >
-      <div className="panel">
-        <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard
+          label="Ouvertes"
+          value={defects.filter((d) => d.status !== "fermee").length}
+          tone="warning"
+          hint="Tous produits"
+        />
+        <KpiCard
+          label="Gravité haute"
+          value={defects.filter((d) => d.severity === "haute" && d.status !== "fermee").length}
+          tone="danger"
+          hint="À traiter en priorité"
+        />
+        <KpiCard
+          label="En correction"
+          value={defects.filter((d) => d.status === "encorrection").length}
+          tone="info"
+          hint="Prises en charge"
+        />
+        <KpiCard
+          label="Fermées"
+          value={defects.filter((d) => d.status === "fermee").length}
+          tone="success"
+          hint="Capitalisées"
+        />
+      </div>
+
+      <div className="panel overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border bg-subtle px-4 py-2.5">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
