@@ -69,6 +69,13 @@ function CampaignsPage() {
     testers: new Set<string>(["Marie Martin"]),
   });
 
+  const avgExecution = campaigns.length
+    ? Math.round(
+        campaigns.reduce((sum, c) => sum + campaignStats(tests, c.id).executionRate, 0) /
+          campaigns.length,
+      )
+    : 0;
+
   const submit = () => {
     if (!form.name.trim()) {
       toast.error("Le nom de la campagne est requis.");
