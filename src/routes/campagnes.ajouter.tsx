@@ -106,8 +106,8 @@ function CreateCampaignPage() {
       toast.error(t("pages.add_campaign.name_required"));
       return;
     }
-    if (!form.projectId) {
-      toast.error(t("pages.add_campaign.project_required"));
+    if (form.clone && !form.cloneFrom) {
+      toast.error(t("pages.add_campaign.clone_required"));
       return;
     }
 
@@ -126,7 +126,10 @@ function CreateCampaignPage() {
         version: form.version,
         environment: form.environment,
         owner: form.owner,
-        status: "planifiee" as CampaignStatus,
+        status:
+          form.startDate > new Date().toISOString().slice(0, 10)
+            ? ("avenir" as CampaignStatus)
+            : ("planifiee" as CampaignStatus),
         startDate: form.startDate,
         endDate: form.endDate || form.startDate,
         testers: [...form.testers],
@@ -163,7 +166,7 @@ function CreateCampaignPage() {
           </Button>
         </div>
 
-        <form onSubmit={submit} className="max-w-4xl space-y-8">
+        <form onSubmit={submit} className="max-w-6xl space-y-8">
           <div className="space-y-4">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">
@@ -189,7 +192,7 @@ function CreateCampaignPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="grid gap-2">
                   <Label className="text-sm font-medium">{t("common.type")}</Label>
                   <Select
@@ -235,7 +238,10 @@ function CreateCampaignPage() {
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label className="text-sm font-medium">{t("common.projet")}</Label>
+                  <Label className="text-sm font-medium">
+                    {t("common.projet")}{" "}
+                    <span className="text-xs font-normal text-muted-foreground">(optionnel)</span>
+                  </Label>
                   <Select
                     value={form.projectId}
                     onValueChange={(v) => {
@@ -252,6 +258,7 @@ function CreateCampaignPage() {
                       <SelectValue placeholder={t("pages.add_campaign.choose_project")} />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="">— Aucun projet —</SelectItem>
                       {formProjects.map((pr) => (
                         <SelectItem key={pr.id} value={pr.id}>
                           {pr.name}
@@ -322,8 +329,10 @@ function CreateCampaignPage() {
                     value={form.startDate}
                     onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
                     className="h-11"
-                    min={new Date().toISOString().slice(0, 10)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Une date ultérieure planifie la campagne (statut « À venir »).
+                  </p>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="c-end" className="text-sm font-medium">

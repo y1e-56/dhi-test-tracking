@@ -50,6 +50,22 @@ Document de travail pour le collaborateur. Récapitule, en mots simples, ce que 
 
 ---
 
+## Derniers ajustements demandés (faits ✅)
+
+1. **Projet non obligatoire** à la création d'une campagne — le champ "Projet" est optionnel (choix « Aucun projet » possible), la validation obligatoire a été retirée.
+2. **Formulaire de création de campagne agrandi** — format plus large (6 colonnes max) avec une grille à 3 colonnes pour mieux exploiter l'espace.
+3. **Date de création différée** — on peut saisir n'importe quelle date ; si la date de début est **future**, la campagne est automatiquement en statut « À venir », sinon « Planifiée ». Une note l'explique sous le champ.
+4. **Cas de test : résultat attendu / résultat obtenu / commentaires** —
+   - Le formulaire d'ajout et de modification d'un cas de test comporte désormais : *Résultats attendus*, *Résultat obtenu* (saisissable), *Commentaires*.
+   - Ces champs sont **affichés dans le tableau** des cas de test de la campagne (colonne « Résultat obtenu » + commentaire, avec info-bulle complète).
+   - **Export CSV enrichi** : id, nom, criticité, type, verdict, testeur, préconditions, étapes, résultat attendu, résultat obtenu, commentaires, date.
+   - **Import CSV enrichi** : le modèle téléchargeable contient `resultat_attendu`, `resultat_obtenu`, `commentaires` (compatibles aussi avec `expected` / `observed` / `comment`).
+   - Le clonage d'une campagne copie aussi ces champs.
+
+*(Point « anomalies à gauche / conformité à droite + icône œil » et « hubs de fonctionnalités » : laissés de côté / non cadrés.)*
+
+---
+
 ## Où trouver chaque fonctionnalité
 
 - **Critères qualité / règles par type** → Référentiels & règles

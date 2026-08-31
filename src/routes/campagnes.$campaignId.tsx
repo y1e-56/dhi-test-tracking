@@ -81,6 +81,8 @@ type TestForm = {
   preconditions: string;
   steps: string;
   expected: string;
+  observed: string;
+  comment: string;
 };
 
 type TranslateFn = (key: TranslationKey, fallback?: string) => string;
@@ -96,6 +98,8 @@ function emptyTestForm(campaignId: string, features: Feature[]): TestForm {
     preconditions: "",
     steps: "",
     expected: "",
+    observed: "",
+    comment: "",
   };
 }
 
@@ -134,11 +138,25 @@ function splitLines(s: string): string[] {
 }
 
 function exportCsv(list: TestStats["list"], campaignName: string, t: TranslateFn) {
-  const header = "id;nom;criticite;verdict;testeur;date\n";
+  const header = "id;nom;criticite;type;verdict;testeur;preconditions;steps;resultat_attendu;resultat_obtenu;commentaires;date\n";
+  const csvCell = (v: string) =>
+    v.includes(CSV_SEP) || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v;
   const rows = list
-    .map(
-      (t) =>
-        `${t.id};"${t.name}";${t.criticality};${t.verdict};${t.tester ?? ""};${t.executedAt ?? ""}`,
+    .map((t) =>
+      [
+        t.id,
+        csvCell(t.name),
+        t.criticality,
+        t.type,
+        t.verdict,
+        t.tester ?? "",
+        csvCell(t.preconditions.join(" | ")),
+        csvCell(t.steps.join(" | ")),
+        csvCell(t.expected.join(" | ")),
+        csvCell(t.observed ?? ""),
+        csvCell(t.comment ?? ""),
+        t.executedAt ?? "",
+      ].join(CSV_SEP),
     )
     .join("\n");
   const blob = new Blob([header + rows], { type: "text/csv" });
@@ -405,6 +423,24 @@ function TestCaseFormFields({
           onChange={(e) => setForm({ ...form, expected: e.target.value })}
         />
       </div>
+      <div className="space-y-2">
+        <Label>{t("pages.campaign_detail.resultat_obtenu")}</Label>
+        <Textarea
+          rows={3}
+          value={form.observed}
+          placeholder={t("pages.campaign_detail.observed_placeholder")}
+          onChange={(e) => setForm({ ...form, observed: e.target.value })}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>{t("pages.campaign_detail.commentaire")}</Label>
+        <Textarea
+          rows={2}
+          value={form.comment}
+          placeholder={t("pages.campaign_detail.comment_placeholder")}
+          onChange={(e) => setForm({ ...form, comment: e.target.value })}
+        />
+      </div>
     </div>
   );
 }
@@ -429,6 +465,7 @@ function CampaignTestsTable({
             <TableHead>{t("common.criticite")}</TableHead>
             <TableHead>{t("common.type")}</TableHead>
             <TableHead>{t("common.verdict")}</TableHead>
+            <TableHead>{t("pages.campaign_detail.resultat_obtenu")}</TableHead>
             <TableHead>{t("common.testeur")}</TableHead>
             <TableHead>{t("pages.campaign_detail.execution")}</TableHead>
             <TableHead className="text-right">{t("pages.campaign_detail.actions")}</TableHead>
@@ -445,6 +482,19 @@ function CampaignTestsTable({
               <TableCell className="text-sm capitalize">{t.type.replace(/_/g, " ")}</TableCell>
               <TableCell>
                 <VerdictBadge verdict={t.verdict} />
+              </TableCell>
+              <TableCell className="text-sm text-muted-foreground">
+                <span
+                  className="block max-w-[10rem] truncate"
+                  title={t.comment ? `${t.observed ?? ""} — ${t.comment}` : (t.observed ?? "")}
+                >
+                  {t.observed ? t.observed.split("\n")[0] : "—"}
+                </span>
+                {t.comment ? (
+                  <span className="block max-w-[10rem] truncate text-[11px] text-muted-foreground/70">
+                    {t.comment.split("\n")[0]}
+                  </span>
+                ) : null}
               </TableCell>
               <TableCell className="text-sm">{t.tester ?? "—"}</TableCell>
               <TableCell className="text-right">
@@ -549,6 +599,8 @@ type ParsedTestRow = {
   preconditions: string[];
   steps: string[];
   expected: string[];
+  observed: string;
+  comment: string;
   _raw: Record<string, string>;
   errors: string[];
 };
@@ -562,7 +614,9 @@ const CSV_TEMPLATE_HEADERS = [
   "testeur",
   "preconditions",
   "steps",
-  "expected",
+  "resultat_attendu",
+  "resultat_obtenu",
+  "commentaires",
 ];
 
 function parseCsvLine(line: string): string[] {
@@ -603,6 +657,8 @@ function exportTemplateCsv(featureList: Feature[], t: TranslateFn) {
     "Utilisateur enregistré|||Page de connexion ouverte",
     "Saisir email|||Saisir mdp demo|||Cliquer sur Se connecter",
     "Champ email ok|||Champ mdp ok|||Redirection tableau de bord",
+    "Redirection tableau de bord",
+    "Connexion réussie - RAS",
   ]
     .map((v) => (v.includes(CSV_SEP) || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v))
     .join(CSV_SEP);
@@ -698,6 +754,8 @@ function CampaignDetail() {
       preconditions: splitLines(formCreate.preconditions),
       steps: splitLines(formCreate.steps),
       expected: splitLines(formCreate.expected),
+      observed: formCreate.observed.trim() || undefined,
+      comment: formCreate.comment.trim() || undefined,
       tester: formCreate.tester.trim() || undefined,
     });
     toast.success(t("pages.campaign_detail.cas_test_creer").replace("{id}", id));
@@ -715,6 +773,8 @@ function CampaignDetail() {
       preconditions: t.preconditions.join("\n"),
       steps: t.steps.join("\n"),
       expected: t.expected.join("\n"),
+      observed: t.observed ?? "",
+      comment: t.comment ?? "",
     });
   };
 
@@ -733,6 +793,8 @@ function CampaignDetail() {
       preconditions: splitLines(formEdit.preconditions),
       steps: splitLines(formEdit.steps),
       expected: splitLines(formEdit.expected),
+      observed: formEdit.observed.trim() || undefined,
+      comment: formEdit.comment.trim() || undefined,
     });
     toast.success(t("pages.campaign_detail.cas_test_modifier").replace("{id}", editingTest.id));
     setEditingTest(null);
@@ -778,7 +840,9 @@ function CampaignDetail() {
       const iTesteur = idx("testeur");
       const iPrec = idx("preconditions");
       const iSteps = idx("steps");
-      const iExp = idx("expected");
+      const iExp = idx("expected") >= 0 ? idx("expected") : idx("resultat_attendu");
+      const iObs = idx("resultat_obtenu") >= 0 ? idx("resultat_obtenu") : idx("observed");
+      const iComment = idx("commentaires") >= 0 ? idx("commentaires") : idx("comment");
       if (iNom < 0) {
         toast.error(t("pages.campaign_detail.colonne_nom_introuvable"));
         return;
@@ -814,6 +878,8 @@ function CampaignDetail() {
         const preconditions = iPrec >= 0 ? splitPipe(cells[iPrec] ?? "") : [];
         const stepsCsv = iSteps >= 0 ? splitPipe(cells[iSteps] ?? "") : [];
         const expected = iExp >= 0 ? splitPipe(cells[iExp] ?? "") : [];
+        const observed = iObs >= 0 ? (cells[iObs] ?? "").trim() : "";
+        const comment = iComment >= 0 ? (cells[iComment] ?? "").trim() : "";
         parsed.push({
           name,
           featureId: fid,
@@ -823,6 +889,8 @@ function CampaignDetail() {
           preconditions,
           steps: stepsCsv,
           expected,
+          observed,
+          comment,
           _raw: raw,
           errors,
         });
@@ -867,6 +935,8 @@ function CampaignDetail() {
         preconditions: row.preconditions,
         steps: row.steps,
         expected: row.expected,
+        observed: row.observed || undefined,
+        comment: row.comment || undefined,
       });
       created++;
     }
