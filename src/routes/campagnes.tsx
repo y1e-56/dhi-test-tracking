@@ -1,27 +1,8 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
 import { KpiCard, QualityBar, StatusBadge } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -31,6 +12,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PEOPLE, type CampaignStatus } from "@/lib/dhi-data";
+import { EXECUTION_TABS } from "@/lib/dhi-nav";
+import { useI18n } from "@/lib/i18n";
 import { campaignStats, useStore } from "@/lib/dhi-store";
 
 export const Route = createFileRoute("/campagnes")({
@@ -39,35 +22,23 @@ export const Route = createFileRoute("/campagnes")({
       { title: "Campagnes de tests — DHI Quality Platform" },
       {
         name: "description",
-        content: "Créer, planifier et suivre les campagnes de tests : avancement, taux de réussite et environnements.",
+        content:
+          "Créer, planifier et suivre les campagnes de tests : avancement, taux de réussite et environnements.",
       },
       { property: "og:title", content: "Campagnes de tests — DHI Quality Platform" },
-      { property: "og:description", content: "Suivi des campagnes de tests et de leur avancement." },
+      {
+        property: "og:description",
+        content: "Suivi des campagnes de tests et de leur avancement.",
+      },
     ],
   }),
   component: CampaignsPage,
 });
 
-const CAMPAIGN_TYPES = ["Recette", "Régression", "Sécurité", "Performance", "Exploratoire"];
-const ENVIRONMENTS = ["RECETTE", "PREPROD", "DEV", "PROD"];
-
 function CampaignsPage() {
-  const { campaigns, tests, products, addCampaign } = useStore();
+  const { t } = useI18n();
+  const { campaigns, tests, products, projects } = useStore();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
-    name: "",
-    type: "Recette",
-    productId: "p-paiement",
-    version: "4.13",
-    environment: "RECETTE",
-    owner: "Marie Martin",
-    startDate: new Date().toISOString().slice(0, 10),
-    endDate: "",
-    clone: true,
-    cloneFrom: "c-recette-412",
-    testers: new Set<string>(["Marie Martin"]),
-  });
 
   const avgExecution = campaigns.length
     ? Math.round(
@@ -76,84 +47,72 @@ function CampaignsPage() {
       )
     : 0;
 
-  const submit = () => {
-    if (!form.name.trim()) {
-      toast.error("Le nom de la campagne est requis.");
-      return;
-    }
-    const id = addCampaign(
-      {
-        productId: form.productId,
-        name: form.name.trim(),
-        type: form.type,
-        version: form.version,
-        environment: form.environment,
-        owner: form.owner,
-        status: "planifiee" as CampaignStatus,
-        startDate: form.startDate,
-        endDate: form.endDate || form.startDate,
-        testers: [...form.testers],
-      },
-      form.clone ? form.cloneFrom : undefined,
-    );
-    toast.success(`Campagne « ${form.name.trim()} » créée.`);
-    setOpen(false);
-    navigate({ to: "/campagnes/$campaignId", params: { campaignId: id } });
-  };
-
   return (
     <AppShell
-      title="Campagnes de tests"
-      subtitle="Créer, gérer et suivre les campagnes"
-      breadcrumb={["Exécution", "Campagnes"]}
+      title={t("pages.campaigns.title")}
+      subtitle={t("pages.campaigns.subtitle")}
+      breadcrumb={t("pages.campaigns.breadcrumb")}
+      tabs={EXECUTION_TABS}
       actions={
-        <Button size="sm" onClick={() => setOpen(true)}>
-          <Plus className="size-4" /> Nouvelle campagne
+        <Button size="sm" asChild>
+          <Link to="/campagnes/ajouter">
+            <Plus className="size-4" /> {t("pages.campaigns.new_campaign")}
+          </Link>
         </Button>
       }
     >
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Campagnes" value={campaigns.length} hint="Toutes versions" />
         <KpiCard
-          label="En cours"
+          label={t("common.campagne")}
+          value={campaigns.length}
+          hint={t("pages.campaigns.all_versions")}
+        />
+        <KpiCard
+          label={t("pages.campaigns.in_progress")}
           value={campaigns.filter((c) => c.status === "encours").length}
           tone="info"
-          hint="Exécution active"
+          hint={t("pages.campaigns.in_progress_hint")}
         />
         <KpiCard
-          label="Planifiées"
+          label={t("pages.campaigns.planned")}
           value={campaigns.filter((c) => c.status === "planifiee" || c.status === "avenir").length}
-          hint="À démarrer"
+          hint={t("pages.campaigns.to_start")}
         />
         <KpiCard
-          label="Exécution moyenne"
+          label={t("pages.campaigns.avg_execution")}
           value={`${avgExecution} %`}
           tone={avgExecution >= 85 ? "success" : avgExecution >= 60 ? "warning" : "danger"}
-          hint="Tous périmètres"
+          hint={t("pages.campaigns.all_scope")}
         />
       </div>
 
       <div className="panel overflow-hidden">
         <div className="flex h-11 items-center justify-between gap-2 border-b border-border bg-subtle px-4">
-          <h2 className="text-[13px] font-semibold tracking-tight">Toutes les campagnes</h2>
-          <p className="label-eyebrow">{campaigns.length} entrées</p>
+          <h2 className="text-[13px] font-semibold tracking-tight">
+            {t("pages.campaigns.all_campaigns")}
+          </h2>
+          <p className="label-eyebrow">
+            {t("pages.campaigns.entries").replace("{count}", String(campaigns.length))}
+          </p>
         </div>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Campagne</TableHead>
-              <TableHead>Produit</TableHead>
-              <TableHead>Version</TableHead>
-              <TableHead>État</TableHead>
-              <TableHead className="w-56">Avancement</TableHead>
-              <TableHead className="text-right">Réussite</TableHead>
-              <TableHead>Responsable</TableHead>
+              <TableHead>{t("pages.campaigns.campaign")}</TableHead>
+              <TableHead>{t("pages.campaigns.product")}</TableHead>
+              <TableHead>{t("pages.campaigns.project")}</TableHead>
+              <TableHead>{t("pages.campaigns.version")}</TableHead>
+              <TableHead>{t("pages.campaigns.state")}</TableHead>
+              <TableHead className="w-56">{t("pages.campaigns.progress")}</TableHead>
+              <TableHead className="text-right">{t("pages.campaigns.success")}</TableHead>
+              <TableHead>{t("pages.campaigns.owner")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {campaigns.map((c) => {
               const st = campaignStats(tests, c.id);
               const product = products.find((p) => p.id === c.productId);
+              const project = projects.find((p) => p.id === c.projectId);
               return (
                 <TableRow
                   key={c.id}
@@ -163,7 +122,32 @@ function CampaignsPage() {
                   }
                 >
                   <TableCell className="font-medium">{c.name}</TableCell>
-                  <TableCell className="text-sm">{product?.name ?? "—"}</TableCell>
+                  <TableCell className="text-sm" onClick={(e) => e.stopPropagation()}>
+                    {product ? (
+                      <Link
+                        to="/produits/$productId"
+                        params={{ productId: product.id }}
+                        className="text-primary hover:underline"
+                      >
+                        {product.name}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm" onClick={(e) => e.stopPropagation()}>
+                    {project ? (
+                      <Link
+                        to="/projets/$projectId"
+                        params={{ projectId: project.id }}
+                        className="text-primary hover:underline"
+                      >
+                        {project.name}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell className="num">{c.version}</TableCell>
                   <TableCell>
                     <StatusBadge status={c.status} />
@@ -184,177 +168,6 @@ function CampaignsPage() {
           </TableBody>
         </Table>
       </div>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Créer une campagne</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4">
-            <div className="grid gap-1.5">
-              <Label htmlFor="c-name">Nom</Label>
-              <Input
-                id="c-name"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Ex. Recette v4.13"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-1.5">
-                <Label>Type</Label>
-                <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CAMPAIGN_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label>Produit</Label>
-                <Select
-                  value={form.productId}
-                  onValueChange={(v) => setForm((f) => ({ ...f, productId: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="c-version">Version</Label>
-                <Input
-                  id="c-version"
-                  value={form.version}
-                  onChange={(e) => setForm((f) => ({ ...f, version: e.target.value }))}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>Environnement</Label>
-                <Select
-                  value={form.environment}
-                  onValueChange={(v) => setForm((f) => ({ ...f, environment: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ENVIRONMENTS.map((e) => (
-                      <SelectItem key={e} value={e}>
-                        {e}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label>Responsable</Label>
-                <Select
-                  value={form.owner}
-                  onValueChange={(v) => setForm((f) => ({ ...f, owner: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PEOPLE.map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {p}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-1.5">
-                <Label htmlFor="c-start">Date de début</Label>
-                <Input
-                  id="c-start"
-                  type="date"
-                  value={form.startDate}
-                  onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="c-end">Date de fin</Label>
-                <Input
-                  id="c-end"
-                  type="date"
-                  value={form.endDate}
-                  onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
-                />
-              </div>
-            </div>
-            <div className="rounded-md border border-border p-3">
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <Checkbox
-                  checked={form.clone}
-                  onCheckedChange={(v) => setForm((f) => ({ ...f, clone: !!v }))}
-                />
-                Recréer les tests depuis une campagne existante
-              </label>
-              {form.clone ? (
-                <Select
-                  value={form.cloneFrom}
-                  onValueChange={(v) => setForm((f) => ({ ...f, cloneFrom: v }))}
-                >
-                  <SelectTrigger className="mt-2">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {campaigns.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : null}
-            </div>
-            <div className="grid gap-2">
-              <Label>Testeurs affectés</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {PEOPLE.map((p) => (
-                  <label key={p} className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={form.testers.has(p)}
-                      onCheckedChange={(checked) =>
-                        setForm((f) => {
-                          const next = new Set(f.testers);
-                          if (checked) next.add(p);
-                          else next.delete(p);
-                          return { ...f, testers: next };
-                        })
-                      }
-                    />
-                    {p}
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Annuler
-            </Button>
-            <Button onClick={submit}>Créer la campagne</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </AppShell>
   );
 }

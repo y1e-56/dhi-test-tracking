@@ -1,4 +1,7 @@
-import { Link } from "@tanstack/react-router";
+/* =========================================================
+   1. IMPORTS
+   ========================================================= */
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Boxes,
@@ -13,62 +16,101 @@ import {
   Settings,
   History,
   BookOpen,
+  FolderKanban,
   Menu,
   Search,
   ChevronRight,
+  LogOut,
+  UserRound,
+  LogIn,
+  Moon,
+  Sun,
+  Globe,
   type LucideIcon,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { SEARCH_PAGES, SEARCH_GROUPS, type AppShellTab } from "@/lib/dhi-nav";
+import { ROLE_LABEL, ROLE_PAGES } from "@/lib/dhi-data";
+import { useStore } from "@/lib/dhi-store";
+import { hasAccessToPage, getDefaultDashboardForRole } from "@/lib/role-protection";
+import { useI18n, type TranslationKey } from "@/lib/i18n";
 
+/* =========================================================
+   2. TYPES
+   ========================================================= */
 interface NavItem {
   to: string;
-  label: string;
+  label: TranslationKey;
   icon: LucideIcon;
 }
 
 interface NavSection {
-  title: string;
+  title: TranslationKey;
   items: NavItem[];
 }
+
+/* =========================================================
+   3. DONNÉES / CONFIG
+   ========================================================= */
 
 /* Priorité 1 (vertical) : les 5 domaines métier. */
 const NAV_SECTIONS: NavSection[] = [
   {
-    title: "Pilotage",
+    title: "nav.pilotage",
     items: [
-      { to: "/", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/alertes", label: "Alertes", icon: Bell },
+      { to: "/", label: "nav.dashboard", icon: LayoutDashboard },
+      { to: "/alertes", label: "nav.alertes", icon: Bell },
     ],
   },
   {
-    title: "Qualité",
+    title: "nav.qualite",
     items: [
-      { to: "/produits", label: "Produits & projets", icon: Boxes },
-      { to: "/fonctionnalites", label: "Fonctionnalités", icon: ListChecks },
-      { to: "/exigences", label: "Exigences", icon: FileCheck2 },
-      { to: "/couverture", label: "Couverture", icon: Grid3x3 },
+      { to: "/produits", label: "nav.produits", icon: Boxes },
+      { to: "/projets", label: "nav.projets", icon: FolderKanban },
+      { to: "/fonctionnalites", label: "nav.fonctionnalites", icon: ListChecks },
+      { to: "/exigences", label: "nav.exigences", icon: FileCheck2 },
+      { to: "/couverture", label: "nav.couverture", icon: Grid3x3 },
     ],
   },
   {
-    title: "Exécution",
-    items: [{ to: "/campagnes", label: "Campagnes de tests", icon: FlaskConical }],
+    title: "nav.execution",
+    items: [{ to: "/campagnes", label: "nav.campagnes", icon: FlaskConical }],
   },
   {
-    title: "Décision",
+    title: "nav.decision",
     items: [
-      { to: "/go-live", label: "Go Live Center", icon: Rocket },
-      { to: "/points-a-surveiller", label: "Points à surveiller", icon: Eye },
+      { to: "/go-live", label: "nav.go_live", icon: Rocket },
+      { to: "/points-a-surveiller", label: "nav.points_surveiller", icon: Eye },
     ],
   },
   {
-    title: "Système",
+    title: "nav.systeme",
     items: [
-      { to: "/anomalies", label: "Anomalies & incidents", icon: Bug },
-      { to: "/referentiels", label: "Référentiels & règles", icon: BookOpen },
-      { to: "/administration", label: "Administration", icon: Settings },
-      { to: "/audit", label: "Audit & historique", icon: History },
+      { to: "/anomalies", label: "nav.anomalies", icon: Bug },
+      { to: "/referentiels", label: "nav.referentiels", icon: BookOpen },
+      { to: "/administration", label: "nav.administration", icon: Settings },
+      { to: "/audit", label: "nav.audit", icon: History },
     ],
   },
 ];
@@ -78,12 +120,27 @@ const navLinkClass =
 const navLinkActiveClass =
   "bg-sidebar-accent text-sidebar-accent-foreground shadow-[inset_0_0_0_1px_var(--color-sidebar-border)]";
 
+export type { AppShellTab };
+
+/* =========================================================
+   4. COMPOSANTS HELPERS
+   ========================================================= */
+
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+  const { currentUser } = useStore();
+  const { t } = useI18n();
+
+  // Filtrer les éléments de navigation en fonction du rôle de l'utilisateur
+  const filteredSections = NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => (currentUser ? hasAccessToPage(item.to) : false)),
+  })).filter((section) => section.items.length > 0);
+
   return (
     <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
-      {NAV_SECTIONS.map((section) => (
+      {filteredSections.map((section) => (
         <div key={section.title} className="flex flex-col gap-1">
-          <p className="label-eyebrow px-2.5 pb-1">{section.title}</p>
+          <p className="label-eyebrow px-2.5 pb-1">{t(section.title)}</p>
           {section.items.map((item) => (
             <Link
               key={item.to}
@@ -94,7 +151,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               activeProps={{ className: navLinkActiveClass }}
             >
               <item.icon className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
-              <span className="truncate">{item.label}</span>
+              <span className="truncate">{t(item.label)}</span>
             </Link>
           ))}
         </div>
@@ -104,6 +161,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function Brand() {
+  const { t } = useI18n();
+
   return (
     <div className="flex h-14 items-center gap-2.5 border-b border-sidebar-border px-4">
       <div className="flex size-7 items-center justify-center rounded-md bg-sidebar-primary text-[11px] font-bold tracking-tight text-sidebar-primary-foreground">
@@ -111,19 +170,121 @@ function Brand() {
       </div>
       <div className="min-w-0">
         <p className="truncate text-[13px] font-semibold leading-none text-foreground">
-          DHI Quality
+          {t("brand")}
         </p>
-        <p className="mt-1 text-[11px] leading-none text-muted-foreground">Platform</p>
+        <p className="mt-1 text-[11px] leading-none text-muted-foreground">{t("tagline")}</p>
       </div>
     </div>
   );
 }
 
-export interface AppShellTab {
-  to: string;
-  label: string;
-  exact?: boolean;
+/* =========================================================
+   4b. COMPOSANT — Menu utilisateur / Session
+   ========================================================= */
+
+function UserMenu() {
+  const navigate = useNavigate();
+  const { currentUser, logout } = useStore();
+  const { lang, setLang, theme, toggleTheme, languages, t } = useI18n();
+
+  const initials = (name: string) =>
+    name
+      .split(" ")
+      .map((w) => w[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
+
+  const toggleLanguage = () => {
+    const currentIndex = languages.findIndex((l) => l.id === lang);
+    const nextIndex = (currentIndex + 1) % languages.length;
+    setLang(languages[nextIndex].id);
+  };
+
+  if (!currentUser) {
+    return (
+      <Button size="sm" variant="outline" onClick={() => void navigate({ to: "/login" })}>
+        <LogIn className="size-4" /> {t("actions.connexion")}
+      </Button>
+    );
+  }
+
+  const dashboardPath = getDefaultDashboardForRole(currentUser.role);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex shrink-0 items-center gap-2 rounded-md border border-transparent px-2 py-1 transition-colors hover:border-border hover:bg-subtle"
+        >
+          <Avatar className="size-7 border border-border">
+            <AvatarFallback className="bg-primary/10 text-[11px] font-semibold text-primary">
+              {initials(currentUser.name)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="hidden min-w-0 text-left sm:block">
+            <p className="truncate text-[12px] font-semibold leading-none">{currentUser.name}</p>
+            <p className="mt-0.5 truncate text-[10px] text-muted-foreground leading-none">
+              {ROLE_LABEL[currentUser.role] ?? currentUser.role}
+            </p>
+          </div>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuLabel>
+          <p className="text-sm font-semibold">{currentUser.name}</p>
+          <p className="text-xs font-normal text-muted-foreground">{currentUser.email}</p>
+          <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-primary/80">
+            {ROLE_LABEL[currentUser.role] ?? currentUser.role}
+          </p>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem
+            onClick={() => void navigate({ to: dashboardPath })}
+            className="text-sm"
+          >
+            <LayoutDashboard className="mr-2 size-4 text-muted-foreground" /> {t("nav.dashboard")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => void navigate({ to: "/audit" })} className="text-sm">
+            <History className="mr-2 size-4 text-muted-foreground" /> {t("nav.audit")}
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={toggleTheme} className="text-sm">
+            {theme === "dark" ? (
+              <Sun className="mr-2 size-4 text-muted-foreground" />
+            ) : (
+              <Moon className="mr-2 size-4 text-muted-foreground" />
+            )}
+            {theme === "dark" ? t("common.mode_clair") : t("common.mode_sombre")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={toggleLanguage} className="text-sm">
+            <Globe className="mr-2 size-4 text-muted-foreground" />
+            {t("common.langue")}: {languages.find((l) => l.id === lang)?.native || lang}
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => {
+            logout();
+            toast.success(t("common.deconnexion_message"));
+            void navigate({ to: "/login" });
+          }}
+          className="text-sm text-danger focus:text-danger"
+        >
+          <LogOut className="mr-2 size-4" /> {t("actions.deconnexion")}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
+
+/* =========================================================
+   5. COMPOSANT PRINCIPAL — AppShell
+   ========================================================= */
 
 export function AppShell({
   title,
@@ -136,14 +297,37 @@ export function AppShell({
   title: string;
   subtitle?: string;
   /** Fil d'Ariane affiché au-dessus du titre. */
-  breadcrumb?: string[];
+  breadcrumb?: string | string[];
   /** Priorité 2 (horizontal) : sous-navigation de la section courante. */
   tabs?: AppShellTab[];
   actions?: ReactNode;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const allItems = NAV_SECTIONS.flatMap((s) => s.items);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const navigate = useNavigate();
+  const { currentUser } = useStore();
+  const { lang, setLang, theme, toggleTheme, languages, t } = useI18n();
+  const allItems = NAV_SECTIONS.flatMap((s) => s.items).filter((item) =>
+    currentUser ? hasAccessToPage(item.to) : false,
+  );
+
+  const toggleLanguage = () => {
+    const currentIndex = languages.findIndex((l) => l.id === lang);
+    const nextIndex = (currentIndex + 1) % languages.length;
+    setLang(languages[nextIndex].id);
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-subtle">
@@ -152,8 +336,7 @@ export function AppShell({
         <Brand />
         <SidebarNav />
         <div className="border-t border-sidebar-border px-4 py-3 text-[11px] leading-relaxed text-muted-foreground">
-          Gouvernance mesurable
-          <br />& traçable
+          {t("footer.copyright")}
         </div>
       </aside>
 
@@ -162,21 +345,26 @@ export function AppShell({
           <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="lg:hidden" aria-label="Navigation">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="lg:hidden"
+                  aria-label={t("common.navigation")}
+                >
                   <Menu />
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[264px] bg-sidebar p-0">
-                <SheetTitle className="sr-only">Navigation</SheetTitle>
+                <SheetTitle className="sr-only">{t("common.navigation")}</SheetTitle>
                 <Brand />
                 <SidebarNav onNavigate={() => setOpen(false)} />
               </SheetContent>
             </Sheet>
 
             <div className="min-w-0 flex-1">
-              {breadcrumb?.length ? (
+              {breadcrumb ? (
                 <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                  {breadcrumb.map((crumb, i) => (
+                  {(Array.isArray(breadcrumb) ? breadcrumb : [breadcrumb]).map((crumb, i) => (
                     <span key={crumb} className="flex items-center gap-1 truncate">
                       {i > 0 ? <ChevronRight className="size-3 opacity-60" /> : null}
                       {crumb}
@@ -195,12 +383,54 @@ export function AppShell({
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
-              <div className="hidden items-center gap-2 rounded-md border border-input bg-background px-2.5 py-1.5 text-xs text-muted-foreground xl:flex">
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className="hidden items-center gap-2 rounded-md border border-input bg-background px-2.5 py-1.5 text-xs text-muted-foreground xl:flex hover:bg-subtle"
+              >
                 <Search className="size-3.5" />
-                <span>Rechercher</span>
+                <span>{t("common.recherche_page")}</span>
                 <kbd className="num rounded border border-border bg-muted px-1 text-[10px]">⌘K</kbd>
-              </div>
+              </button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="xl:hidden"
+                aria-label={t("common.recherche_ecran")}
+                onClick={() => setSearchOpen(true)}
+              >
+                <Search className="size-4" />
+              </Button>
+
+              {/* Theme Toggle */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={toggleTheme}
+                aria-label={t("common.changer_theme")}
+                title={theme === "dark" ? t("common.mode_clair") : t("common.mode_sombre")}
+              >
+                {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+              </Button>
+
+              {/* Language Toggle */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={toggleLanguage}
+                aria-label={t("common.changer_langue")}
+                title={t("common.langue_label").replace(
+                  "{langue}",
+                  lang === "fr" ? "Français" : "English",
+                )}
+              >
+                {" "}
+                <Globe className="size-4" />
+                <span className="sr-only">{lang === "fr" ? "FR" : "EN"}</span>
+              </Button>
+
               {actions}
+              <UserMenu />
             </div>
           </div>
 
@@ -215,7 +445,7 @@ export function AppShell({
                   className="-mb-px whitespace-nowrap border-b-2 border-transparent py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
                   activeProps={{ className: "border-foreground text-foreground" }}
                 >
-                  {tab.label}
+                  {t(tab.label)}
                 </Link>
               ))}
             </nav>
@@ -231,16 +461,39 @@ export function AppShell({
                 className="whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground"
                 activeProps={{ className: "bg-secondary text-foreground" }}
               >
-                {item.label}
+                {t(item.label)}
               </Link>
             ))}
           </nav>
         </header>
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto w-full max-w-[1400px] space-y-6">{children}</div>
+          <div className="w-full space-y-6">{children}</div>
         </main>
       </div>
+
+      <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
+        <CommandInput placeholder={t("common.recherche_ecran")} />
+        <CommandList>
+          <CommandEmpty>{t("common.aucun_ecran")}</CommandEmpty>
+          {SEARCH_GROUPS.map((group) => (
+            <CommandGroup key={group} heading={t(group)}>
+              {SEARCH_PAGES.filter((p) => p.group === group && hasAccessToPage(p.to)).map((p) => (
+                <CommandItem
+                  key={p.to}
+                  value={`${t(p.label)} ${p.to}`}
+                  onSelect={() => {
+                    setSearchOpen(false);
+                    void navigate({ to: p.to });
+                  }}
+                >
+                  {t(p.label)}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ))}
+        </CommandList>
+      </CommandDialog>
     </div>
   );
 }

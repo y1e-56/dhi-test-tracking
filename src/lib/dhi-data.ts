@@ -1,13 +1,28 @@
-export type Health = "sain" | "risque" | "critique";
+/* ==========================================================================
+   DHI DATA — Types, Modèles, Constantes et Données de référence
+   Organisation :
+     1. TYPES DE BASE (enums, union types)
+     2. TYPES ÉTENDUS (projets, releases, exigences, etc.)
+     3. INTERFACES / MODÈLES (entités métier)
+     4. LABELS & TRANSLATIONS (Record<Type, string>)
+     5. CONFIG & RÈGLES (pondérations, transitions, checklist)
+     6. FONCTIONS UTILITAIRES
+     7. DONNÉES SEED (jeu de données de démo)
+   ========================================================================== */
+
+/* -------------------------------------------------------------------------- */
+/*  1. TYPES DE BASE                                                           */
+/* -------------------------------------------------------------------------- */
+
+export type Health = "sain" | "surveiller" | "risque" | "critique";
 export type Criticality = "critique" | "haute" | "moyenne" | "basse";
+export type Severity = "haute" | "moyenne" | "basse";
 export type CampaignStatus = "planifiee" | "encours" | "terminee" | "avenir";
+export type DefectStatus =
+  "nouvelle" | "affectee" | "encorrection" | "avalider" | "fermee" | "reouverte";
+export type TestCategory = "fonctionnels" | "non_fonctionnels" | "speciaux";
 export type Verdict =
-  | "PASS"
-  | "PASS_WITH_RESERVATION"
-  | "FAIL"
-  | "BLOCKED"
-  | "NOT_RUN"
-  | "NOT_APPLICABLE";
+  "PASS" | "PASS_WITH_RESERVATION" | "FAIL" | "BLOCKED" | "NOT_RUN" | "NOT_APPLICABLE";
 export type TestType =
   | "fonctionnel"
   | "regression"
@@ -32,56 +47,33 @@ export type TestType =
   | "migration_donnees"
   | "reprise"
   | "conformite";
-export type TestCategory = "fonctionnels" | "non_fonctionnels" | "speciaux";
-export type DefectStatus =
-  | "nouvelle"
-  | "affectee"
-  | "encorrection"
-  | "avalider"
-  | "fermee"
-  | "reouverte";
-export type Severity = "haute" | "moyenne" | "basse";
 
-export const TEST_TYPES: { id: TestType; label: string; category: TestCategory }[] = [
-  { id: "fonctionnel", label: "Fonctionnel", category: "fonctionnels" },
-  { id: "regression", label: "Régression", category: "fonctionnels" },
-  { id: "integration", label: "Intégration", category: "fonctionnels" },
-  { id: "api", label: "API", category: "fonctionnels" },
-  { id: "recette_metier", label: "Recette métier (UAT)", category: "fonctionnels" },
-  { id: "smoke", label: "Smoke", category: "fonctionnels" },
-  { id: "sanity", label: "Sanity", category: "fonctionnels" },
-  { id: "exploratoire", label: "Exploratoire", category: "fonctionnels" },
-  { id: "securite", label: "Sécurité", category: "non_fonctionnels" },
-  { id: "penetration", label: "Test d'intrusion", category: "non_fonctionnels" },
-  { id: "performance", label: "Performance", category: "non_fonctionnels" },
-  { id: "charge", label: "Charge", category: "non_fonctionnels" },
-  { id: "endurance", label: "Endurance", category: "non_fonctionnels" },
-  { id: "volumetrie", label: "Volumétrie", category: "non_fonctionnels" },
-  { id: "robustesse", label: "Robustesse", category: "non_fonctionnels" },
-  { id: "accessibilite", label: "Accessibilité", category: "non_fonctionnels" },
-  { id: "compatibilite", label: "Compatibilité", category: "non_fonctionnels" },
-  { id: "ux", label: "UX / Ergonomie", category: "non_fonctionnels" },
-  { id: "localisation", label: "Localisation", category: "speciaux" },
-  { id: "installation", label: "Installation", category: "speciaux" },
-  { id: "migration_donnees", label: "Migration de données", category: "speciaux" },
-  { id: "reprise", label: "Reprise / Reprises après incident", category: "speciaux" },
-  { id: "conformite", label: "Conformité réglementaire", category: "speciaux" },
-];
+/*  --------------------------------------------------------------------------  */
+/*  2.  TYPES ÉTENDUS (Projets, Releases, Exigences, GoLive, Alertes, Audit)    */
+/*  --------------------------------------------------------------------------  */
 
-export const TEST_CATEGORY_LABEL: Record<TestCategory, string> = {
-  fonctionnels: "Tests fonctionnels",
-  non_fonctionnels: "Tests non fonctionnels",
-  speciaux: "Tests spéciaux",
-};
+export type ProjectStatus = "encours" | "termine" | "planifie";
+export type ReleaseStatus = "preparee" | "encours" | "livree";
+export type RequirementStatus = "brouillon" | "validee" | "couverte";
+export type WatchLevel = "info" | "vigilance" | "critique";
+export type WatchStatus = "ouvert" | "suivi" | "clos";
+export type GoLiveVerdict = "GO" | "GO_CONDITIONNEL" | "NO_GO" | "AJOURNE";
+export type AlertType = "anomalie" | "campagne" | "couverture" | "golive" | "systeme";
+export type AppRole =
+  | "admin"
+  | "qa_lead"
+  | "quality_manager"
+  | "product_owner"
+  | "chef_projet"
+  | "testeur"
+  | "approver"
+  | "lecteur";
 
-export const VERDICT_LABEL: Record<Verdict, string> = {
-  PASS: "PASS",
-  PASS_WITH_RESERVATION: "PASS (réserve)",
-  FAIL: "FAIL",
-  BLOCKED: "BLOCKED",
-  NOT_RUN: "NOT RUN",
-  NOT_APPLICABLE: "N/A",
-};
+/*  --------------------------------------------------------------------------  */
+/*  3.  INTERFACES / MODÈLES DES ENTITÉS MÉTIER                                 */
+/*  --------------------------------------------------------------------------  */
+
+/*  3.1  Score & Qualité ----------------------------------------------------  */
 
 export interface ScoreBreakdown {
   results: number;
@@ -89,7 +81,11 @@ export interface ScoreBreakdown {
   critical: number;
   incidents: number;
   nonFunctional: number;
+  testability: number;
+  qualityControl: number;
 }
+
+/*  3.2  Produits & Fonctionnalités ----------------------------------------  */
 
 export interface Product {
   id: string;
@@ -99,7 +95,6 @@ export interface Product {
   qaLead: string;
   qaTeam: string[];
   versions: string[];
-  projects: number;
   score: number;
   breakdown: ScoreBreakdown;
   lastUpdate: string;
@@ -114,9 +109,12 @@ export interface Feature {
   coverage: Partial<Record<TestType, boolean>>;
 }
 
+/*  3.3  Campagnes & Cas de test -------------------------------------------  */
+
 export interface Campaign {
   id: string;
   productId: string;
+  projectId: string;
   name: string;
   type: string;
   version: string;
@@ -149,6 +147,8 @@ export interface TestCase {
   evidence: { id: string; name: string; size: string; kind: "image" | "log" | "video" }[];
 }
 
+/*  3.4  Anomalies ---------------------------------------------------------  */
+
 export interface Defect {
   id: string;
   productId: string;
@@ -166,19 +166,120 @@ export interface Defect {
   targetDate: string;
 }
 
-export const PEOPLE = [
-  "Marie Martin",
-  "Pierre Durand",
-  "Sophie Lemaire",
-  "Jean Dupont",
-  "Ahmed Bakari",
-];
+/*  3.5  Projets, Releases & Exigences ------------------------------------  */
 
-export const healthOf = (score: number): Health =>
-  score >= 85 ? "sain" : score >= 70 ? "risque" : "critique";
+export interface Project {
+  id: string;
+  productId: string;
+  name: string;
+  objective: string;
+  targetVersion: string;
+  status: ProjectStatus;
+  startDate: string;
+  endDate: string;
+  manager: string;
+  qaLead: string;
+  progress: number;
+}
+
+export interface Release {
+  id: string;
+  projectId: string;
+  version: string;
+  plannedDate: string;
+  environment: string;
+  status: ReleaseStatus;
+}
+
+export interface Requirement {
+  id: string;
+  productId: string;
+  title: string;
+  description: string;
+  priority: Criticality;
+  status: RequirementStatus;
+  featureIds: string[];
+}
+
+/*  3.6  Points à surveiller & Go Live ------------------------------------  */
+
+export interface WatchPoint {
+  id: string;
+  productId: string;
+  title: string;
+  description: string;
+  level: WatchLevel;
+  status: WatchStatus;
+  owner: string;
+  createdAt: string;
+}
+
+export interface GoLiveChecklistItem {
+  id: string;
+  label: string;
+  weight: number;
+  checked: boolean;
+}
+
+export interface GoLiveDecision {
+  id: string;
+  releaseId: string;
+  verdict: GoLiveVerdict;
+  date: string;
+  decider: string;
+  justification: string;
+  checklistCompletion: number;
+}
+
+/*  3.7  Alertes, Audit & Référentiels ------------------------------------  */
+
+export interface Alert {
+  id: string;
+  type: AlertType;
+  severity: Severity;
+  title: string;
+  message: string;
+  detail?: string;
+  target?: string;
+  entityId?: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface AuditEntry {
+  id: string;
+  actor: string;
+  action: string;
+  entity: string;
+  detail: string;
+  at: string;
+}
+
+export interface ReferentialRule {
+  id: string;
+  domain: string;
+  label: string;
+  threshold: string;
+  active: boolean;
+}
+
+export interface PlatformUser {
+  id: string;
+  name: string;
+  email: string;
+  role: AppRole;
+  active: boolean;
+}
+
+/*  --------------------------------------------------------------------------  */
+/*  4.  LABELS & TRANSLATIONS (Record<Type, string>)                            */
+/*  --------------------------------------------------------------------------  */
+
+/*  4.1  Santé & Criticité -------------------------------------------------  */
 
 export const HEALTH_LABEL: Record<Health, string> = {
   sain: "Sain",
+  surveiller: "À surveiller",
   risque: "À risque",
   critique: "Critique",
 };
@@ -190,12 +291,63 @@ export const CRITICALITY_LABEL: Record<Criticality, string> = {
   basse: "Basse",
 };
 
+export const SEVERITY_LABEL: Record<Severity, string> = {
+  haute: "Haute",
+  moyenne: "Moyenne",
+  basse: "Basse",
+};
+
+/*  4.2  Campagnes, Tests & Verdicts --------------------------------------  */
+
 export const CAMPAIGN_STATUS_LABEL: Record<CampaignStatus, string> = {
   planifiee: "Planifiée",
   encours: "En cours",
   terminee: "Terminée",
   avenir: "À venir",
 };
+
+export const VERDICT_LABEL: Record<Verdict, string> = {
+  PASS: "PASS",
+  PASS_WITH_RESERVATION: "PASS (réserve)",
+  FAIL: "FAIL",
+  BLOCKED: "BLOCKED",
+  NOT_RUN: "NOT RUN",
+  NOT_APPLICABLE: "N/A",
+};
+
+export const TEST_CATEGORY_LABEL: Record<TestCategory, string> = {
+  fonctionnels: "Tests fonctionnels",
+  non_fonctionnels: "Tests non fonctionnels",
+  speciaux: "Tests spéciaux",
+};
+
+export const TEST_TYPES: { id: TestType; label: string; category: TestCategory }[] = [
+  { id: "fonctionnel", label: "Fonctionnel", category: "fonctionnels" },
+  { id: "regression", label: "Régression", category: "fonctionnels" },
+  { id: "integration", label: "Intégration", category: "fonctionnels" },
+  { id: "api", label: "API", category: "fonctionnels" },
+  { id: "recette_metier", label: "Recette métier (UAT)", category: "fonctionnels" },
+  { id: "smoke", label: "Smoke", category: "fonctionnels" },
+  { id: "sanity", label: "Sanity", category: "fonctionnels" },
+  { id: "exploratoire", label: "Exploratoire", category: "fonctionnels" },
+  { id: "securite", label: "Sécurité", category: "non_fonctionnels" },
+  { id: "penetration", label: "Test d'intrusion", category: "non_fonctionnels" },
+  { id: "performance", label: "Performance", category: "non_fonctionnels" },
+  { id: "charge", label: "Charge", category: "non_fonctionnels" },
+  { id: "endurance", label: "Endurance", category: "non_fonctionnels" },
+  { id: "volumetrie", label: "Volumétrie", category: "non_fonctionnels" },
+  { id: "robustesse", label: "Robustesse", category: "non_fonctionnels" },
+  { id: "accessibilite", label: "Accessibilité", category: "non_fonctionnels" },
+  { id: "compatibilite", label: "Compatibilité", category: "non_fonctionnels" },
+  { id: "ux", label: "UX / Ergonomie", category: "non_fonctionnels" },
+  { id: "localisation", label: "Localisation", category: "speciaux" },
+  { id: "installation", label: "Installation", category: "speciaux" },
+  { id: "migration_donnees", label: "Migration de données", category: "speciaux" },
+  { id: "reprise", label: "Reprise / Reprises après incident", category: "speciaux" },
+  { id: "conformite", label: "Conformité réglementaire", category: "speciaux" },
+];
+
+/*  4.3  Anomalies --------------------------------------------------------  */
 
 export const DEFECT_STATUS_LABEL: Record<DefectStatus, string> = {
   nouvelle: "Nouvelle",
@@ -206,7 +358,100 @@ export const DEFECT_STATUS_LABEL: Record<DefectStatus, string> = {
   reouverte: "Rouverte",
 };
 
-/** Transitions autorisées du workflow de cycle de vie d'une anomalie. */
+/*  4.4  Projets, Releases & Exigences -----------------------------------  */
+
+export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
+  encours: "En cours",
+  termine: "Terminé",
+  planifie: "Planifié",
+};
+
+export const RELEASE_STATUS_LABEL: Record<ReleaseStatus, string> = {
+  preparee: "Préparée",
+  encours: "En cours",
+  livree: "Livrée",
+};
+
+export const REQUIREMENT_STATUS_LABEL: Record<RequirementStatus, string> = {
+  brouillon: "Brouillon",
+  validee: "Validée",
+  couverte: "Couverte",
+};
+
+/*  4.5  Points à surveiller & Go Live -----------------------------------  */
+
+export const WATCH_LEVEL_LABEL: Record<WatchLevel, string> = {
+  info: "Information",
+  vigilance: "Vigilance",
+  critique: "Critique",
+};
+
+export const WATCH_STATUS_LABEL: Record<WatchStatus, string> = {
+  ouvert: "Ouvert",
+  suivi: "Suivi",
+  clos: "Clos",
+};
+
+export const GOLIVE_VERDICT_LABEL: Record<GoLiveVerdict, string> = {
+  GO: "GO",
+  GO_CONDITIONNEL: "GO sous réserve",
+  NO_GO: "NO-GO",
+  AJOURNE: "Ajourné",
+};
+
+/*  4.6  Rôles ------------------------------------------------------------  */
+
+export const ROLE_LABEL: Record<AppRole, string> = {
+  admin: "Administrateur",
+  qa_lead: "Responsable qualité",
+  quality_manager: "Quality Manager",
+  product_owner: "Product Owner",
+  chef_projet: "Chef de projet",
+  testeur: "Testeur / QA",
+  approver: "Approver Go Live",
+  lecteur: "Observateur / Auditeur",
+};
+
+/* Pages accessibles par rôle */
+export const ROLE_PAGES: Record<AppRole, string[]> = {
+  admin: ["/dashboard-admin", "/alertes", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/administration", "/administration/ajouter-utilisateur", "/audit"],
+  qa_lead: ["/", "/alertes", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/audit"],
+  quality_manager: ["/", "/alertes", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/audit"],
+  product_owner: ["/", "/produits", "/projets", "/fonctionnalites", "/exigences", "/go-live", "/points-a-surveiller", "/audit"],
+  chef_projet: ["/dashboard-chef", "/produits", "/projets", "/fonctionnalites", "/exigences", "/campagnes", "/campagnes/ajouter", "/go-live", "/audit"],
+  testeur: ["/dashboard-testeur", "/campagnes", "/anomalies", "/audit"],
+  approver: ["/", "/go-live", "/points-a-surveiller", "/audit"],
+  lecteur: ["/", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/go-live", "/points-a-surveiller", "/audit"],
+};
+
+/*  --------------------------------------------------------------------------  */
+/*  5.  CONFIGURATION & RÈGLES MÉTIER                                           */
+/*  --------------------------------------------------------------------------  */
+
+/*  5.1  Pondération CDC : Q = f(R, C, K, I, NF, T, CQ) -------------------  */
+
+export const SCORE_WEIGHTS: Record<keyof ScoreBreakdown, number> = {
+  results: 0.25,
+  coverage: 0.2,
+  critical: 0.2,
+  incidents: 0.15,
+  nonFunctional: 0.1,
+  testability: 0.05,
+  qualityControl: 0.05,
+};
+
+export const SCORE_LABELS: Record<keyof ScoreBreakdown, string> = {
+  results: "Résultats des tests (R)",
+  coverage: "Couverture (C)",
+  critical: "Éléments critiques (K)",
+  incidents: "Incidents / anomalies (I)",
+  nonFunctional: "Non-fonctionnel (NF)",
+  testability: "Testabilité (T)",
+  qualityControl: "Contrôles qualité (CQ)",
+};
+
+/*  5.2  Workflow cycle de vie d'une anomalie -----------------------------  */
+
 export const DEFECT_TRANSITIONS: Record<DefectStatus, DefectStatus[]> = {
   nouvelle: ["affectee", "fermee"],
   affectee: ["encorrection", "nouvelle"],
@@ -216,11 +461,43 @@ export const DEFECT_TRANSITIONS: Record<DefectStatus, DefectStatus[]> = {
   reouverte: ["affectee", "encorrection"],
 };
 
-export const SEVERITY_LABEL: Record<Severity, string> = {
-  haute: "Haute",
-  moyenne: "Moyenne",
-  basse: "Basse",
-};
+/*  5.3  Checklist Go Live (poids sur 100) --------------------------------  */
+
+export const GOLIVE_CHECKLIST_TEMPLATE: Omit<GoLiveChecklistItem, "checked">[] = [
+  { id: "gl-1", label: "Taux d'exécution des campagnes ≥ 95 %", weight: 15 },
+  { id: "gl-2", label: "Taux de succès global ≥ 90 %", weight: 15 },
+  { id: "gl-3", label: "Aucun test critique en échec", weight: 20 },
+  { id: "gl-4", label: "Aucune anomalie de gravité haute ouverte", weight: 15 },
+  { id: "gl-5", label: "Couverture fonctionnelle ≥ 90 %", weight: 10 },
+  { id: "gl-6", label: "Tests de sécurité exécutés et validés", weight: 10 },
+  { id: "gl-7", label: "Tests de performance conformes aux seuils", weight: 5 },
+  { id: "gl-8", label: "Plan de rollback documenté", weight: 5 },
+  { id: "gl-9", label: "Points à surveiller critiques tous clos", weight: 5 },
+];
+
+/*  5.4  Annuaire de base -------------------------------------------------  */
+
+export const PEOPLE = [
+  "Marie Martin",
+  "Pierre Durand",
+  "Sophie Lemaire",
+  "Jean Dupont",
+  "Ahmed Bakari",
+];
+
+/*  --------------------------------------------------------------------------  */
+/*  6.  FONCTIONS UTILITAIRES                                                   */
+/*  --------------------------------------------------------------------------  */
+
+/** Déduit la santé d'un produit à partir de son score (/100). */
+export const healthOf = (score: number): Health =>
+  score >= 85 ? "sain" : score >= 75 ? "surveiller" : score >= 60 ? "risque" : "critique";
+
+/*  --------------------------------------------------------------------------  */
+/*  7.  DONNÉES SEED (jeu de données de démo)                                   */
+/*  --------------------------------------------------------------------------  */
+
+/*  7.1  Produits --------------------------------------------------------  */
 
 export const products: Product[] = [
   {
@@ -231,9 +508,16 @@ export const products: Product[] = [
     qaLead: "Marie Martin",
     qaTeam: ["Marie Martin", "Pierre Durand", "Sophie Lemaire"],
     versions: ["4.10", "4.11", "4.12", "4.13 (dev)"],
-    projects: 5,
     score: 91,
-    breakdown: { results: 92, coverage: 95, critical: 100, incidents: 85, nonFunctional: 87 },
+    breakdown: {
+      results: 92,
+      coverage: 95,
+      critical: 100,
+      incidents: 85,
+      nonFunctional: 87,
+      testability: 72,
+      qualityControl: 80,
+    },
     lastUpdate: "2024-08-22",
   },
   {
@@ -244,9 +528,16 @@ export const products: Product[] = [
     qaLead: "Pierre Durand",
     qaTeam: ["Pierre Durand", "Ahmed Bakari"],
     versions: ["2.4", "2.5"],
-    projects: 3,
     score: 74,
-    breakdown: { results: 78, coverage: 72, critical: 80, incidents: 62, nonFunctional: 70 },
+    breakdown: {
+      results: 78,
+      coverage: 72,
+      critical: 80,
+      incidents: 62,
+      nonFunctional: 70,
+      testability: 65,
+      qualityControl: 68,
+    },
     lastUpdate: "2024-08-18",
   },
   {
@@ -257,9 +548,16 @@ export const products: Product[] = [
     qaLead: "Marie Martin",
     qaTeam: ["Marie Martin"],
     versions: ["1.8"],
-    projects: 2,
     score: 58,
-    breakdown: { results: 61, coverage: 52, critical: 60, incidents: 55, nonFunctional: 62 },
+    breakdown: {
+      results: 61,
+      coverage: 52,
+      critical: 60,
+      incidents: 55,
+      nonFunctional: 62,
+      testability: 48,
+      qualityControl: 50,
+    },
     lastUpdate: "2024-08-14",
   },
   {
@@ -270,12 +568,21 @@ export const products: Product[] = [
     qaLead: "Sophie Lemaire",
     qaTeam: ["Sophie Lemaire", "Ahmed Bakari"],
     versions: ["3.1", "3.2"],
-    projects: 4,
     score: 88,
-    breakdown: { results: 90, coverage: 86, critical: 95, incidents: 82, nonFunctional: 84 },
+    breakdown: {
+      results: 90,
+      coverage: 86,
+      critical: 95,
+      incidents: 82,
+      nonFunctional: 84,
+      testability: 78,
+      qualityControl: 81,
+    },
     lastUpdate: "2024-08-22",
   },
 ];
+
+/*  7.2  Fonctionnalités -------------------------------------------------  */
 
 export const features: Feature[] = [
   {
@@ -380,10 +687,13 @@ export const features: Feature[] = [
   },
 ];
 
+/*  7.3  Campagnes -------------------------------------------------------  */
+
 export const campaigns: Campaign[] = [
   {
     id: "c-recette-412",
     productId: "p-paiement",
+    projectId: "pr-3ds",
     name: "Recette v4.12",
     type: "Recette",
     version: "4.12",
@@ -397,6 +707,7 @@ export const campaigns: Campaign[] = [
   {
     id: "c-regression-411",
     productId: "p-paiement",
+    projectId: "pr-3ds",
     name: "Régression v4.11",
     type: "Régression",
     version: "4.11",
@@ -410,6 +721,7 @@ export const campaigns: Campaign[] = [
   {
     id: "c-securite-412",
     productId: "p-paiement",
+    projectId: "pr-3ds",
     name: "Sécurité v4.12",
     type: "Sécurité",
     version: "4.12",
@@ -423,6 +735,7 @@ export const campaigns: Campaign[] = [
   {
     id: "c-perf-412",
     productId: "p-paiement",
+    projectId: "pr-3ds",
     name: "Performance v4.12",
     type: "Performance",
     version: "4.12",
@@ -436,6 +749,7 @@ export const campaigns: Campaign[] = [
   {
     id: "c-explo-413",
     productId: "p-paiement",
+    projectId: "pr-sdk",
     name: "Exploratory v4.13",
     type: "Exploratoire",
     version: "4.13",
@@ -448,8 +762,18 @@ export const campaigns: Campaign[] = [
   },
 ];
 
-const featureIds = ["f-auth", "f-paiement", "f-export", "f-webhook", "f-notif", "f-admin"];
+/*  7.4  Cas de test -----------------------------------------------------  */
 
+const FEATURE_IDS_FOR_GENERATOR = [
+  "f-auth",
+  "f-paiement",
+  "f-export",
+  "f-webhook",
+  "f-notif",
+  "f-admin",
+];
+
+/** Générateur de cas de tests standards pour le jeu de démo. */
 function makeTests(
   campaignId: string,
   count: number,
@@ -460,23 +784,32 @@ function makeTests(
 ): TestCase[] {
   return Array.from({ length: count }, (_, i) => {
     const n = startIndex + i;
-    const featureId = featureIds[i % featureIds.length]!;
+    const featureId = FEATURE_IDS_FOR_GENERATOR[i % FEATURE_IDS_FOR_GENERATOR.length]!;
+
     const crit: Criticality =
       featureId === "f-auth" || featureId === "f-paiement"
         ? "critique"
         : featureId === "f-admin"
           ? "basse"
           : "haute";
+
     const verdict: Verdict = failIndexes.includes(i)
       ? "FAIL"
       : notRunIndexes.includes(i)
         ? "NOT_RUN"
         : "PASS";
+
     return {
       id: `TC-${1200 + n}`,
       campaignId,
       featureId,
-      name: `${type === "securite" ? "Contrôle sécurité" : type === "performance" ? "Mesure perf." : "Vérification"} — ${featureId.replace("f-", "")} #${i + 1}`,
+      name: `${
+        type === "securite"
+          ? "Contrôle sécurité"
+          : type === "performance"
+            ? "Mesure perf."
+            : "Vérification"
+      } — ${featureId.replace("f-", "")} #${i + 1}`,
       criticality: crit,
       type,
       preconditions: ["Utilisateur authentifié", "Jeu de données de recette chargé"],
@@ -539,6 +872,8 @@ export const testCases: TestCase[] = [
   ...makeTests("c-securite-412", 18, "securite", 70, [5], [12, 13, 14, 15, 16, 17]),
   ...makeTests("c-perf-412", 12, "performance", 95, [], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
 ];
+
+/*  7.5  Anomalies -------------------------------------------------------  */
 
 export const defects: Defect[] = [
   {
@@ -621,222 +956,120 @@ export const defects: Defect[] = [
   },
 ];
 
-// ============================================================================
-// Modèles étendus : Projets, Releases, Exigences, Points à surveiller,
-// Décisions Go Live, Alertes, Audit, Référentiels
-// ============================================================================
-
-export type ProjectStatus = "encours" | "termine" | "planifie";
-export type ReleaseStatus = "preparee" | "encours" | "livree";
-export type RequirementStatus = "brouillon" | "validee" | "couverte";
-export type WatchLevel = "info" | "vigilance" | "critique";
-export type WatchStatus = "ouvert" | "suivi" | "clos";
-export type GoLiveVerdict = "GO" | "GO_CONDITIONNEL" | "NO_GO";
-export type AlertType = "anomalie" | "campagne" | "couverture" | "golive" | "systeme";
-export type AppRole = "admin" | "qa_lead" | "testeur" | "lecteur";
-
-export interface Project {
-  id: string;
-  productId: string;
-  name: string;
-  targetVersion: string;
-  status: ProjectStatus;
-  startDate: string;
-  endDate: string;
-  manager: string;
-  progress: number;
-}
-
-export interface Release {
-  id: string;
-  projectId: string;
-  version: string;
-  plannedDate: string;
-  environment: string;
-  status: ReleaseStatus;
-}
-
-export interface Requirement {
-  id: string;
-  productId: string;
-  title: string;
-  description: string;
-  priority: Criticality;
-  status: RequirementStatus;
-  featureIds: string[];
-}
-
-export interface WatchPoint {
-  id: string;
-  productId: string;
-  title: string;
-  description: string;
-  level: WatchLevel;
-  status: WatchStatus;
-  owner: string;
-  createdAt: string;
-}
-
-export interface GoLiveChecklistItem {
-  id: string;
-  label: string;
-  weight: number;
-  checked: boolean;
-}
-
-export interface GoLiveDecision {
-  id: string;
-  releaseId: string;
-  verdict: GoLiveVerdict;
-  date: string;
-  decider: string;
-  justification: string;
-  checklistCompletion: number;
-}
-
-export interface Alert {
-  id: string;
-  type: AlertType;
-  severity: Severity;
-  message: string;
-  detail: string;
-  target: string;
-  read: boolean;
-  createdAt: string;
-}
-
-export interface AuditEntry {
-  id: string;
-  actor: string;
-  action: string;
-  entity: string;
-  detail: string;
-  at: string;
-}
-
-export interface ReferentialRule {
-  id: string;
-  domain: string;
-  label: string;
-  threshold: string;
-  active: boolean;
-}
-
-export interface PlatformUser {
-  id: string;
-  name: string;
-  email: string;
-  role: AppRole;
-  active: boolean;
-}
-
-export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
-  encours: "En cours",
-  termine: "Terminé",
-  planifie: "Planifié",
-};
-
-export const RELEASE_STATUS_LABEL: Record<ReleaseStatus, string> = {
-  preparee: "Préparée",
-  encours: "En cours",
-  livree: "Livrée",
-};
-
-export const REQUIREMENT_STATUS_LABEL: Record<RequirementStatus, string> = {
-  brouillon: "Brouillon",
-  validee: "Validée",
-  couverte: "Couverte",
-};
-
-export const WATCH_LEVEL_LABEL: Record<WatchLevel, string> = {
-  info: "Information",
-  vigilance: "Vigilance",
-  critique: "Critique",
-};
-
-export const WATCH_STATUS_LABEL: Record<WatchStatus, string> = {
-  ouvert: "Ouvert",
-  suivi: "Suivi",
-  clos: "Clos",
-};
-
-export const GOLIVE_VERDICT_LABEL: Record<GoLiveVerdict, string> = {
-  GO: "GO",
-  GO_CONDITIONNEL: "GO conditionnel",
-  NO_GO: "NO GO",
-};
-
-export const ROLE_LABEL: Record<AppRole, string> = {
-  admin: "Administrateur",
-  qa_lead: "QA Lead",
-  testeur: "Testeur",
-  lecteur: "Lecteur",
-};
-
-/** Modèle de checklist Go Live (poids sur 100). */
-export const GOLIVE_CHECKLIST_TEMPLATE: Omit<GoLiveChecklistItem, "checked">[] = [
-  { id: "gl-1", label: "Taux d'exécution des campagnes ≥ 95 %", weight: 15 },
-  { id: "gl-2", label: "Taux de succès global ≥ 90 %", weight: 15 },
-  { id: "gl-3", label: "Aucun test critique en échec", weight: 20 },
-  { id: "gl-4", label: "Aucune anomalie de gravité haute ouverte", weight: 15 },
-  { id: "gl-5", label: "Couverture fonctionnelle ≥ 90 %", weight: 10 },
-  { id: "gl-6", label: "Tests de sécurité exécutés et validés", weight: 10 },
-  { id: "gl-7", label: "Tests de performance conformes aux seuils", weight: 5 },
-  { id: "gl-8", label: "Plan de rollback documenté", weight: 5 },
-  { id: "gl-9", label: "Points à surveiller critiques tous clos", weight: 5 },
-];
+/*  7.6  Projets & Releases ----------------------------------------------  */
 
 export const projects: Project[] = [
   {
-    id: "pr-v412",
+    id: "pr-3ds",
     productId: "p-paiement",
-    name: "Release v4.12",
+    name: "Conformité 3DS et latence",
+    objective:
+      "Ramener le paiement carte sous 800 ms et sécuriser le parcours 3DS avant mise en production 4.12.",
     targetVersion: "4.12",
     status: "encours",
     startDate: "2024-07-15",
     endDate: "2024-09-05",
     manager: "Jean Dupont",
+    qaLead: "Marie Martin",
     progress: 78,
   },
   {
-    id: "pr-v413",
+    id: "pr-sdk",
     productId: "p-paiement",
-    name: "Release v4.13",
+    name: "Migration SDK 3DS",
+    objective: "Préparer la v4.13 : nouveau SDK, régression et recette exploratoire.",
     targetVersion: "4.13",
     status: "planifie",
     startDate: "2024-09-02",
     endDate: "2024-10-15",
     manager: "Jean Dupont",
+    qaLead: "Marie Martin",
     progress: 12,
+  },
+  {
+    id: "pr-mmoney",
+    productId: "p-paiement",
+    name: "Expansion mobile money",
+    objective: "Étendre les canaux mobile money déjà livrés en 4.10.",
+    targetVersion: "4.10",
+    status: "termine",
+    startDate: "2024-04-01",
+    endDate: "2024-06-30",
+    manager: "Sophie Lemaire",
+    qaLead: "Pierre Durand",
+    progress: 100,
   },
   {
     id: "pr-crm-25",
     productId: "p-crm",
-    name: "CRM v2.5",
+    name: "Pipeline commercial v2.5",
+    objective: "Historiser chaque changement d'étape d'opportunité.",
     targetVersion: "2.5",
     status: "encours",
     startDate: "2024-08-01",
     endDate: "2024-09-20",
     manager: "Sophie Lemaire",
+    qaLead: "Pierre Durand",
     progress: 45,
+  },
+  {
+    id: "pr-crm-analytics",
+    productId: "p-crm",
+    name: "Analytics portefeuille",
+    objective: "Tableaux de bord direction commerciale.",
+    targetVersion: "2.6",
+    status: "planifie",
+    startDate: "2024-10-01",
+    endDate: "2024-12-15",
+    manager: "Sophie Lemaire",
+    qaLead: "Pierre Durand",
+    progress: 5,
   },
   {
     id: "pr-portail-18",
     productId: "p-portail",
-    name: "Portail v1.8",
+    name: "Reporting agence 1.8",
+    objective: "Fiabiliser les tableaux de bord agence et combler les trous de tests.",
     targetVersion: "1.8",
     status: "encours",
     startDate: "2024-07-01",
     endDate: "2024-09-30",
     manager: "Ahmed Bakari",
+    qaLead: "Marie Martin",
     progress: 60,
+  },
+  {
+    id: "pr-mobile-32",
+    productId: "p-mobile",
+    name: "App mobile 3.2",
+    objective: "Release iOS / Android 3.2, régression smoke et accessibilité.",
+    targetVersion: "3.2",
+    status: "encours",
+    startDate: "2024-08-01",
+    endDate: "2024-09-15",
+    manager: "Marie Martin",
+    qaLead: "Sophie Lemaire",
+    progress: 70,
+  },
+  {
+    id: "pr-mobile-31",
+    productId: "p-mobile",
+    name: "App mobile 3.1",
+    objective: "Correctifs 3.1 déjà livrés.",
+    targetVersion: "3.1",
+    status: "termine",
+    startDate: "2024-05-01",
+    endDate: "2024-07-20",
+    manager: "Marie Martin",
+    qaLead: "Sophie Lemaire",
+    progress: 100,
   },
 ];
 
 export const releases: Release[] = [
   {
     id: "rel-412",
-    projectId: "pr-v412",
+    projectId: "pr-3ds",
     version: "4.12.0",
     plannedDate: "2024-09-05",
     environment: "PREPROD",
@@ -844,7 +1077,7 @@ export const releases: Release[] = [
   },
   {
     id: "rel-411",
-    projectId: "pr-v412",
+    projectId: "pr-3ds",
     version: "4.11.0",
     plannedDate: "2024-08-10",
     environment: "PROD",
@@ -852,7 +1085,7 @@ export const releases: Release[] = [
   },
   {
     id: "rel-413",
-    projectId: "pr-v413",
+    projectId: "pr-sdk",
     version: "4.13.0-rc1",
     plannedDate: "2024-10-15",
     environment: "DEV",
@@ -867,6 +1100,8 @@ export const releases: Release[] = [
     status: "encours",
   },
 ];
+
+/*  7.7  Exigences -------------------------------------------------------  */
 
 export const requirements: Requirement[] = [
   {
@@ -925,6 +1160,8 @@ export const requirements: Requirement[] = [
   },
 ];
 
+/*  7.8  Points à surveiller ---------------------------------------------  */
+
 export const watchPoints: WatchPoint[] = [
   {
     id: "WP-01",
@@ -968,6 +1205,8 @@ export const watchPoints: WatchPoint[] = [
   },
 ];
 
+/*  7.9  Décisions Go Live ------------------------------------------------  */
+
 export const goLiveDecisions: GoLiveDecision[] = [
   {
     id: "GL-1",
@@ -981,14 +1220,18 @@ export const goLiveDecisions: GoLiveDecision[] = [
   },
 ];
 
+/*  7.10 Alertes ---------------------------------------------------------  */
+
 export const alerts: Alert[] = [
   {
     id: "AL-1",
     type: "anomalie",
     severity: "haute",
-    message: "Test critique en échec — TC-1245",
+    title: "Test critique en échec — TC-1245",
+    message: "Paiement par carte bancaire : temps de réponse 942 ms (> 800 ms attendus).",
     detail: "Paiement par carte bancaire : temps de réponse 942 ms (> 800 ms attendus).",
     target: "/execution/TC-1245",
+    entityId: "TC-1245",
     read: false,
     createdAt: "2024-08-22 14:32",
   },
@@ -996,9 +1239,11 @@ export const alerts: Alert[] = [
     id: "AL-2",
     type: "couverture",
     severity: "moyenne",
-    message: "Couverture < 80 % — Portail Agence",
+    title: "Couverture < 80 % — Portail Agence",
+    message: "52 % de couverture fonctionnelle mesurée sur le reporting agence.",
     detail: "52 % de couverture fonctionnelle mesurée sur le reporting agence.",
     target: "/couverture",
+    entityId: "p-portail",
     read: false,
     createdAt: "2024-08-21 09:10",
   },
@@ -1006,9 +1251,11 @@ export const alerts: Alert[] = [
     id: "AL-3",
     type: "campagne",
     severity: "moyenne",
-    message: "Campagne bloquée — Sécurité v4.12",
+    title: "Campagne bloquée — Sécurité v4.12",
+    message: "6 tests non exécutés, fin de campagne prévue le 27/08.",
     detail: "6 tests non exécutés, fin de campagne prévue le 27/08.",
     target: "/campagnes/c-securite-412",
+    entityId: "c-securite-412",
     read: false,
     createdAt: "2024-08-24 16:45",
   },
@@ -1016,9 +1263,11 @@ export const alerts: Alert[] = [
     id: "AL-4",
     type: "golive",
     severity: "haute",
-    message: "Décision Go Live en attente — Release 4.12.0",
+    title: "Décision Go Live en attente — Release 4.12.0",
+    message: "La checklist est complétée à 55 %, livraison prévue le 05/09.",
     detail: "La checklist est complétée à 55 %, livraison prévue le 05/09.",
     target: "/go-live",
+    entityId: "rel-412",
     read: true,
     createdAt: "2024-08-25 08:00",
   },
@@ -1026,13 +1275,17 @@ export const alerts: Alert[] = [
     id: "AL-5",
     type: "anomalie",
     severity: "haute",
-    message: "Anomalie critique non affectée — ANO-2851",
+    title: "Anomalie critique non affectée — ANO-2851",
+    message: "Mauvais calcul de TVA sur remise, en attente d'affectation.",
     detail: "Mauvais calcul de TVA sur remise, en attente d'affectation.",
     target: "/anomalies",
+    entityId: "ANO-2851",
     read: false,
     createdAt: "2024-08-21 11:20",
   },
 ];
+
+/*  7.11 Audit trail -----------------------------------------------------  */
 
 export const auditTrail: AuditEntry[] = [
   {
@@ -1077,23 +1330,102 @@ export const auditTrail: AuditEntry[] = [
   },
 ];
 
+/*  7.12 Règles de référentiel -------------------------------------------  */
+
 export const referentialRules: ReferentialRule[] = [
-  { id: "RG-1", domain: "Santé produit", label: "Seuil produit sain", threshold: "≥ 85/100", active: true },
-  { id: "RG-2", domain: "Santé produit", label: "Seuil produit à risque", threshold: "≥ 70/100", active: true },
-  { id: "RG-3", domain: "Campagne", label: "Taux d'exécution minimal avant clôture", threshold: "≥ 95 %", active: true },
-  { id: "RG-4", domain: "Campagne", label: "Taux de succès minimal", threshold: "≥ 90 %", active: true },
-  { id: "RG-5", domain: "Couverture", label: "Couverture fonctionnelle cible", threshold: "≥ 90 %", active: true },
-  { id: "RG-6", domain: "Couverture", label: "Couverture fonctionnalité critique", threshold: "100 %, tous types requis", active: true },
-  { id: "RG-7", domain: "Anomalies", label: "Délai de correction gravité haute", threshold: "≤ 7 jours", active: true },
-  { id: "RG-8", domain: "Go Live", label: "Anomalies hautes ouvertes tolérées", threshold: "0", active: true },
-  { id: "RG-9", domain: "Go Live", label: "Complétude checklist minimale pour GO", threshold: "≥ 85 %", active: false },
+  { id: "RG-1", domain: "Santé", label: "Seuil sain", threshold: "≥ 85/100", active: true },
+  { id: "RG-2", domain: "Santé", label: "Seuil à surveiller", threshold: "≥ 75/100", active: true },
+  { id: "RG-3", domain: "Santé", label: "Seuil à risque", threshold: "≥ 60/100", active: true },
+  {
+    id: "RG-4",
+    domain: "Campagne",
+    label: "Taux d'exécution minimal avant clôture",
+    threshold: "≥ 95 %",
+    active: true,
+  },
+  {
+    id: "RG-5",
+    domain: "Campagne",
+    label: "Taux de succès minimal",
+    threshold: "≥ 90 %",
+    active: true,
+  },
+  {
+    id: "RG-6",
+    domain: "Couverture",
+    label: "Couverture fonctionnelle cible",
+    threshold: "≥ 90 %",
+    active: true,
+  },
+  {
+    id: "RG-7",
+    domain: "Couverture",
+    label: "Couverture fonctionnalité critique",
+    threshold: "100 %, types obligatoires",
+    active: true,
+  },
+  {
+    id: "RG-8",
+    domain: "Anomalies",
+    label: "Délai de correction gravité haute",
+    threshold: "≤ 7 jours",
+    active: true,
+  },
+  {
+    id: "RG-9",
+    domain: "Go Live",
+    label: "Anomalies hautes ouvertes tolérées",
+    threshold: "0",
+    active: true,
+  },
+  {
+    id: "RG-10",
+    domain: "Go Live",
+    label: "Complétude checklist minimale pour GO",
+    threshold: "≥ 85 %",
+    active: false,
+  },
 ];
 
+/*  7.13 Utilisateurs plateforme ----------------------------------------  */
+
 export const platformUsers: PlatformUser[] = [
-  { id: "u-1", name: "Jean Dupont", email: "jean.dupont@dhi.io", role: "admin", active: true },
+  { id: "u-1", name: "Jean Dupont", email: "jean.dupont@dhi.io", role: "approver", active: true },
   { id: "u-2", name: "Marie Martin", email: "marie.martin@dhi.io", role: "qa_lead", active: true },
-  { id: "u-3", name: "Pierre Durand", email: "pierre.durand@dhi.io", role: "testeur", active: true },
-  { id: "u-4", name: "Sophie Lemaire", email: "sophie.lemaire@dhi.io", role: "qa_lead", active: true },
-  { id: "u-5", name: "Ahmed Bakari", email: "ahmed.bakari@dhi.io", role: "testeur", active: true },
-  { id: "u-6", name: "Claire Robert", email: "claire.robert@dhi.io", role: "lecteur", active: false },
+  {
+    id: "u-3",
+    name: "Pierre Durand",
+    email: "pierre.durand@dhi.io",
+    role: "testeur",
+    active: true,
+  },
+  {
+    id: "u-4",
+    name: "Sophie Lemaire",
+    email: "sophie.lemaire@dhi.io",
+    role: "quality_manager",
+    active: true,
+  },
+  {
+    id: "u-5",
+    name: "Ahmed Bakari",
+    email: "ahmed.bakari@dhi.io",
+    role: "chef_projet",
+    active: true,
+  },
+  {
+    id: "u-6",
+    name: "Claire Robert",
+    email: "claire.robert@dhi.io",
+    role: "lecteur",
+    active: false,
+  },
+  {
+    id: "u-7",
+    name: "Léa Moreau",
+    email: "lea.moreau@dhi.io",
+    role: "product_owner",
+    active: true,
+  },
+  { id: "u-8", name: "Karim Ndiaye", email: "karim.ndiaye@dhi.io", role: "admin", active: true },
 ];

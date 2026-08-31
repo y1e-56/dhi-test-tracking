@@ -68,7 +68,7 @@
 }
 
 :root {
-  --radius: 0.5rem;
+  --radius: 0.75rem;
 
   /* Neutres Geist */
   --background: oklch(1 0 0);
@@ -128,8 +128,7 @@
   --sidebar-ring: oklch(0.145 0 0);
 
   --shadow-panel: 0 1px 2px 0 oklch(0.145 0 0 / 0.05);
-  --shadow-raise:
-    0 1px 2px 0 oklch(0.145 0 0 / 0.06), 0 4px 12px -4px oklch(0.145 0 0 / 0.1);
+  --shadow-raise: 0 1px 2px 0 oklch(0.145 0 0 / 0.06), 0 4px 12px -4px oklch(0.145 0 0 / 0.1);
 }
 
 .dark {

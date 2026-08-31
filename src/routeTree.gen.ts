@@ -10,21 +10,38 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdministrationRouteImport } from './routes/administration'
 import { Route as AlertesRouteImport } from './routes/alertes'
 import { Route as AnomaliesRouteImport } from './routes/anomalies'
+import { Route as AuditRouteImport } from './routes/audit'
 import { Route as CampagnesRouteImport } from './routes/campagnes'
 import { Route as CouvertureRouteImport } from './routes/couverture'
+import { Route as DashboardAdminRouteImport } from './routes/dashboard-admin'
+import { Route as DashboardChefRouteImport } from './routes/dashboard-chef'
+import { Route as DashboardTesteurRouteImport } from './routes/dashboard-testeur'
 import { Route as ExigencesRouteImport } from './routes/exigences'
 import { Route as FonctionnalitesRouteImport } from './routes/fonctionnalites'
+import { Route as GoLiveRouteImport } from './routes/go-live'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as PointsASurveillerRouteImport } from './routes/points-a-surveiller'
 import { Route as ProduitsRouteImport } from './routes/produits'
+import { Route as ProjetsRouteImport } from './routes/projets'
+import { Route as ReferentielsRouteImport } from './routes/referentiels'
+import { Route as AdministrationAjouterUtilisateurRouteImport } from './routes/administration.ajouter-utilisateur'
 import { Route as CampagnesCampaignIdRouteImport } from './routes/campagnes.$campaignId'
+import { Route as CampagnesAjouterRouteImport } from './routes/campagnes.ajouter'
 import { Route as ExecutionTestIdRouteImport } from './routes/execution.$testId'
 import { Route as ProduitsProductIdRouteImport } from './routes/produits.$productId'
+import { Route as ProjetsProjectIdRouteImport } from './routes/projets.$projectId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdministrationRoute = AdministrationRouteImport.update({
+  id: '/administration',
+  path: '/administration',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AlertesRoute = AlertesRouteImport.update({
@@ -37,6 +54,11 @@ const AnomaliesRoute = AnomaliesRouteImport.update({
   path: '/anomalies',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuditRoute = AuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CampagnesRoute = CampagnesRouteImport.update({
   id: '/campagnes',
   path: '/campagnes',
@@ -45,6 +67,21 @@ const CampagnesRoute = CampagnesRouteImport.update({
 const CouvertureRoute = CouvertureRouteImport.update({
   id: '/couverture',
   path: '/couverture',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardAdminRoute = DashboardAdminRouteImport.update({
+  id: '/dashboard-admin',
+  path: '/dashboard-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardChefRoute = DashboardChefRouteImport.update({
+  id: '/dashboard-chef',
+  path: '/dashboard-chef',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardTesteurRoute = DashboardTesteurRouteImport.update({
+  id: '/dashboard-testeur',
+  path: '/dashboard-testeur',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExigencesRoute = ExigencesRouteImport.update({
@@ -57,6 +94,16 @@ const FonctionnalitesRoute = FonctionnalitesRouteImport.update({
   path: '/fonctionnalites',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GoLiveRoute = GoLiveRouteImport.update({
+  id: '/go-live',
+  path: '/go-live',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PointsASurveillerRoute = PointsASurveillerRouteImport.update({
   id: '/points-a-surveiller',
   path: '/points-a-surveiller',
@@ -67,9 +114,30 @@ const ProduitsRoute = ProduitsRouteImport.update({
   path: '/produits',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjetsRoute = ProjetsRouteImport.update({
+  id: '/projets',
+  path: '/projets',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReferentielsRoute = ReferentielsRouteImport.update({
+  id: '/referentiels',
+  path: '/referentiels',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdministrationAjouterUtilisateurRoute =
+  AdministrationAjouterUtilisateurRouteImport.update({
+    id: '/ajouter-utilisateur',
+    path: '/ajouter-utilisateur',
+    getParentRoute: () => AdministrationRoute,
+  } as any)
 const CampagnesCampaignIdRoute = CampagnesCampaignIdRouteImport.update({
   id: '/$campaignId',
   path: '/$campaignId',
+  getParentRoute: () => CampagnesRoute,
+} as any)
+const CampagnesAjouterRoute = CampagnesAjouterRouteImport.update({
+  id: '/ajouter',
+  path: '/ajouter',
   getParentRoute: () => CampagnesRoute,
 } as any)
 const ExecutionTestIdRoute = ExecutionTestIdRouteImport.update({
@@ -82,105 +150,191 @@ const ProduitsProductIdRoute = ProduitsProductIdRouteImport.update({
   path: '/$productId',
   getParentRoute: () => ProduitsRoute,
 } as any)
+const ProjetsProjectIdRoute = ProjetsProjectIdRouteImport.update({
+  id: '/$projectId',
+  path: '/$projectId',
+  getParentRoute: () => ProjetsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/administration': typeof AdministrationRouteWithChildren
   '/alertes': typeof AlertesRoute
   '/anomalies': typeof AnomaliesRoute
+  '/audit': typeof AuditRoute
   '/campagnes': typeof CampagnesRouteWithChildren
   '/couverture': typeof CouvertureRoute
+  '/dashboard-admin': typeof DashboardAdminRoute
+  '/dashboard-chef': typeof DashboardChefRoute
+  '/dashboard-testeur': typeof DashboardTesteurRoute
   '/exigences': typeof ExigencesRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
+  '/go-live': typeof GoLiveRoute
+  '/login': typeof LoginRoute
   '/points-a-surveiller': typeof PointsASurveillerRoute
   '/produits': typeof ProduitsRouteWithChildren
+  '/projets': typeof ProjetsRouteWithChildren
+  '/referentiels': typeof ReferentielsRoute
+  '/administration/ajouter-utilisateur': typeof AdministrationAjouterUtilisateurRoute
   '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
+  '/campagnes/ajouter': typeof CampagnesAjouterRoute
   '/execution/$testId': typeof ExecutionTestIdRoute
   '/produits/$productId': typeof ProduitsProductIdRoute
+  '/projets/$projectId': typeof ProjetsProjectIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/administration': typeof AdministrationRouteWithChildren
   '/alertes': typeof AlertesRoute
   '/anomalies': typeof AnomaliesRoute
+  '/audit': typeof AuditRoute
   '/campagnes': typeof CampagnesRouteWithChildren
   '/couverture': typeof CouvertureRoute
+  '/dashboard-admin': typeof DashboardAdminRoute
+  '/dashboard-chef': typeof DashboardChefRoute
+  '/dashboard-testeur': typeof DashboardTesteurRoute
   '/exigences': typeof ExigencesRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
+  '/go-live': typeof GoLiveRoute
+  '/login': typeof LoginRoute
   '/points-a-surveiller': typeof PointsASurveillerRoute
   '/produits': typeof ProduitsRouteWithChildren
+  '/projets': typeof ProjetsRouteWithChildren
+  '/referentiels': typeof ReferentielsRoute
+  '/administration/ajouter-utilisateur': typeof AdministrationAjouterUtilisateurRoute
   '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
+  '/campagnes/ajouter': typeof CampagnesAjouterRoute
   '/execution/$testId': typeof ExecutionTestIdRoute
   '/produits/$productId': typeof ProduitsProductIdRoute
+  '/projets/$projectId': typeof ProjetsProjectIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/administration': typeof AdministrationRouteWithChildren
   '/alertes': typeof AlertesRoute
   '/anomalies': typeof AnomaliesRoute
+  '/audit': typeof AuditRoute
   '/campagnes': typeof CampagnesRouteWithChildren
   '/couverture': typeof CouvertureRoute
+  '/dashboard-admin': typeof DashboardAdminRoute
+  '/dashboard-chef': typeof DashboardChefRoute
+  '/dashboard-testeur': typeof DashboardTesteurRoute
   '/exigences': typeof ExigencesRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
+  '/go-live': typeof GoLiveRoute
+  '/login': typeof LoginRoute
   '/points-a-surveiller': typeof PointsASurveillerRoute
   '/produits': typeof ProduitsRouteWithChildren
+  '/projets': typeof ProjetsRouteWithChildren
+  '/referentiels': typeof ReferentielsRoute
+  '/administration/ajouter-utilisateur': typeof AdministrationAjouterUtilisateurRoute
   '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
+  '/campagnes/ajouter': typeof CampagnesAjouterRoute
   '/execution/$testId': typeof ExecutionTestIdRoute
   '/produits/$productId': typeof ProduitsProductIdRoute
+  '/projets/$projectId': typeof ProjetsProjectIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/administration'
     | '/alertes'
     | '/anomalies'
+    | '/audit'
     | '/campagnes'
     | '/couverture'
+    | '/dashboard-admin'
+    | '/dashboard-chef'
+    | '/dashboard-testeur'
     | '/exigences'
     | '/fonctionnalites'
+    | '/go-live'
+    | '/login'
     | '/points-a-surveiller'
     | '/produits'
+    | '/projets'
+    | '/referentiels'
+    | '/administration/ajouter-utilisateur'
     | '/campagnes/$campaignId'
+    | '/campagnes/ajouter'
     | '/execution/$testId'
     | '/produits/$productId'
+    | '/projets/$projectId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/administration'
     | '/alertes'
     | '/anomalies'
+    | '/audit'
     | '/campagnes'
     | '/couverture'
+    | '/dashboard-admin'
+    | '/dashboard-chef'
+    | '/dashboard-testeur'
     | '/exigences'
     | '/fonctionnalites'
+    | '/go-live'
+    | '/login'
     | '/points-a-surveiller'
     | '/produits'
+    | '/projets'
+    | '/referentiels'
+    | '/administration/ajouter-utilisateur'
     | '/campagnes/$campaignId'
+    | '/campagnes/ajouter'
     | '/execution/$testId'
     | '/produits/$productId'
+    | '/projets/$projectId'
   id:
     | '__root__'
     | '/'
+    | '/administration'
     | '/alertes'
     | '/anomalies'
+    | '/audit'
     | '/campagnes'
     | '/couverture'
+    | '/dashboard-admin'
+    | '/dashboard-chef'
+    | '/dashboard-testeur'
     | '/exigences'
     | '/fonctionnalites'
+    | '/go-live'
+    | '/login'
     | '/points-a-surveiller'
     | '/produits'
+    | '/projets'
+    | '/referentiels'
+    | '/administration/ajouter-utilisateur'
     | '/campagnes/$campaignId'
+    | '/campagnes/ajouter'
     | '/execution/$testId'
     | '/produits/$productId'
+    | '/projets/$projectId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdministrationRoute: typeof AdministrationRouteWithChildren
   AlertesRoute: typeof AlertesRoute
   AnomaliesRoute: typeof AnomaliesRoute
+  AuditRoute: typeof AuditRoute
   CampagnesRoute: typeof CampagnesRouteWithChildren
   CouvertureRoute: typeof CouvertureRoute
+  DashboardAdminRoute: typeof DashboardAdminRoute
+  DashboardChefRoute: typeof DashboardChefRoute
+  DashboardTesteurRoute: typeof DashboardTesteurRoute
   ExigencesRoute: typeof ExigencesRoute
   FonctionnalitesRoute: typeof FonctionnalitesRoute
+  GoLiveRoute: typeof GoLiveRoute
+  LoginRoute: typeof LoginRoute
   PointsASurveillerRoute: typeof PointsASurveillerRoute
   ProduitsRoute: typeof ProduitsRouteWithChildren
+  ProjetsRoute: typeof ProjetsRouteWithChildren
+  ReferentielsRoute: typeof ReferentielsRoute
   ExecutionTestIdRoute: typeof ExecutionTestIdRoute
 }
 
@@ -191,6 +345,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/administration': {
+      id: '/administration'
+      path: '/administration'
+      fullPath: '/administration'
+      preLoaderRoute: typeof AdministrationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/alertes': {
@@ -207,6 +368,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnomaliesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/audit': {
+      id: '/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/campagnes': {
       id: '/campagnes'
       path: '/campagnes'
@@ -219,6 +387,27 @@ declare module '@tanstack/react-router' {
       path: '/couverture'
       fullPath: '/couverture'
       preLoaderRoute: typeof CouvertureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard-admin': {
+      id: '/dashboard-admin'
+      path: '/dashboard-admin'
+      fullPath: '/dashboard-admin'
+      preLoaderRoute: typeof DashboardAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard-chef': {
+      id: '/dashboard-chef'
+      path: '/dashboard-chef'
+      fullPath: '/dashboard-chef'
+      preLoaderRoute: typeof DashboardChefRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard-testeur': {
+      id: '/dashboard-testeur'
+      path: '/dashboard-testeur'
+      fullPath: '/dashboard-testeur'
+      preLoaderRoute: typeof DashboardTesteurRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/exigences': {
@@ -235,6 +424,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FonctionnalitesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/go-live': {
+      id: '/go-live'
+      path: '/go-live'
+      fullPath: '/go-live'
+      preLoaderRoute: typeof GoLiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/points-a-surveiller': {
       id: '/points-a-surveiller'
       path: '/points-a-surveiller'
@@ -249,11 +452,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProduitsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projets': {
+      id: '/projets'
+      path: '/projets'
+      fullPath: '/projets'
+      preLoaderRoute: typeof ProjetsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/referentiels': {
+      id: '/referentiels'
+      path: '/referentiels'
+      fullPath: '/referentiels'
+      preLoaderRoute: typeof ReferentielsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/administration/ajouter-utilisateur': {
+      id: '/administration/ajouter-utilisateur'
+      path: '/ajouter-utilisateur'
+      fullPath: '/administration/ajouter-utilisateur'
+      preLoaderRoute: typeof AdministrationAjouterUtilisateurRouteImport
+      parentRoute: typeof AdministrationRoute
+    }
     '/campagnes/$campaignId': {
       id: '/campagnes/$campaignId'
       path: '/$campaignId'
       fullPath: '/campagnes/$campaignId'
       preLoaderRoute: typeof CampagnesCampaignIdRouteImport
+      parentRoute: typeof CampagnesRoute
+    }
+    '/campagnes/ajouter': {
+      id: '/campagnes/ajouter'
+      path: '/ajouter'
+      fullPath: '/campagnes/ajouter'
+      preLoaderRoute: typeof CampagnesAjouterRouteImport
       parentRoute: typeof CampagnesRoute
     }
     '/execution/$testId': {
@@ -270,15 +501,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProduitsProductIdRouteImport
       parentRoute: typeof ProduitsRoute
     }
+    '/projets/$projectId': {
+      id: '/projets/$projectId'
+      path: '/$projectId'
+      fullPath: '/projets/$projectId'
+      preLoaderRoute: typeof ProjetsProjectIdRouteImport
+      parentRoute: typeof ProjetsRoute
+    }
   }
 }
 
+interface AdministrationRouteChildren {
+  AdministrationAjouterUtilisateurRoute: typeof AdministrationAjouterUtilisateurRoute
+}
+
+const AdministrationRouteChildren: AdministrationRouteChildren = {
+  AdministrationAjouterUtilisateurRoute: AdministrationAjouterUtilisateurRoute,
+}
+
+const AdministrationRouteWithChildren = AdministrationRoute._addFileChildren(
+  AdministrationRouteChildren,
+)
+
 interface CampagnesRouteChildren {
   CampagnesCampaignIdRoute: typeof CampagnesCampaignIdRoute
+  CampagnesAjouterRoute: typeof CampagnesAjouterRoute
 }
 
 const CampagnesRouteChildren: CampagnesRouteChildren = {
   CampagnesCampaignIdRoute: CampagnesCampaignIdRoute,
+  CampagnesAjouterRoute: CampagnesAjouterRoute,
 }
 
 const CampagnesRouteWithChildren = CampagnesRoute._addFileChildren(
@@ -297,16 +549,36 @@ const ProduitsRouteWithChildren = ProduitsRoute._addFileChildren(
   ProduitsRouteChildren,
 )
 
+interface ProjetsRouteChildren {
+  ProjetsProjectIdRoute: typeof ProjetsProjectIdRoute
+}
+
+const ProjetsRouteChildren: ProjetsRouteChildren = {
+  ProjetsProjectIdRoute: ProjetsProjectIdRoute,
+}
+
+const ProjetsRouteWithChildren =
+  ProjetsRoute._addFileChildren(ProjetsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdministrationRoute: AdministrationRouteWithChildren,
   AlertesRoute: AlertesRoute,
   AnomaliesRoute: AnomaliesRoute,
+  AuditRoute: AuditRoute,
   CampagnesRoute: CampagnesRouteWithChildren,
   CouvertureRoute: CouvertureRoute,
+  DashboardAdminRoute: DashboardAdminRoute,
+  DashboardChefRoute: DashboardChefRoute,
+  DashboardTesteurRoute: DashboardTesteurRoute,
   ExigencesRoute: ExigencesRoute,
   FonctionnalitesRoute: FonctionnalitesRoute,
+  GoLiveRoute: GoLiveRoute,
+  LoginRoute: LoginRoute,
   PointsASurveillerRoute: PointsASurveillerRoute,
   ProduitsRoute: ProduitsRouteWithChildren,
+  ProjetsRoute: ProjetsRouteWithChildren,
+  ReferentielsRoute: ReferentielsRoute,
   ExecutionTestIdRoute: ExecutionTestIdRoute,
 }
 export const routeTree = rootRouteImport

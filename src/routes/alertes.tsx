@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/dhi-store";
 import type { AlertType } from "@/lib/dhi-data";
+import { PILOTAGE_TABS } from "@/lib/dhi-nav";
+import { useI18n, type TranslationKey } from "@/lib/i18n";
 
 export const Route = createFileRoute("/alertes")({
   head: () => ({
@@ -27,25 +29,38 @@ export const Route = createFileRoute("/alertes")({
   component: AlertsPage,
 });
 
-const TYPE_LABEL: Record<AlertType, string> = {
-  anomalie: "Anomalie",
-  campagne: "Campagne",
-  couverture: "Couverture",
-  golive: "Go Live",
-  systeme: "Système",
+const TYPE_LABEL: Record<AlertType, TranslationKey> = {
+  anomalie: "pages.alerts.type_anomalie",
+  campagne: "pages.alerts.type_campagne",
+  couverture: "pages.alerts.type_couverture",
+  golive: "pages.alerts.type_golive",
+  systeme: "pages.alerts.type_systeme",
 };
 
-const FILTERS: { id: "all" | "unread" | AlertType; label: string }[] = [
-  { id: "all", label: "Toutes" },
-  { id: "unread", label: "Non lues" },
-  { id: "anomalie", label: "Anomalies" },
-  { id: "campagne", label: "Campagnes" },
-  { id: "couverture", label: "Couverture" },
-  { id: "golive", label: "Go Live" },
+function AlertTargetLink({ target }: { target: string }) {
+  const { t } = useI18n();
+  return (
+    <Link
+      to={target}
+      className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
+    >
+      {t("pages.alerts.voir_cible")}
+    </Link>
+  );
+}
+
+const FILTERS: { id: "all" | "unread" | AlertType; label: TranslationKey }[] = [
+  { id: "all", label: "pages.alerts.all" },
+  { id: "unread", label: "pages.alerts.unread" },
+  { id: "anomalie", label: "pages.alerts.anomalies" },
+  { id: "campagne", label: "pages.alerts.campagnes" },
+  { id: "couverture", label: "pages.alerts.couverture" },
+  { id: "golive", label: "pages.alerts.go_live" },
 ];
 
 function AlertsPage() {
   const { alerts, markAlertRead, markAllAlertsRead } = useStore();
+  const { t } = useI18n();
   const [filter, setFilter] = useState<"all" | "unread" | AlertType>("all");
 
   const rows = alerts.filter((a) =>
@@ -55,41 +70,51 @@ function AlertsPage() {
 
   return (
     <AppShell
-      title="Alertes qualité"
-      subtitle="Signaux à traiter, du plus critique au plus informatif"
-      breadcrumb={["Pilotage", "Alertes"]}
+      title={t("pages.alerts.title")}
+      subtitle={t("pages.alerts.subtitle")}
+      breadcrumb={t("pages.alerts.breadcrumb")}
+      tabs={PILOTAGE_TABS}
       actions={
         <Button
           size="sm"
           variant="outline"
           onClick={() => {
             markAllAlertsRead();
-            toast.success("Toutes les alertes ont été marquées comme lues.");
+            toast.success(t("pages.alerts.all_read"));
           }}
         >
-          <CheckCheck className="size-4" /> Tout marquer comme lu
+          <CheckCheck className="size-4" /> {t("pages.alerts.mark_all_read")}
         </Button>
       }
     >
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Alertes" value={alerts.length} hint="Sur 30 jours" />
-        <KpiCard label="Non lues" value={unread} tone="info" hint="À consulter" />
         <KpiCard
-          label="Gravité haute"
-          value={alerts.filter((a) => a.severity === "haute").length}
-          tone="danger"
-          hint="Action immédiate"
+          label={t("pages.alerts.alerts")}
+          value={alerts.length}
+          hint={t("pages.alerts.sur_30_jours")}
         />
         <KpiCard
-          label="Go Live"
+          label={t("pages.alerts.unread")}
+          value={unread}
+          tone="info"
+          hint={t("pages.alerts.a_consulter")}
+        />
+        <KpiCard
+          label={t("pages.alerts.high_severity")}
+          value={alerts.filter((a) => a.severity === "haute").length}
+          tone="danger"
+          hint={t("pages.alerts.action_immediate")}
+        />
+        <KpiCard
+          label={t("pages.alerts.go_live")}
           value={alerts.filter((a) => a.type === "golive").length}
           tone="warning"
-          hint="Impact mise en production"
+          hint={t("pages.alerts.impact_mep")}
         />
       </div>
 
       <Panel
-        title="Flux d'alertes"
+        title={t("pages.alerts.flux")}
         actions={
           <div className="flex items-center gap-1">
             {FILTERS.map((f) => (
@@ -103,7 +128,7 @@ function AlertsPage() {
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                 )}
               >
-                {f.label}
+                {t(f.label)}
               </button>
             ))}
           </div>
@@ -111,7 +136,7 @@ function AlertsPage() {
       >
         {rows.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            Aucune alerte pour ce filtre.
+            {t("pages.alerts.no_alerts")}
           </p>
         ) : (
           <ul className="divide-y divide-border">
@@ -126,19 +151,18 @@ function AlertsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className={cn("text-sm", a.read ? "font-medium" : "font-semibold")}>
-                      {a.message}
+                      {a.title ?? a.message}
                     </p>
                     <SeverityBadge level={a.severity} />
-                    <span className="label-eyebrow">{TYPE_LABEL[a.type]}</span>
+                    <span className="label-eyebrow">{t(TYPE_LABEL[a.type])}</span>
                   </div>
-                  <p className="mt-0.5 text-sm text-muted-foreground">{a.detail}</p>
-                  <p className="num mt-1 text-xs text-muted-foreground/80">
-                    {a.createdAt} · {a.target}
-                  </p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{a.message ?? a.detail}</p>
+                  <p className="num mt-1 text-xs text-muted-foreground/80">{a.createdAt}</p>
+                  {a.target ? <AlertTargetLink target={a.target} /> : null}
                 </div>
                 {a.read ? null : (
                   <Button size="sm" variant="ghost" onClick={() => markAlertRead(a.id)}>
-                    Marquer lu
+                    {t("pages.alerts.mark_read")}
                   </Button>
                 )}
               </li>
@@ -148,11 +172,11 @@ function AlertsPage() {
       </Panel>
 
       <p className="mt-4 text-xs text-muted-foreground">
-        Les alertes anomalies renvoient vers la{" "}
+        {t("pages.alerts.footer_prefix")}{" "}
         <Link to="/anomalies" className="font-medium text-primary hover:underline">
-          fiche de suivi des anomalies
+          {t("pages.alerts.footer_link")}
         </Link>
-        .
+        {t("pages.alerts.footer_suffix")}
       </p>
     </AppShell>
   );

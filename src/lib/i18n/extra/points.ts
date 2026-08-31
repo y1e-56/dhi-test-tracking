@@ -1,0 +1,48 @@
+export const pointsDict = {
+  fr: {
+    pages: {
+      points: {
+        title_required: "Le titre du point est requis.",
+        saved: "Point à surveiller enregistré.",
+        subtitle: "Risques et zones fragiles à suivre jusqu'à clôture",
+        new_point: "Nouveau point",
+        kpi_tracked: "Points suivis",
+        hint_all_products: "Tous produits",
+        kpi_critical_open: "Critiques ouverts",
+        hint_go_live_blockers: "Bloquants Go Live",
+        kpi_in_followup: "En cours de suivi",
+        hint_action_plan: "Avec plan d'action",
+        kpi_closed: "Clos",
+        hint_risk_cleared: "Risque levé",
+        no_items: "Aucun point.",
+        dialog_title: "Nouveau point à surveiller",
+        title: "Titre",
+        title_placeholder: "Ex. Latence du webhook marchand",
+        level: "Niveau",
+      },
+    },
+  },
+  en: {
+    pages: {
+      points: {
+        title_required: "The point title is required.",
+        saved: "Watch item saved.",
+        subtitle: "Risks and fragile areas to track until closure",
+        new_point: "New point",
+        kpi_tracked: "Tracked points",
+        hint_all_products: "All products",
+        kpi_critical_open: "Critical open",
+        hint_go_live_blockers: "Go Live blockers",
+        kpi_in_followup: "In follow-up",
+        hint_action_plan: "With action plan",
+        kpi_closed: "Closed",
+        hint_risk_cleared: "Risk cleared",
+        no_items: "No item.",
+        dialog_title: "New watch item",
+        title: "Title",
+        title_placeholder: "E.g. Merchant webhook latency",
+        level: "Level",
+      },
+    },
+  },
+};

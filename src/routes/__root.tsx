@@ -6,29 +6,35 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  redirect,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { DhiStoreProvider } from "@/lib/dhi-store";
+import { DhiStoreProvider, loadSession } from "@/lib/dhi-store";
+import { I18nProvider, useI18n } from "@/lib/i18n";
+import { hasAccessToPage, getRedirectForUnauthorizedAccess } from "@/lib/role-protection";
 
 function NotFoundComponent() {
+  const { t } = useI18n();
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page introuvable</h2>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">
+          {t("pages.root.page_not_found")}
+        </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          La page recherchée n'existe pas ou a été déplacée.
+          {t("pages.root.page_not_found_message")}
         </p>
         <div className="mt-6">
           <Link
             to="/"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Retour au dashboard
+            {t("pages.root.back_to_dashboard")}
           </Link>
         </div>
       </div>
@@ -39,6 +45,7 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
+  const { t } = useI18n();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
@@ -47,11 +54,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Cette page n'a pas pu être chargée
+          {t("pages.root.page_load_error")}
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Une erreur est survenue. Vous pouvez réessayer ou revenir à l'accueil.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">{t("pages.root.error_message")}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -60,13 +65,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Réessayer
+            {t("pages.root.retry")}
           </button>
           <a
             href="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
-            Accueil
+            {t("pages.root.home")}
           </a>
         </div>
       </div>
@@ -75,6 +80,25 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  beforeLoad: async ({ location }) => {
+    const path = location.pathname;
+    if (path === "/login" || path.startsWith("/login/")) return;
+    const session = loadSession();
+    if (!session) {
+      if (path !== "/") {
+        throw redirect({
+          to: "/login",
+          search: { redirect: path },
+        });
+      }
+      throw redirect({ to: "/login" });
+    }
+    // Vérification des droits d'accès basés sur le rôle
+    if (!hasAccessToPage(path)) {
+      const redirectPath = getRedirectForUnauthorizedAccess(path);
+      throw redirect({ to: redirectPath });
+    }
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -112,7 +136,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="fr">
+    <html lang="fr" dir="ltr">
       <head>
         <HeadContent />
       </head>
@@ -129,11 +153,13 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <DhiStoreProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        <Toaster richColors position="bottom-right" />
-      </DhiStoreProvider>
+      <I18nProvider>
+        <DhiStoreProvider>
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+          <Toaster richColors position="bottom-right" />
+        </DhiStoreProvider>
+      </I18nProvider>
     </QueryClientProvider>
   );
 }

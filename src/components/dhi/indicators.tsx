@@ -1,11 +1,5 @@
 import { cn } from "@/lib/utils";
 import {
-  CRITICALITY_LABEL,
-  HEALTH_LABEL,
-  CAMPAIGN_STATUS_LABEL,
-  DEFECT_STATUS_LABEL,
-  SEVERITY_LABEL,
-  VERDICT_LABEL,
   healthOf,
   type CampaignStatus,
   type Criticality,
@@ -14,34 +8,31 @@ import {
   type Verdict,
 } from "@/lib/dhi-data";
 import type { ReactNode } from "react";
+import { useI18n } from "@/lib/i18n";
 
 const pill =
   "inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[11px] font-medium leading-4 whitespace-nowrap";
 
 export function HealthBadge({ score }: { score: number }) {
+  const { t } = useI18n();
   const h = healthOf(score);
   return (
     <span
       className={cn(
         pill,
         h === "sain" && "border-success/30 bg-success-soft text-success",
+        h === "surveiller" && "border-info/30 bg-info-soft text-info",
         h === "risque" && "border-warning/40 bg-warning-soft text-warning-foreground",
         h === "critique" && "border-danger/30 bg-danger-soft text-danger",
       )}
     >
       <span className="size-1.5 rounded-full bg-current" />
-      {HEALTH_LABEL[h]}
+      {t(`status.health_${h}`)}
     </span>
   );
 }
 
-export function ScoreValue({
-  score,
-  size = "md",
-}: {
-  score: number;
-  size?: "sm" | "md" | "lg";
-}) {
+export function ScoreValue({ score, size = "md" }: { score: number; size?: "sm" | "md" | "lg" }) {
   const h = healthOf(score);
   return (
     <span
@@ -51,6 +42,7 @@ export function ScoreValue({
         size === "md" && "text-base",
         size === "lg" && "text-4xl",
         h === "sain" && "text-success",
+        h === "surveiller" && "text-info",
         h === "risque" && "text-warning",
         h === "critique" && "text-danger",
       )}
@@ -62,6 +54,7 @@ export function ScoreValue({
 }
 
 export function CriticalityBadge({ level }: { level: Criticality }) {
+  const { t } = useI18n();
   return (
     <span
       className={cn(
@@ -72,12 +65,13 @@ export function CriticalityBadge({ level }: { level: Criticality }) {
         level === "basse" && "border-success/25 bg-success-soft text-success",
       )}
     >
-      {CRITICALITY_LABEL[level]}
+      {t(`status.criticality_${level}`)}
     </span>
   );
 }
 
 export function StatusBadge({ status }: { status: CampaignStatus }) {
+  const { t } = useI18n();
   return (
     <span
       className={cn(
@@ -88,12 +82,13 @@ export function StatusBadge({ status }: { status: CampaignStatus }) {
         status === "avenir" && "border-border bg-muted text-muted-foreground",
       )}
     >
-      {CAMPAIGN_STATUS_LABEL[status]}
+      {t(`status.campaign_${status}`)}
     </span>
   );
 }
 
 export function VerdictBadge({ verdict }: { verdict: Verdict }) {
+  const { t } = useI18n();
   return (
     <span
       className={cn(
@@ -107,12 +102,13 @@ export function VerdictBadge({ verdict }: { verdict: Verdict }) {
         verdict === "NOT_APPLICABLE" && "border-border bg-muted text-muted-foreground/70",
       )}
     >
-      {VERDICT_LABEL[verdict]}
+      {t(`status.verdict_${verdict}`)}
     </span>
   );
 }
 
 export function SeverityBadge({ level }: { level: Severity }) {
+  const { t } = useI18n();
   return (
     <span
       className={cn(
@@ -122,12 +118,13 @@ export function SeverityBadge({ level }: { level: Severity }) {
         level === "basse" && "border-border bg-secondary text-secondary-foreground",
       )}
     >
-      {SEVERITY_LABEL[level]}
+      {t(`status.severity_${level}`)}
     </span>
   );
 }
 
 export function DefectStatusBadge({ status }: { status: DefectStatus }) {
+  const { t } = useI18n();
   return (
     <span
       className={cn(
@@ -138,7 +135,7 @@ export function DefectStatusBadge({ status }: { status: DefectStatus }) {
         status === "fermee" && "border-success/30 bg-success-soft text-success",
       )}
     >
-      {DEFECT_STATUS_LABEL[status]}
+      {t(`status.defect_${status}`)}
     </span>
   );
 }
@@ -158,14 +155,19 @@ export function QualityBar({
       : "bg-border"
     : value >= 85
       ? "bg-success"
-      : value >= 70
-        ? "bg-warning"
-        : value > 0
-          ? "bg-danger"
-          : "bg-border";
+      : value >= 75
+        ? "bg-info"
+        : value >= 60
+          ? "bg-warning"
+          : value > 0
+            ? "bg-danger"
+            : "bg-border";
   return (
     <div className={cn("h-1 w-full overflow-hidden rounded-full bg-border/70", className)}>
-      <div className={cn("h-full rounded-full transition-all", tone)} style={{ width: `${value}%` }} />
+      <div
+        className={cn("h-full rounded-full transition-all", tone)}
+        style={{ width: `${value}%` }}
+      />
     </div>
   );
 }

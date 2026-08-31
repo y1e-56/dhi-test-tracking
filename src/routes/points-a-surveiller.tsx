@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -24,6 +24,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/dhi-store";
+import { DECISION_TABS } from "@/lib/dhi-nav";
+import { useI18n } from "@/lib/i18n";
 import {
   PEOPLE,
   WATCH_LEVEL_LABEL,
@@ -59,6 +61,7 @@ const LEVEL_STYLE: Record<WatchLevel, string> = {
 const COLUMNS: WatchStatus[] = ["ouvert", "suivi", "clos"];
 
 function WatchPointsPage() {
+  const { t } = useI18n();
   const { watchPoints, products, addWatchPoint, updateWatchPoint } = useStore();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -71,7 +74,7 @@ function WatchPointsPage() {
 
   const submit = () => {
     if (!form.title.trim()) {
-      toast.error("Le titre du point est requis.");
+      toast.error(t("pages.watchpoints.title_required"));
       return;
     }
     addWatchPoint({
@@ -82,41 +85,46 @@ function WatchPointsPage() {
       status: "ouvert",
       owner: form.owner,
     });
-    toast.success("Point à surveiller enregistré.");
+    toast.success(t("pages.watchpoints.saved"));
     setOpen(false);
     setForm({ ...form, title: "", description: "" });
   };
 
   return (
     <AppShell
-      title="Points à surveiller"
-      subtitle="Risques et zones fragiles à suivre jusqu'à clôture"
-      breadcrumb={["Décision", "Points à surveiller"]}
+      title={t("pages.watchpoints.title")}
+      subtitle={t("pages.watchpoints.subtitle")}
+      breadcrumb={t("pages.watchpoints.breadcrumb")}
+      tabs={DECISION_TABS}
       actions={
         <Button size="sm" onClick={() => setOpen(true)}>
-          <Plus className="size-4" /> Nouveau point
+          <Plus className="size-4" /> {t("pages.watchpoints.new_point")}
         </Button>
       }
     >
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Points suivis" value={watchPoints.length} hint="Tous produits" />
         <KpiCard
-          label="Critiques ouverts"
+          label={t("pages.watchpoints.kpi_tracked")}
+          value={watchPoints.length}
+          hint={t("pages.watchpoints.kpi_tracked_hint")}
+        />
+        <KpiCard
+          label={t("pages.watchpoints.kpi_critical")}
           value={watchPoints.filter((w) => w.level === "critique" && w.status !== "clos").length}
           tone="danger"
-          hint="Bloquants Go Live"
+          hint={t("pages.watchpoints.kpi_critical_hint")}
         />
         <KpiCard
-          label="En cours de suivi"
+          label={t("pages.watchpoints.kpi_followup")}
           value={watchPoints.filter((w) => w.status === "suivi").length}
           tone="info"
-          hint="Avec plan d'action"
+          hint={t("pages.watchpoints.kpi_followup_hint")}
         />
         <KpiCard
-          label="Clos"
+          label={t("pages.watchpoints.kpi_closed")}
           value={watchPoints.filter((w) => w.status === "clos").length}
           tone="success"
-          hint="Risque levé"
+          hint={t("pages.watchpoints.kpi_closed_hint")}
         />
       </div>
 
@@ -130,7 +138,9 @@ function WatchPointsPage() {
               actions={<span className="label-eyebrow">{items.length}</span>}
             >
               {items.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">Aucun point.</p>
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  {t("pages.watchpoints.none")}
+                </p>
               ) : (
                 <ul className="space-y-2">
                   {items.map((w) => (
@@ -149,14 +159,24 @@ function WatchPointsPage() {
                       <p className="mt-1 text-xs text-muted-foreground">{w.description}</p>
                       <div className="mt-2 flex items-center justify-between gap-2">
                         <p className="num text-xs text-muted-foreground/80">
-                          {products.find((p) => p.id === w.productId)?.name ?? "—"} · {w.owner}
+                          <Link
+                            to="/produits/$productId"
+                            params={{ productId: w.productId }}
+                            className="text-primary hover:underline"
+                          >
+                            {products.find((p) => p.id === w.productId)?.name ?? "—"}
+                          </Link>
+                          {" · "}
+                          {w.owner}
                         </p>
                         <Select
                           value={w.status}
                           onValueChange={(v) => {
                             updateWatchPoint(w.id, { status: v as WatchStatus });
                             toast.success(
-                              `${w.title} → ${WATCH_STATUS_LABEL[v as WatchStatus]}.`,
+                              t("pages.watchpoints.status_changed")
+                                .replace("{title}", w.title)
+                                .replace("{status}", WATCH_STATUS_LABEL[v as WatchStatus]),
                             );
                           }}
                         >
@@ -184,20 +204,20 @@ function WatchPointsPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Nouveau point à surveiller</DialogTitle>
+            <DialogTitle>{t("pages.watchpoints.new_point_dialog")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="w-title">Titre</Label>
+              <Label htmlFor="w-title">{t("pages.watchpoints.titre")}</Label>
               <Input
                 id="w-title"
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                placeholder="Ex. Latence du webhook marchand"
+                placeholder={t("pages.watchpoints.title_placeholder")}
               />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="w-desc">Description</Label>
+              <Label htmlFor="w-desc">{t("pages.watchpoints.description")}</Label>
               <Textarea
                 id="w-desc"
                 rows={3}
@@ -207,7 +227,7 @@ function WatchPointsPage() {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="grid gap-1.5">
-                <Label>Produit</Label>
+                <Label>{t("pages.watchpoints.produit")}</Label>
                 <Select
                   value={form.productId}
                   onValueChange={(v) => setForm((f) => ({ ...f, productId: v }))}
@@ -225,7 +245,7 @@ function WatchPointsPage() {
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label>Niveau</Label>
+                <Label>{t("pages.watchpoints.niveau")}</Label>
                 <Select
                   value={form.level}
                   onValueChange={(v) => setForm((f) => ({ ...f, level: v as WatchLevel }))}
@@ -243,7 +263,7 @@ function WatchPointsPage() {
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label>Responsable</Label>
+                <Label>{t("pages.watchpoints.responsable")}</Label>
                 <Select
                   value={form.owner}
                   onValueChange={(v) => setForm((f) => ({ ...f, owner: v }))}
@@ -264,9 +284,9 @@ function WatchPointsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
-              Annuler
+              {t("pages.watchpoints.annuler")}
             </Button>
-            <Button onClick={submit}>Enregistrer</Button>
+            <Button onClick={submit}>{t("pages.watchpoints.enregistrer")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

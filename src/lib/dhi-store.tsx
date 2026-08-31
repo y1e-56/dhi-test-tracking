@@ -1,4 +1,30 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+/* ==========================================================================
+   DHI STORE — Contexte React global (zustand-like)
+   Organisation :
+     1. IMPORTS
+     2. TYPES & INTERFACES (Store)
+     3. HELPERS (date / localStorage persistence)
+     4. PROVIDER :
+        4.1 États (useState) — chargés depuis localStorage si présent
+        4.2 Valeur dérivée (useMemo) — regroupe toutes les mutations
+        4.3 Effet de persistance automatique
+     5. HOOKS & SELECTEURS (useStore + helpers: campaignStats, etc.)
+   ========================================================================== */
+
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+
+/* -------------------------------------------------------------------------- */
+/*  1. IMPORTS MÉTIERS                                                         */
+/* -------------------------------------------------------------------------- */
+
 import {
   alerts as seedAlerts,
   auditTrail as seedAudit,
@@ -15,8 +41,10 @@ import {
   testCases as seedTests,
   watchPoints as seedWatchPoints,
   healthOf,
+  SCORE_WEIGHTS,
   GOLIVE_CHECKLIST_TEMPLATE,
   type Alert,
+  type AlertType,
   type AuditEntry,
   type Campaign,
   type Defect,
@@ -29,13 +57,25 @@ import {
   type Project,
   type ReferentialRule,
   type Release,
+  type ReleaseStatus,
   type Requirement,
+  type ScoreBreakdown,
+  type Severity,
   type TestCase,
+  type TestType,
   type Verdict,
   type WatchPoint,
+  type AppRole,
 } from "./dhi-data";
 
-interface Store {
+/* -------------------------------------------------------------------------- */
+/*  3. HELPERS : Persistance localStorage + Date                               */
+/* -------------------------------------------------------------------------- */
+
+const STORAGE_KEY = "dhi-store-v1";
+const SESSION_KEY = "dhi-session-v1";
+
+type PersistedSnapshot = {
   products: Product[];
   features: Feature[];
   campaigns: Campaign[];
@@ -51,18 +91,143 @@ interface Store {
   audit: AuditEntry[];
   rules: ReferentialRule[];
   users: PlatformUser[];
-  addProduct: (p: Omit<Product, "id" | "breakdown" | "lastUpdate">) => void;
-  addFeature: (f: Omit<Feature, "id">) => void;
+};
+
+export type SessionUser = { id: string; name: string; email: string; role: AppRole };
+
+const today = () => new Date().toISOString().slice(0, 10);
+const now = () => new Date().toISOString().slice(0, 16).replace("T", " ");
+
+const makeDefaultChecklist = (): Record<string, GoLiveChecklistItem[]> => {
+  const initial: Record<string, GoLiveChecklistItem[]> = {};
+  for (const r of seedReleases) {
+    initial[r.id] = GOLIVE_CHECKLIST_TEMPLATE.map((item, i) => ({
+      ...item,
+      checked: r.id === "rel-411" ? true : r.id === "rel-412" ? i < 5 : false,
+    }));
+  }
+  return initial;
+};
+
+export function loadSnapshot(): PersistedSnapshot | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedSnapshot;
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveSnapshot(snap: PersistedSnapshot) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snap));
+  } catch {
+    /* quota exceeded : silent */
+  }
+}
+
+export function loadSession(): SessionUser | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(SESSION_KEY);
+    return raw ? (JSON.parse(raw) as SessionUser) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSession(user: SessionUser | null) {
+  if (typeof window === "undefined") return;
+  if (user) window.localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+  else window.localStorage.removeItem(SESSION_KEY);
+}
+
+const defaultSnapshot = (): PersistedSnapshot => ({
+  products: seedProducts,
+  features: seedFeatures,
+  campaigns: seedCampaigns,
+  tests: seedTests,
+  defects: seedDefects,
+  projects: seedProjects,
+  releases: seedReleases,
+  requirements: seedRequirements,
+  watchPoints: seedWatchPoints,
+  goLiveDecisions: seedGoLive,
+  goLiveChecklist: makeDefaultChecklist(),
+  alerts: seedAlerts,
+  audit: seedAudit,
+  rules: seedRules,
+  users: seedUsers,
+});
+
+/* -------------------------------------------------------------------------- */
+/*  2. INTERFACE DU STORE                                                      */
+/* -------------------------------------------------------------------------- */
+
+interface Store {
+  /*  2.1  États ----------------------------------------------------------  */
+  products: Product[];
+  features: Feature[];
+  campaigns: Campaign[];
+  tests: TestCase[];
+  defects: Defect[];
+  projects: Project[];
+  releases: Release[];
+  requirements: Requirement[];
+  watchPoints: WatchPoint[];
+  goLiveDecisions: GoLiveDecision[];
+  goLiveChecklist: Record<string, GoLiveChecklistItem[]>;
+  alerts: Alert[];
+  audit: AuditEntry[];
+  rules: ReferentialRule[];
+  users: PlatformUser[];
+  currentUser: SessionUser | null;
+
+  /*  2.2  Session / Auth -----------------------------------------------  */
+  login: (email: string, password: string) => { ok: boolean; error?: string; user?: SessionUser };
+  logout: () => void;
+
+  /*  2.3  Mutations : Produits / Projets / Features --------------------  */
+  addProduct: (p: Omit<Product, "id" | "breakdown" | "lastUpdate">) => string;
+  updateProduct: (id: string, patch: Partial<Omit<Product, "id" | "breakdown">>) => void;
+  deleteProduct: (id: string) => void;
+  addProject: (p: Omit<Project, "id">) => string;
+  updateProject: (id: string, patch: Partial<Project>) => void;
+  deleteProject: (id: string) => void;
+  addFeature: (f: Omit<Feature, "id">) => string;
   updateFeature: (id: string, patch: Partial<Feature>) => void;
+  deleteFeature: (id: string) => void;
+
+  /*  2.4  Mutations : Releases -----------------------------------------  */
+  addRelease: (r: Omit<Release, "id">) => string;
+  updateRelease: (id: string, patch: Partial<Release>) => void;
+  setReleaseStatus: (id: string, status: ReleaseStatus) => void;
+
+  /*  2.5  Mutations : Campagnes & Tests --------------------------------  */
   addCampaign: (c: Omit<Campaign, "id">, cloneFrom?: string) => string;
   updateCampaign: (id: string, patch: Partial<Campaign>) => void;
+  deleteCampaign: (id: string) => void;
+  addTestCase: (t: Omit<TestCase, "id" | "verdict" | "observed" | "comment" | "evidence"> & { verdict?: Verdict }) => string;
   updateTest: (id: string, patch: Partial<TestCase>) => void;
+  deleteTest: (id: string) => void;
+
+  /*  2.6  Mutations : Anomalies & Watch points -------------------------  */
   addDefect: (d: Omit<Defect, "id">) => string;
   updateDefect: (id: string, patch: Partial<Defect>, auditDetail?: string) => void;
+  deleteDefect: (id: string) => void;
   addWatchPoint: (w: Omit<WatchPoint, "id" | "createdAt">) => void;
   updateWatchPoint: (id: string, patch: Partial<WatchPoint>) => void;
+  deleteWatchPoint: (id: string) => void;
+
+  /*  2.7  Mutations : Exigences & Go Live ------------------------------  */
   addRequirement: (r: Omit<Requirement, "id">) => void;
   updateRequirement: (id: string, patch: Partial<Requirement>) => void;
+  deleteRequirement: (id: string) => void;
   toggleChecklistItem: (releaseId: string, itemId: string) => void;
   addGoLiveDecision: (
     releaseId: string,
@@ -70,56 +235,64 @@ interface Store {
     decider: string,
     justification: string,
   ) => void;
+
+  /*  2.8  Mutations : Alertes / Admin / Référentiel --------------------  */
   markAlertRead: (id: string) => void;
   markAllAlertsRead: () => void;
+  pushAlert: (a: Omit<Alert, "id" | "createdAt" | "read">) => void;
+  addUser: (u: Omit<PlatformUser, "id">) => string;
   updateUserRole: (id: string, role: PlatformUser["role"]) => void;
   toggleUserActive: (id: string) => void;
   updateRule: (id: string, patch: Partial<ReferentialRule>) => void;
+  deleteRule: (id: string) => void;
+
+  /*  2.9  Audit & Reset ------------------------------------------------  */
   logAudit: (actor: string, action: string, entity: string, detail: string) => void;
+  resetAllData: () => void;
 }
 
 const StoreContext = createContext<Store | null>(null);
 
-const today = () => new Date().toISOString().slice(0, 10);
-const now = () => new Date().toISOString().slice(0, 16).replace("T", " ");
+/* -------------------------------------------------------------------------- */
+/*  4. PROVIDER                                                                */
+/* -------------------------------------------------------------------------- */
 
 export function DhiStoreProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<Product[]>(seedProducts);
-  const [features, setFeatures] = useState<Feature[]>(seedFeatures);
-  const [campaigns, setCampaigns] = useState<Campaign[]>(seedCampaigns);
-  const [tests, setTests] = useState<TestCase[]>(seedTests);
-  const [defects, setDefects] = useState<Defect[]>(seedDefects);
-  const [projects] = useState<Project[]>(seedProjects);
-  const [releases] = useState<Release[]>(seedReleases);
-  const [requirements, setRequirements] = useState<Requirement[]>(seedRequirements);
-  const [watchPoints, setWatchPoints] = useState<WatchPoint[]>(seedWatchPoints);
-  const [goLiveDecisions, setGoLiveDecisions] = useState<GoLiveDecision[]>(seedGoLive);
-  const [goLiveChecklist, setGoLiveChecklist] = useState<Record<string, GoLiveChecklistItem[]>>(
-    () => {
-      const initial: Record<string, GoLiveChecklistItem[]> = {};
-      for (const r of seedReleases) {
-        initial[r.id] = GOLIVE_CHECKLIST_TEMPLATE.map((item, i) => ({
-          ...item,
-          // Pré-remplissage réaliste : release 4.12 en cours, 4.11 complétée
-          checked: r.id === "rel-411" ? true : r.id === "rel-412" ? i < 5 : false,
-        }));
-      }
-      return initial;
-    },
+  /*  4.1  États -----------------------------------------------------------  */
+
+  const initialSnap = useMemo<PersistedSnapshot>(() => loadSnapshot() ?? defaultSnapshot(), []);
+  const initialSession = useMemo<SessionUser | null>(() => loadSession(), []);
+
+  const [products, setProducts] = useState<Product[]>(initialSnap.products);
+  const [features, setFeatures] = useState<Feature[]>(initialSnap.features);
+  const [campaigns, setCampaigns] = useState<Campaign[]>(initialSnap.campaigns);
+  const [tests, setTests] = useState<TestCase[]>(initialSnap.tests);
+  const [defects, setDefects] = useState<Defect[]>(initialSnap.defects);
+  const [projects, setProjects] = useState<Project[]>(initialSnap.projects);
+  const [releases, setReleases] = useState<Release[]>(initialSnap.releases);
+  const [requirements, setRequirements] = useState<Requirement[]>(initialSnap.requirements);
+  const [watchPoints, setWatchPoints] = useState<WatchPoint[]>(initialSnap.watchPoints);
+  const [goLiveDecisions, setGoLiveDecisions] = useState<GoLiveDecision[]>(
+    initialSnap.goLiveDecisions,
   );
-  const [alerts, setAlerts] = useState<Alert[]>(seedAlerts);
-  const [audit, setAudit] = useState<AuditEntry[]>(seedAudit);
-  const [rules, setRules] = useState<ReferentialRule[]>(seedRules);
-  const [users, setUsers] = useState<PlatformUser[]>(seedUsers);
+  const [goLiveChecklist, setGoLiveChecklist] = useState<Record<string, GoLiveChecklistItem[]>>(
+    () => initialSnap.goLiveChecklist ?? makeDefaultChecklist(),
+  );
+  const [alerts, setAlerts] = useState<Alert[]>(initialSnap.alerts);
+  const [audit, setAudit] = useState<AuditEntry[]>(initialSnap.audit);
+  const [rules, setRules] = useState<ReferentialRule[]>(initialSnap.rules);
+  const [users, setUsers] = useState<PlatformUser[]>(initialSnap.users);
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(initialSession);
 
-  const value = useMemo<Store>(() => {
-    const pushAudit = (actor: string, action: string, entity: string, detail: string) =>
-      setAudit((prev) => [
-        { id: `AU-${Date.now()}`, actor, action, entity, detail, at: now() },
-        ...prev,
-      ]);
+  /*  4.2  Effet : persister à chaque changement --------------------------  */
 
-    return {
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    const snap: PersistedSnapshot = {
       products,
       features,
       campaigns,
@@ -135,12 +308,357 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       audit,
       rules,
       users,
-      addProduct: (p) =>
+    };
+    saveSnapshot(snap);
+  }, [
+    products,
+    features,
+    campaigns,
+    tests,
+    defects,
+    projects,
+    releases,
+    requirements,
+    watchPoints,
+    goLiveDecisions,
+    goLiveChecklist,
+    alerts,
+    audit,
+    rules,
+    users,
+  ]);
+
+  useEffect(() => {
+    saveSession(currentUser);
+  }, [currentUser]);
+
+  /*  4.2b  Effet : Scoring CDC dynamique (recalcule à chaque changement)  */
+
+  const firstScoring = useRef(true);
+  useEffect(() => {
+    if (firstScoring.current) {
+      firstScoring.current = false;
+      return;
+    }
+    if (!products.length) return;
+
+    const todayStr = today();
+    const next = products.map((prod) => {
+      const prodFeatures = features.filter((f) => f.productId === prod.id);
+      const prodTests = tests.filter((t) =>
+        prodFeatures.some((f) => f.id === t.featureId),
+      );
+      const prodDefects = defects.filter((d) => d.productId === prod.id);
+
+      // --- 1. RESULTS : succès sur tests exécutés applicables ---
+      const executed = prodTests.filter(
+        (t) => t.verdict !== "NOT_RUN" && t.verdict !== "NOT_APPLICABLE",
+      );
+      const passedCnt = executed.filter(
+        (t) => t.verdict === "PASS" || t.verdict === "PASS_WITH_RESERVATION",
+      ).length;
+      const results = executed.length
+        ? Math.round((passedCnt / executed.length) * 100)
+        : prod.breakdown.results;
+
+      // --- 2. COVERAGE : couverture feature × type de test ---
+      if (typeof window !== "undefined") {
+        // noop to keep import side-effects happy
+      }
+      let totalCells = 0;
+      let coveredCells = 0;
+      for (const f of prodFeatures) {
+        const coverageEntries = Object.entries(f.coverage ?? {});
+        totalCells += coverageEntries.length || 1;
+        coveredCells += coverageEntries.filter(([, v]) => v).length;
+      }
+      const coverage = totalCells
+        ? Math.round((coveredCells / totalCells) * 100)
+        : prod.breakdown.coverage;
+
+      // --- 3. CRITICAL : taux de succès des tests critiques ---
+      const critTests = prodTests.filter((t) => t.criticality === "critique");
+      const critExecuted = critTests.filter(
+        (t) => t.verdict !== "NOT_RUN" && t.verdict !== "NOT_APPLICABLE",
+      );
+      const critPassed = critExecuted.filter(
+        (t) => t.verdict === "PASS" || t.verdict === "PASS_WITH_RESERVATION",
+      ).length;
+      const critical = critExecuted.length
+        ? Math.round((critPassed / critExecuted.length) * 100)
+        : 100;
+
+      // --- 4. INCIDENTS : pénalité par anomalie ouverte ---
+      const openHigh = prodDefects.filter((d) => d.status !== "fermee" && d.severity === "haute").length;
+      const openMed = prodDefects.filter((d) => d.status !== "fermee" && d.severity === "moyenne").length;
+      const openLow = prodDefects.filter((d) => d.status !== "fermee" && d.severity === "basse").length;
+      const penalty = openHigh * 15 + openMed * 6 + openLow * 2;
+      const incidents = Math.max(0, 100 - penalty);
+
+      // --- 5. NON-FUNCTIONAL : succès sur tests NF / speciaux ---
+      const nfTypes: TestType[] = [
+        "securite",
+        "penetration",
+        "performance",
+        "charge",
+        "endurance",
+        "volumetrie",
+        "robustesse",
+        "accessibilite",
+        "compatibilite",
+        "localisation",
+        "conformite",
+      ];
+      const nfTests = prodTests.filter((t) => nfTypes.includes(t.type));
+      const nfExec = nfTests.filter(
+        (t) => t.verdict !== "NOT_RUN" && t.verdict !== "NOT_APPLICABLE",
+      );
+      const nfPassed = nfExec.filter(
+        (t) => t.verdict === "PASS" || t.verdict === "PASS_WITH_RESERVATION",
+      ).length;
+      const nonFunctional = nfExec.length
+        ? Math.round((nfPassed / nfExec.length) * 100)
+        : prod.breakdown.nonFunctional;
+
+      // --- 6. TESTABILITY : % tests avec préconditions renseignées ---
+      const testable = prodTests.filter(
+        (t) => t.preconditions && t.preconditions.length > 0,
+      ).length;
+      const testability = prodTests.length
+        ? Math.round((testable / prodTests.length) * 100)
+        : prod.breakdown.testability;
+
+      // --- 7. QUALITY CONTROL : défauts clos / total ---
+      const closed = prodDefects.filter((d) => d.status === "fermee").length;
+      const qualityControl = prodDefects.length
+        ? Math.round((closed / prodDefects.length) * 100)
+        : prod.breakdown.qualityControl;
+
+      const breakdown: ScoreBreakdown = {
+        results,
+        coverage,
+        critical,
+        incidents,
+        nonFunctional,
+        testability,
+        qualityControl,
+      };
+      const score = Math.round(
+        breakdown.results * SCORE_WEIGHTS.results +
+          breakdown.coverage * SCORE_WEIGHTS.coverage +
+          breakdown.critical * SCORE_WEIGHTS.critical +
+          breakdown.incidents * SCORE_WEIGHTS.incidents +
+          breakdown.nonFunctional * SCORE_WEIGHTS.nonFunctional +
+          breakdown.testability * SCORE_WEIGHTS.testability +
+          breakdown.qualityControl * SCORE_WEIGHTS.qualityControl,
+      );
+      return { ...prod, breakdown, score, lastUpdate: todayStr };    });
+
+    const hasChanges = next.some((p, i) => {
+      const old = products[i];
+      if (!old) return true;
+      return (
+        p.score !== old.score ||
+        Object.keys(p.breakdown).some(
+          (k) => p.breakdown[k as keyof ScoreBreakdown] !== old.breakdown[k as keyof ScoreBreakdown],
+        )
+      );
+    });
+    if (hasChanges) setProducts(next);
+  }, [tests, defects, features, campaigns]);
+
+  /*  4.2c  Effet : Moteur d'alertes dynamiques ---------------------------  */
+
+  const alertFingerprints = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const fires: { type: AlertType; severity: Severity | "info"; title: string; message: string; entityId: string }[] = [];
+    const fp = (k: string, id: string) => `${k}:${id}`;
+
+    // Règle 1 : anomalie haute gravité créée et ouverte
+    for (const d of defects) {
+      if (d.severity === "haute" && d.status !== "fermee") {
+        const k = fp("DEFECT-HIGH", d.id);
+        if (!alertFingerprints.current.has(k)) {
+          alertFingerprints.current.add(k);
+          fires.push({
+            type: "anomalie",
+            severity: "haute",
+            title: `Anomalie critique détectée : ${d.title}`,
+            message: `Gravité haute, statut ${d.status} — assignée à ${d.assignee}`,
+            entityId: d.id,
+          });
+        }
+      }
+    }
+
+    // Règle 2 : test critique en échec
+    for (const t of tests) {
+      if (t.criticality === "critique" && t.verdict === "FAIL") {
+        const k = fp("TEST-CRIT-FAIL", t.id);
+        if (!alertFingerprints.current.has(k)) {
+          alertFingerprints.current.add(k);
+          fires.push({
+            type: "couverture",
+            severity: "haute",
+            title: `Test critique en échec : ${t.name}`,
+            message: `Campagne ${t.campaignId} — corriger avant décision Go/No-Go`,
+            entityId: t.id,
+          });
+        }
+      }
+    }
+
+    // Règle 3 : campagne avec taux de succès < 80%
+    for (const c of campaigns) {
+      const stats = campaignStats(tests, c.id);
+      if (stats.executed >= 5 && stats.successRate < 80 && c.status !== "terminee") {
+        const k = fp("CAMP-SUCCESS", c.id);
+        if (!alertFingerprints.current.has(k)) {
+          alertFingerprints.current.add(k);
+          fires.push({
+            type: "campagne",
+            severity: "moyenne",
+            title: `Taux de succès faible sur ${c.name}`,
+            message: `${stats.successRate}% de succès après ${stats.executed} tests exécutés`,
+            entityId: c.id,
+          });
+        }
+      }
+    }
+
+    // Règle 4 : campagne en retard (endDate dépassée)
+    const todayISO = today();
+    for (const c of campaigns) {
+      if (c.endDate && c.endDate < todayISO && c.status !== "terminee") {
+        const k = fp("CAMP-LATE", c.id);
+        if (!alertFingerprints.current.has(k)) {
+          alertFingerprints.current.add(k);
+          fires.push({
+            type: "campagne",
+            severity: "haute",
+            title: `Campagne en retard : ${c.name}`,
+            message: `Échéance du ${c.endDate} dépassée — statut : ${c.status}`,
+            entityId: c.id,
+          });
+        }
+      }
+    }
+
+    // Règle 5 : produit santé "critique"
+    for (const p of products) {
+      const s = productScore(p);
+      if (s < 60) {
+        const k = fp("PROD-CRIT", p.id);
+        if (!alertFingerprints.current.has(k)) {
+          alertFingerprints.current.add(k);
+          fires.push({
+            type: "systeme",
+            severity: "haute",
+            title: `Produit en santé critique : ${p.name}`,
+            message: `Score CDC = ${s}/100 — plan d'action requis`,
+            entityId: p.id,
+          });
+        }
+      }
+    }
+
+    // Règle 6 : Go Live checklist avec item critique non validé + décision GO
+    for (const g of goLiveDecisions) {
+      if (g.verdict === "GO" && g.checklistCompletion < 80) {
+        const k = fp("GOLIVE-RISK", g.id);
+        if (!alertFingerprints.current.has(k)) {
+          alertFingerprints.current.add(k);
+          fires.push({
+            type: "golive",
+            severity: "moyenne",
+            title: `Go Live à risque — checklist ${g.checklistCompletion}%`,
+            message: `Décision ${g.verdict} malgré checklist incomplète (décideur : ${g.decider})`,
+            entityId: g.id,
+          });
+        }
+      }
+    }
+
+    // Injection des alertes détectées
+    if (fires.length) {
+      setAlerts((prev) => {
+        const next = [...prev];
+        for (const f of fires) {
+          const dup = next.some(
+            (a) => a.entityId === f.entityId && a.title === f.title,
+          );
+          if (dup) continue;
+          next.unshift({
+            id: `AL-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            type: f.type,
+            severity: f.severity === "info" ? "basse" : (f.severity as Severity),
+            title: f.title,
+            message: f.message,
+            entityId: f.entityId,
+            read: false,
+            createdAt: now(),
+          });
+        }
+        return next;
+      });
+    }
+  }, [tests, defects, campaigns, products, goLiveDecisions]);
+
+  /*  4.3  Valeur dérivée & Mutations -------------------------------------  */
+
+  const value = useMemo<Store>(() => {
+    const pushAudit = (actor: string, action: string, entity: string, detail: string) =>
+      setAudit((prev) => [
+        { id: `AU-${Date.now()}`, actor, action, entity, detail, at: now() },
+        ...prev,
+      ]);
+
+    const asActor = (fallback: string) => currentUser?.name ?? fallback;
+
+    return {
+      /* États -----------------------------------------------------------  */
+      products,
+      features,
+      campaigns,
+      tests,
+      defects,
+      projects,
+      releases,
+      requirements,
+      watchPoints,
+      goLiveDecisions,
+      goLiveChecklist,
+      alerts,
+      audit,
+      rules,
+      users,
+      currentUser,
+
+      /* Session / Auth -----------------------------------------------  */
+      login: (email, password) => {
+        const match = users.find(
+          (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.active,
+        );
+        if (!match) return { ok: false, error: "Aucun compte actif avec cet e-mail." };
+        if (password !== "demo") return { ok: false, error: "Mot de passe invalide." };
+        const user = { id: match.id, name: match.name, email: match.email, role: match.role };
+        setCurrentUser(user);
+        saveSession(user);
+        return { ok: true, user };
+      },
+      logout: () => {
+        setCurrentUser(null);
+        saveSession(null);
+      },
+
+      /* Produits / Projets / Features --------------------------------  */
+      addProduct: (p) => {
+        const id = `p-${Date.now()}`;
         setProducts((prev) => [
           ...prev,
           {
             ...p,
-            id: `p-${Date.now()}`,
+            id,
             lastUpdate: today(),
             breakdown: {
               results: p.score,
@@ -148,12 +666,68 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
               critical: p.score,
               incidents: p.score,
               nonFunctional: p.score,
+              testability: p.score,
+              qualityControl: p.score,
             },
           },
-        ]),
-      addFeature: (f) => setFeatures((prev) => [...prev, { ...f, id: `f-${Date.now()}` }]),
+        ]);
+        return id;
+      },
+      updateProduct: (id, patch) =>
+        setProducts((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, ...patch, lastUpdate: today() } : p)),
+        ),
+      deleteProduct: (id) => {
+        setProducts((prev) => prev.filter((p) => p.id !== id));
+        setFeatures((prev) => prev.filter((f) => f.productId !== id));
+        setProjects((prev) => prev.filter((p) => p.productId !== id));
+        setCampaigns((prev) => prev.filter((c) => c.productId !== id));
+        setDefects((prev) => prev.filter((d) => d.productId !== id));
+        setRequirements((prev) => prev.filter((r) => r.productId !== id));
+        pushAudit(asActor("Système"), "Produit supprimé", id, "—");
+      },
+      addProject: (p) => {
+        const id = `pr-${Date.now()}`;
+        setProjects((prev) => [...prev, { ...p, id }]);
+        return id;
+      },
+      updateProject: (id, patch) =>
+        setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p))),
+      deleteProject: (id) => {
+        setProjects((prev) => prev.filter((p) => p.id !== id));
+        setCampaigns((prev) => prev.filter((c) => c.projectId !== id));
+        setReleases((prev) => prev.filter((r) => r.projectId !== id));
+        pushAudit(asActor("Système"), "Projet supprimé", id, "—");
+      },
+      addFeature: (f) => {
+        const id = `f-${Date.now()}`;
+        setFeatures((prev) => [...prev, { ...f, id }]);
+        return id;
+      },
       updateFeature: (id, patch) =>
         setFeatures((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f))),
+      deleteFeature: (id) => {
+        setFeatures((prev) => prev.filter((f) => f.id !== id));
+        setTests((prev) => prev.filter((t) => t.featureId !== id));
+        setDefects((prev) => prev.filter((d) => d.featureId !== id));
+      },
+
+      /* Releases -----------------------------------------------------  */
+      addRelease: (r) => {
+        const id = `rel-${Date.now()}`;
+        setReleases((prev) => [...prev, { ...r, id }]);
+        return id;
+      },
+      updateRelease: (id, patch) =>
+        setReleases((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r))),
+      setReleaseStatus: (id, status) => {
+        setReleases((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, status } : r)),
+        );
+        pushAudit(asActor("Système"), "Statut Release", id, `→ ${status}`);
+      },
+
+      /* Campagnes & Tests --------------------------------------------  */
       addCampaign: (c, cloneFrom) => {
         const id = `c-${Date.now()}`;
         setCampaigns((prev) => [...prev, { ...c, id }]);
@@ -175,21 +749,53 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
             return [...prev, ...clones];
           });
         }
-        pushAudit(c.owner, "Campagne créée", id, cloneFrom ? `Tests clonés depuis ${cloneFrom}` : c.name);
+        pushAudit(
+          asActor(c.owner),
+          "Campagne créée",
+          id,
+          cloneFrom ? `Tests clonés depuis ${cloneFrom}` : c.name,
+        );
         return id;
       },
       updateCampaign: (id, patch) =>
         setCampaigns((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c))),
+      deleteCampaign: (id) => {
+        setCampaigns((prev) => prev.filter((c) => c.id !== id));
+        setTests((prev) => prev.filter((t) => t.campaignId !== id));
+        pushAudit(asActor("Système"), "Campagne supprimée", id, "—");
+      },
+      addTestCase: (t) => {
+        const id = `T-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        setTests((prev) => [
+          ...prev,
+          {
+            ...t,
+            id,
+            verdict: t.verdict ?? ("NOT_RUN" as Verdict),
+            observed: "",
+            comment: "",
+            evidence: [],
+          },
+        ]);
+        pushAudit(asActor(t.tester ?? "Système"), "Cas de test créé", id, t.name);
+        return id;
+      },
       updateTest: (id, patch) => {
         setTests((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
         if (patch.verdict) {
-          pushAudit(patch.tester ?? "Système", "Verdict enregistré", id, patch.verdict);
+          pushAudit(asActor(patch.tester ?? "Système"), "Verdict enregistré", id, patch.verdict);
         }
       },
+      deleteTest: (id) => {
+        setTests((prev) => prev.filter((t) => t.id !== id));
+        pushAudit(asActor("Système"), "Cas de test supprimé", id, "—");
+      },
+
+      /* Anomalies & Watch points -------------------------------------  */
       addDefect: (d) => {
         const id = `ANO-${2852 + defects.length}`;
         setDefects((prev) => [...prev, { ...d, id }]);
-        pushAudit(d.reporter, "Anomalie créée", id, d.title);
+        pushAudit(asActor(d.reporter), "Anomalie créée", id, d.title);
         return id;
       },
       updateDefect: (id, patch, auditDetail) => {
@@ -197,7 +803,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
           const before = prev.find((x) => x.id === id);
           if (before && patch.status && patch.status !== before.status) {
             pushAudit(
-              patch.assignee ?? before.assignee,
+              asActor(patch.assignee ?? before.assignee),
               "Statut anomalie",
               id,
               auditDetail ?? `${before.status} → ${patch.status}`,
@@ -209,17 +815,28 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       addWatchPoint: (w) => {
         const id = `WP-${String(watchPoints.length + 1).padStart(2, "0")}-${Date.now() % 1000}`;
         setWatchPoints((prev) => [{ ...w, id, createdAt: today() }, ...prev]);
-        pushAudit(w.owner, "Point à surveiller créé", id, w.title);
+        pushAudit(asActor(w.owner), "Point à surveiller créé", id, w.title);
       },
       updateWatchPoint: (id, patch) =>
         setWatchPoints((prev) => prev.map((w) => (w.id === id ? { ...w, ...patch } : w))),
+      deleteDefect: (id) => {
+        setDefects((prev) => prev.filter((d) => d.id !== id));
+        pushAudit(asActor("Système"), "Anomalie supprimée", id, "—");
+      },
+      deleteWatchPoint: (id) => {
+        setWatchPoints((prev) => prev.filter((w) => w.id !== id));
+        pushAudit(asActor("Système"), "Point à surveiller supprimé", id, "—");
+      },
+
+      /* Exigences & Go Live ------------------------------------------  */
       addRequirement: (r) =>
-        setRequirements((prev) => [
-          ...prev,
-          { ...r, id: `REQ-${100 + prev.length + 1}` },
-        ]),
+        setRequirements((prev) => [...prev, { ...r, id: `REQ-${100 + prev.length + 1}` }]),
       updateRequirement: (id, patch) =>
         setRequirements((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r))),
+      deleteRequirement: (id) => {
+        setRequirements((prev) => prev.filter((r) => r.id !== id));
+        pushAudit(asActor("Système"), "Exigence supprimée", id, "—");
+      },
       toggleChecklistItem: (releaseId, itemId) =>
         setGoLiveChecklist((prev) => ({
           ...prev,
@@ -252,18 +869,57 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
           `${verdict} — checklist ${completion} %`,
         );
       },
+
+      /* Alertes / Admin / Référentiel --------------------------------  */
       markAlertRead: (id) =>
         setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, read: true } : a))),
       markAllAlertsRead: () => setAlerts((prev) => prev.map((a) => ({ ...a, read: true }))),
+      pushAlert: (a) =>
+        setAlerts((prev) => [
+          { id: `AL-${Date.now()}`, ...a, read: false, createdAt: now() },
+          ...prev,
+        ]),
       updateUserRole: (id, role) => {
         setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
-        pushAudit("Administrateur", "Rôle modifié", id, role);
+        pushAudit(asActor("Administrateur"), "Rôle modifié", id, role);
+      },
+      addUser: (u) => {
+        const id = `user-${Date.now()}`;
+        setUsers((prev) => [...prev, { id, ...u }]);
+        pushAudit(asActor("Administrateur"), "Utilisateur créé", id, u.name);
+        return id;
       },
       toggleUserActive: (id) =>
         setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, active: !u.active } : u))),
       updateRule: (id, patch) =>
         setRules((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r))),
+      deleteRule: (id) => {
+        setRules((prev) => prev.filter((r) => r.id !== id));
+        pushAudit(asActor("Système"), "Règle supprimée", id, "—");
+      },
+
+      /* Audit & Reset ------------------------------------------------  */
       logAudit: pushAudit,
+      resetAllData: () => {
+        const fresh = defaultSnapshot();
+        setProducts(fresh.products);
+        setFeatures(fresh.features);
+        setCampaigns(fresh.campaigns);
+        setTests(fresh.tests);
+        setDefects(fresh.defects);
+        setProjects(fresh.projects);
+        setReleases(fresh.releases);
+        setRequirements(fresh.requirements);
+        setWatchPoints(fresh.watchPoints);
+        setGoLiveDecisions(fresh.goLiveDecisions);
+        setGoLiveChecklist(fresh.goLiveChecklist);
+        setAlerts(fresh.alerts);
+        setAudit(fresh.audit);
+        setRules(fresh.rules);
+        setUsers(fresh.users);
+        saveSnapshot(fresh);
+        pushAudit(asActor("Administrateur"), "Reset global", "—", "Données démo réinitialisées");
+      },
     };
   }, [
     products,
@@ -281,18 +937,24 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
     audit,
     rules,
     users,
+    currentUser,
   ]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 
+/* -------------------------------------------------------------------------- */
+/*  5. HOOKS & SÉLECTEURS DÉRIVÉS                                              */
+/* -------------------------------------------------------------------------- */
+
+/** Hook principal pour accéder au store. */
 export function useStore() {
   const ctx = useContext(StoreContext);
   if (!ctx) throw new Error("useStore must be used inside DhiStoreProvider");
   return ctx;
 }
 
-/** Statistiques d'une campagne dérivées de ses tests. */
+/** Agrège les stats d'une campagne depuis ses cas de test. */
 export function campaignStats(tests: TestCase[], campaignId: string) {
   const list = tests.filter((t) => t.campaignId === campaignId);
   const total = list.length;
@@ -300,9 +962,7 @@ export function campaignStats(tests: TestCase[], campaignId: string) {
   const notApplicable = list.filter((t) => t.verdict === "NOT_APPLICABLE").length;
   const failed = list.filter((t) => t.verdict === "FAIL").length;
   const blocked = list.filter((t) => t.verdict === "BLOCKED").length;
-  const passedWithReservation = list.filter(
-    (t) => t.verdict === "PASS_WITH_RESERVATION",
-  ).length;
+  const passedWithReservation = list.filter((t) => t.verdict === "PASS_WITH_RESERVATION").length;
   const passed = list.filter((t) => t.verdict === "PASS").length;
   const applicable = total - notApplicable;
   const executed = applicable - notRun;
@@ -322,13 +982,26 @@ export function campaignStats(tests: TestCase[], campaignId: string) {
   };
 }
 
+/** Calcule le score pondéré CDC Q = f(R,C,K,I,NF,T,CQ). */
 export function productScore(p: Product) {
   const b = p.breakdown;
   return Math.round(
-    b.results * 0.3 + b.coverage * 0.25 + b.critical * 0.2 + b.incidents * 0.15 + b.nonFunctional * 0.1,
+    b.results * SCORE_WEIGHTS.results +
+      b.coverage * SCORE_WEIGHTS.coverage +
+      b.critical * SCORE_WEIGHTS.critical +
+      b.incidents * SCORE_WEIGHTS.incidents +
+      b.nonFunctional * SCORE_WEIGHTS.nonFunctional +
+      b.testability * SCORE_WEIGHTS.testability +
+      b.qualityControl * SCORE_WEIGHTS.qualityControl,
   );
 }
 
+/** Retourne les campagnes rattachées à un projet. */
+export function projectCampaigns(campaigns: Campaign[], projectId: string) {
+  return campaigns.filter((c) => c.projectId === projectId);
+}
+
+/** Synthèse santé produit. */
 export function productHealth(p: Product) {
   return healthOf(productScore(p));
 }

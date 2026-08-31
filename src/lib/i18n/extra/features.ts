@@ -1,0 +1,96 @@
+export const featuresDict = {
+  fr: {
+    pages: {
+      features: {
+        title: "Registre des fonctionnalités",
+        subtitle:
+          "Fonctionnalités, criticité et couverture de tests — Vue inverse Exigence ← Fonctionnalité ← Tests",
+        new_feature: "Nouvelle fonctionnalité",
+        feature: "fonctionnalité",
+        name_placeholder: "Ex. Authentification",
+        types: "types",
+        coverage_label: "Types de tests couvrant cette fonctionnalité",
+        requirements_satisfied: "Exigences satisfaites par cette fonctionnalité",
+        selected: "sélectionnée",
+        no_requirement_for_product:
+          "Aucune exigence pour ce produit. Créez-en d'abord dans la page Exigences.",
+        name_required: "Le nom de la fonctionnalité est requis.",
+        created: "ajoutée",
+        updated: "mise à jour",
+        deleted: "supprimée",
+        all_products: "Tous les produits",
+        all_criticites: "Toutes criticités",
+        requirement: "exigence",
+        tests: "tests",
+        linked_requirements: "Exigences liées",
+        test_cases: "Cas de test",
+        tests_covered: "Tests couverts",
+        coverage: "Couverture",
+        actions: "Actions",
+        cases: "cas",
+        edit_feature: "Modifier la fonctionnalité",
+        delete_feature: "Supprimer la fonctionnalité",
+        traceability_title:
+          "Vue de traçabilité inverse : Fonctionnalité → Exigences & Cas de test",
+        no_features: "Aucune fonctionnalité pour les filtres sélectionnés.",
+        no_description: "Sans description",
+        satisfied_requirements: "← Exigences satisfaites",
+        linked_test_cases: "→ Cas de test rattachés",
+        no_requirement_or_test:
+          "Aucune exigence ni test rattaché à cette fonctionnalité.",
+        complete: "Compléter",
+        delete_feature_confirmation: "Supprimer cette fonctionnalité ?",
+        delete_feature_description_prefix: "La fonctionnalité",
+        delete_feature_description_suffix:
+          "sera définitivement supprimée, ainsi que tous ses cas de tests et anomalies rattachés. Les liens avec les exigences seront nettoyés.",
+      },
+    },
+  },
+  en: {
+    pages: {
+      features: {
+        title: "Feature Register",
+        subtitle:
+          "Features, criticality and test coverage — Reverse view Requirement ← Feature ← Tests",
+        new_feature: "New feature",
+        feature: "feature",
+        name_placeholder: "e.g. Authentication",
+        types: "types",
+        coverage_label: "Test types covering this feature",
+        requirements_satisfied: "Requirements satisfied by this feature",
+        selected: "selected",
+        no_requirement_for_product:
+          "No requirements for this product. Create them first in the Requirements page.",
+        name_required: "The feature name is required.",
+        created: "added",
+        updated: "updated",
+        deleted: "deleted",
+        all_products: "All products",
+        all_criticites: "All criticalities",
+        requirement: "requirement",
+        tests: "tests",
+        linked_requirements: "Linked requirements",
+        test_cases: "Test cases",
+        tests_covered: "Tests covered",
+        coverage: "Coverage",
+        actions: "Actions",
+        cases: "cases",
+        edit_feature: "Edit feature",
+        delete_feature: "Delete feature",
+        traceability_title:
+          "Reverse traceability view: Feature → Requirements & Test cases",
+        no_features: "No features for the selected filters.",
+        no_description: "No description",
+        satisfied_requirements: "← Requirements satisfied",
+        linked_test_cases: "→ Linked test cases",
+        no_requirement_or_test:
+          "No requirement or test linked to this feature.",
+        complete: "Complete",
+        delete_feature_confirmation: "Delete this feature?",
+        delete_feature_description_prefix: "The feature",
+        delete_feature_description_suffix:
+          "will be permanently deleted, along with all its linked test cases and defects. Links to requirements will be cleaned up.",
+      },
+    },
+  },
+};
