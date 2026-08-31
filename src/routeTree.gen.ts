@@ -15,18 +15,23 @@ import { Route as AlertesRouteImport } from './routes/alertes'
 import { Route as AnomaliesRouteImport } from './routes/anomalies'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as CampagnesRouteImport } from './routes/campagnes'
+import { Route as ControlesQualiteRouteImport } from './routes/controles-qualite'
 import { Route as CouvertureRouteImport } from './routes/couverture'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard-admin'
 import { Route as DashboardChefRouteImport } from './routes/dashboard-chef'
 import { Route as DashboardTesteurRouteImport } from './routes/dashboard-testeur'
+import { Route as DependancesRouteImport } from './routes/dependances'
 import { Route as ExigencesRouteImport } from './routes/exigences'
 import { Route as FonctionnalitesRouteImport } from './routes/fonctionnalites'
 import { Route as GoLiveRouteImport } from './routes/go-live'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as NonFonctionnelRouteImport } from './routes/non-fonctionnel'
 import { Route as PointsASurveillerRouteImport } from './routes/points-a-surveiller'
 import { Route as ProduitsRouteImport } from './routes/produits'
 import { Route as ProjetsRouteImport } from './routes/projets'
+import { Route as RapportsRouteImport } from './routes/rapports'
 import { Route as ReferentielsRouteImport } from './routes/referentiels'
+import { Route as ScenariosRouteImport } from './routes/scenarios'
 import { Route as AdministrationAjouterUtilisateurRouteImport } from './routes/administration.ajouter-utilisateur'
 import { Route as CampagnesCampaignIdRouteImport } from './routes/campagnes.$campaignId'
 import { Route as CampagnesAjouterRouteImport } from './routes/campagnes.ajouter'
@@ -64,6 +69,11 @@ const CampagnesRoute = CampagnesRouteImport.update({
   path: '/campagnes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ControlesQualiteRoute = ControlesQualiteRouteImport.update({
+  id: '/controles-qualite',
+  path: '/controles-qualite',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CouvertureRoute = CouvertureRouteImport.update({
   id: '/couverture',
   path: '/couverture',
@@ -82,6 +92,11 @@ const DashboardChefRoute = DashboardChefRouteImport.update({
 const DashboardTesteurRoute = DashboardTesteurRouteImport.update({
   id: '/dashboard-testeur',
   path: '/dashboard-testeur',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DependancesRoute = DependancesRouteImport.update({
+  id: '/dependances',
+  path: '/dependances',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExigencesRoute = ExigencesRouteImport.update({
@@ -104,6 +119,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NonFonctionnelRoute = NonFonctionnelRouteImport.update({
+  id: '/non-fonctionnel',
+  path: '/non-fonctionnel',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PointsASurveillerRoute = PointsASurveillerRouteImport.update({
   id: '/points-a-surveiller',
   path: '/points-a-surveiller',
@@ -119,9 +139,19 @@ const ProjetsRoute = ProjetsRouteImport.update({
   path: '/projets',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RapportsRoute = RapportsRouteImport.update({
+  id: '/rapports',
+  path: '/rapports',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReferentielsRoute = ReferentielsRouteImport.update({
   id: '/referentiels',
   path: '/referentiels',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScenariosRoute = ScenariosRouteImport.update({
+  id: '/scenarios',
+  path: '/scenarios',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdministrationAjouterUtilisateurRoute =
@@ -163,18 +193,23 @@ export interface FileRoutesByFullPath {
   '/anomalies': typeof AnomaliesRoute
   '/audit': typeof AuditRoute
   '/campagnes': typeof CampagnesRouteWithChildren
+  '/controles-qualite': typeof ControlesQualiteRoute
   '/couverture': typeof CouvertureRoute
   '/dashboard-admin': typeof DashboardAdminRoute
   '/dashboard-chef': typeof DashboardChefRoute
   '/dashboard-testeur': typeof DashboardTesteurRoute
+  '/dependances': typeof DependancesRoute
   '/exigences': typeof ExigencesRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
   '/go-live': typeof GoLiveRoute
   '/login': typeof LoginRoute
+  '/non-fonctionnel': typeof NonFonctionnelRoute
   '/points-a-surveiller': typeof PointsASurveillerRoute
   '/produits': typeof ProduitsRouteWithChildren
   '/projets': typeof ProjetsRouteWithChildren
+  '/rapports': typeof RapportsRoute
   '/referentiels': typeof ReferentielsRoute
+  '/scenarios': typeof ScenariosRoute
   '/administration/ajouter-utilisateur': typeof AdministrationAjouterUtilisateurRoute
   '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
   '/campagnes/ajouter': typeof CampagnesAjouterRoute
@@ -189,18 +224,23 @@ export interface FileRoutesByTo {
   '/anomalies': typeof AnomaliesRoute
   '/audit': typeof AuditRoute
   '/campagnes': typeof CampagnesRouteWithChildren
+  '/controles-qualite': typeof ControlesQualiteRoute
   '/couverture': typeof CouvertureRoute
   '/dashboard-admin': typeof DashboardAdminRoute
   '/dashboard-chef': typeof DashboardChefRoute
   '/dashboard-testeur': typeof DashboardTesteurRoute
+  '/dependances': typeof DependancesRoute
   '/exigences': typeof ExigencesRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
   '/go-live': typeof GoLiveRoute
   '/login': typeof LoginRoute
+  '/non-fonctionnel': typeof NonFonctionnelRoute
   '/points-a-surveiller': typeof PointsASurveillerRoute
   '/produits': typeof ProduitsRouteWithChildren
   '/projets': typeof ProjetsRouteWithChildren
+  '/rapports': typeof RapportsRoute
   '/referentiels': typeof ReferentielsRoute
+  '/scenarios': typeof ScenariosRoute
   '/administration/ajouter-utilisateur': typeof AdministrationAjouterUtilisateurRoute
   '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
   '/campagnes/ajouter': typeof CampagnesAjouterRoute
@@ -216,18 +256,23 @@ export interface FileRoutesById {
   '/anomalies': typeof AnomaliesRoute
   '/audit': typeof AuditRoute
   '/campagnes': typeof CampagnesRouteWithChildren
+  '/controles-qualite': typeof ControlesQualiteRoute
   '/couverture': typeof CouvertureRoute
   '/dashboard-admin': typeof DashboardAdminRoute
   '/dashboard-chef': typeof DashboardChefRoute
   '/dashboard-testeur': typeof DashboardTesteurRoute
+  '/dependances': typeof DependancesRoute
   '/exigences': typeof ExigencesRoute
   '/fonctionnalites': typeof FonctionnalitesRoute
   '/go-live': typeof GoLiveRoute
   '/login': typeof LoginRoute
+  '/non-fonctionnel': typeof NonFonctionnelRoute
   '/points-a-surveiller': typeof PointsASurveillerRoute
   '/produits': typeof ProduitsRouteWithChildren
   '/projets': typeof ProjetsRouteWithChildren
+  '/rapports': typeof RapportsRoute
   '/referentiels': typeof ReferentielsRoute
+  '/scenarios': typeof ScenariosRoute
   '/administration/ajouter-utilisateur': typeof AdministrationAjouterUtilisateurRoute
   '/campagnes/$campaignId': typeof CampagnesCampaignIdRoute
   '/campagnes/ajouter': typeof CampagnesAjouterRoute
@@ -244,18 +289,23 @@ export interface FileRouteTypes {
     | '/anomalies'
     | '/audit'
     | '/campagnes'
+    | '/controles-qualite'
     | '/couverture'
     | '/dashboard-admin'
     | '/dashboard-chef'
     | '/dashboard-testeur'
+    | '/dependances'
     | '/exigences'
     | '/fonctionnalites'
     | '/go-live'
     | '/login'
+    | '/non-fonctionnel'
     | '/points-a-surveiller'
     | '/produits'
     | '/projets'
+    | '/rapports'
     | '/referentiels'
+    | '/scenarios'
     | '/administration/ajouter-utilisateur'
     | '/campagnes/$campaignId'
     | '/campagnes/ajouter'
@@ -270,18 +320,23 @@ export interface FileRouteTypes {
     | '/anomalies'
     | '/audit'
     | '/campagnes'
+    | '/controles-qualite'
     | '/couverture'
     | '/dashboard-admin'
     | '/dashboard-chef'
     | '/dashboard-testeur'
+    | '/dependances'
     | '/exigences'
     | '/fonctionnalites'
     | '/go-live'
     | '/login'
+    | '/non-fonctionnel'
     | '/points-a-surveiller'
     | '/produits'
     | '/projets'
+    | '/rapports'
     | '/referentiels'
+    | '/scenarios'
     | '/administration/ajouter-utilisateur'
     | '/campagnes/$campaignId'
     | '/campagnes/ajouter'
@@ -296,18 +351,23 @@ export interface FileRouteTypes {
     | '/anomalies'
     | '/audit'
     | '/campagnes'
+    | '/controles-qualite'
     | '/couverture'
     | '/dashboard-admin'
     | '/dashboard-chef'
     | '/dashboard-testeur'
+    | '/dependances'
     | '/exigences'
     | '/fonctionnalites'
     | '/go-live'
     | '/login'
+    | '/non-fonctionnel'
     | '/points-a-surveiller'
     | '/produits'
     | '/projets'
+    | '/rapports'
     | '/referentiels'
+    | '/scenarios'
     | '/administration/ajouter-utilisateur'
     | '/campagnes/$campaignId'
     | '/campagnes/ajouter'
@@ -323,18 +383,23 @@ export interface RootRouteChildren {
   AnomaliesRoute: typeof AnomaliesRoute
   AuditRoute: typeof AuditRoute
   CampagnesRoute: typeof CampagnesRouteWithChildren
+  ControlesQualiteRoute: typeof ControlesQualiteRoute
   CouvertureRoute: typeof CouvertureRoute
   DashboardAdminRoute: typeof DashboardAdminRoute
   DashboardChefRoute: typeof DashboardChefRoute
   DashboardTesteurRoute: typeof DashboardTesteurRoute
+  DependancesRoute: typeof DependancesRoute
   ExigencesRoute: typeof ExigencesRoute
   FonctionnalitesRoute: typeof FonctionnalitesRoute
   GoLiveRoute: typeof GoLiveRoute
   LoginRoute: typeof LoginRoute
+  NonFonctionnelRoute: typeof NonFonctionnelRoute
   PointsASurveillerRoute: typeof PointsASurveillerRoute
   ProduitsRoute: typeof ProduitsRouteWithChildren
   ProjetsRoute: typeof ProjetsRouteWithChildren
+  RapportsRoute: typeof RapportsRoute
   ReferentielsRoute: typeof ReferentielsRoute
+  ScenariosRoute: typeof ScenariosRoute
   ExecutionTestIdRoute: typeof ExecutionTestIdRoute
 }
 
@@ -382,6 +447,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampagnesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/controles-qualite': {
+      id: '/controles-qualite'
+      path: '/controles-qualite'
+      fullPath: '/controles-qualite'
+      preLoaderRoute: typeof ControlesQualiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/couverture': {
       id: '/couverture'
       path: '/couverture'
@@ -408,6 +480,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard-testeur'
       fullPath: '/dashboard-testeur'
       preLoaderRoute: typeof DashboardTesteurRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dependances': {
+      id: '/dependances'
+      path: '/dependances'
+      fullPath: '/dependances'
+      preLoaderRoute: typeof DependancesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/exigences': {
@@ -438,6 +517,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/non-fonctionnel': {
+      id: '/non-fonctionnel'
+      path: '/non-fonctionnel'
+      fullPath: '/non-fonctionnel'
+      preLoaderRoute: typeof NonFonctionnelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/points-a-surveiller': {
       id: '/points-a-surveiller'
       path: '/points-a-surveiller'
@@ -459,11 +545,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjetsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rapports': {
+      id: '/rapports'
+      path: '/rapports'
+      fullPath: '/rapports'
+      preLoaderRoute: typeof RapportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/referentiels': {
       id: '/referentiels'
       path: '/referentiels'
       fullPath: '/referentiels'
       preLoaderRoute: typeof ReferentielsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scenarios': {
+      id: '/scenarios'
+      path: '/scenarios'
+      fullPath: '/scenarios'
+      preLoaderRoute: typeof ScenariosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/administration/ajouter-utilisateur': {
@@ -567,18 +667,23 @@ const rootRouteChildren: RootRouteChildren = {
   AnomaliesRoute: AnomaliesRoute,
   AuditRoute: AuditRoute,
   CampagnesRoute: CampagnesRouteWithChildren,
+  ControlesQualiteRoute: ControlesQualiteRoute,
   CouvertureRoute: CouvertureRoute,
   DashboardAdminRoute: DashboardAdminRoute,
   DashboardChefRoute: DashboardChefRoute,
   DashboardTesteurRoute: DashboardTesteurRoute,
+  DependancesRoute: DependancesRoute,
   ExigencesRoute: ExigencesRoute,
   FonctionnalitesRoute: FonctionnalitesRoute,
   GoLiveRoute: GoLiveRoute,
   LoginRoute: LoginRoute,
+  NonFonctionnelRoute: NonFonctionnelRoute,
   PointsASurveillerRoute: PointsASurveillerRoute,
   ProduitsRoute: ProduitsRouteWithChildren,
   ProjetsRoute: ProjetsRouteWithChildren,
+  RapportsRoute: RapportsRoute,
   ReferentielsRoute: ReferentielsRoute,
+  ScenariosRoute: ScenariosRoute,
   ExecutionTestIdRoute: ExecutionTestIdRoute,
 }
 export const routeTree = rootRouteImport

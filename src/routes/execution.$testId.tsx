@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  CheckCircle2,
   FileText,
   Image as ImageIcon,
   Plus,
@@ -17,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
-import { useStore } from "@/lib/dhi-store";
+import { useStore, autoVerdict } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 import { VERDICT_LABEL, type TestCase, type Verdict } from "@/lib/dhi-data";
 import { EXECUTION_TABS } from "@/lib/dhi-nav";
@@ -103,39 +104,58 @@ function ExpectedResultsPanel({ expected }: { expected: TestCase["expected"] }) 
 }
 
 function MeasuresPanel({
-  expectedValue,
+  test,
   measuredValue,
-  verdict,
   onMeasuredValueChange,
 }: {
-  expectedValue: string | undefined;
+  test: TestCase;
   measuredValue: string;
-  verdict: Verdict;
   onMeasuredValueChange: (value: string) => void;
 }) {
   const { t } = useI18n();
-  if (!expectedValue) return null;
+  const isMeasurable = test.isMeasurable || Boolean(test.expectedValue && test.metric);
+  if (!isMeasurable) return null;
+  const computed = autoVerdict({ ...test, measuredValue: measuredValue || undefined });
   return (
     <Panel title={t("pages.execution_detail.mesures")}>
       <dl className="grid gap-2 text-sm">
+        {test.metric && (
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">{t("pages.execution_detail.mesure")}</dt>
+            <dd className="font-medium">{test.metric}</dd>
+          </div>
+        )}
         <div className="flex justify-between">
           <dt className="text-muted-foreground">{t("pages.execution_detail.valeur_attendue")}</dt>
-          <dd className="num font-medium">{expectedValue}</dd>
+          <dd className="num font-medium">
+            {test.expectedValue}
+            {test.unit ? ` ${test.unit}` : ""}
+            {test.operator ? ` (${test.operator})` : ""}
+          </dd>
         </div>
         <div className="flex items-center justify-between gap-4">
           <dt className="text-muted-foreground">{t("pages.execution_detail.valeur_observee")}</dt>
-          <input
-            className="num w-32 rounded-md border border-input bg-background px-2 py-1 text-right text-sm"
-            value={measuredValue}
-            onChange={(e) => onMeasuredValueChange(e.target.value)}
-            placeholder={t("pages.execution_detail.example_unit_placeholder")}
-          />
+          <div className="flex items-center gap-2">
+            <input
+              className="num w-32 rounded-md border border-input bg-background px-2 py-1 text-right text-sm"
+              value={measuredValue}
+              onChange={(e) => onMeasuredValueChange(e.target.value)}
+              placeholder={t("pages.execution_detail.example_unit_placeholder")}
+            />
+            {test.unit && <span className="text-xs text-muted-foreground">{test.unit}</span>}
+          </div>
         </div>
       </dl>
-      {measuredValue && verdict === "FAIL" ? (
-        <p className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-danger-soft px-2 py-1 text-xs font-semibold text-danger">
-          <XCircle className="size-3.5" /> {t("pages.execution_detail.non_conforme")}
-        </p>
+      {measuredValue ? (
+        computed === "FAIL" ? (
+          <p className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-danger-soft px-2 py-1 text-xs font-semibold text-danger">
+            <XCircle className="size-3.5" /> {t("pages.execution_detail.non_conforme")} · verdict auto : FAIL
+          </p>
+        ) : (
+          <p className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-success/10 px-2 py-1 text-xs font-semibold text-success">
+            <CheckCircle2 className="size-3.5" /> Conforme · verdict auto : PASS
+          </p>
+        )
       ) : null}
     </Panel>
   );
@@ -378,8 +398,11 @@ function ExecutionPage() {
 
   const save = () => {
     const now = new Date();
+    const isMeasurable = test.isMeasurable || Boolean(test.expectedValue && test.metric);
+    const auto = isMeasurable ? autoVerdict({ ...test, measuredValue: current.measuredValue || undefined }) : null;
+    const verdict = auto ?? current.verdict;
     updateTest(test.id, {
-      verdict: current.verdict,
+      verdict,
       observed: current.observed,
       comment: current.comment,
       measuredValue: current.measuredValue || undefined,
@@ -389,9 +412,11 @@ function ExecutionPage() {
     });
     setDraft(null);
     toast.success(
-      t("pages.execution_detail.result_saved")
-        .replace("{id}", test.id)
-        .replace("{verdict}", current.verdict),
+      auto
+        ? `${t("pages.execution_detail.result_saved")} · verdict auto ${auto}`
+        : t("pages.execution_detail.result_saved")
+            .replace("{id}", test.id)
+            .replace("{verdict}", current.verdict),
     );
   };
 
@@ -478,9 +503,8 @@ function ExecutionPage() {
           <StepsListPanel steps={test.steps} />
           <ExpectedResultsPanel expected={test.expected} />
           <MeasuresPanel
-            expectedValue={test.expectedValue}
+            test={test}
             measuredValue={current.measuredValue}
-            verdict={current.verdict}
             onMeasuredValueChange={(value) =>
               setDraft((d) => ({ ...(d ?? current), measuredValue: value }))
             }

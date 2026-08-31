@@ -149,14 +149,59 @@ interface DefectDetailDialogProps {
   setSelected: (d: Defect | null) => void;
   features: ReturnType<typeof useStore>["features"];
   updateDefect: ReturnType<typeof useStore>["updateDefect"];
+  campaigns: ReturnType<typeof useStore>["campaigns"];
+  addTestCase: ReturnType<typeof useStore>["addTestCase"];
+  addRequirement: ReturnType<typeof useStore>["addRequirement"];
+  addWatchPoint: ReturnType<typeof useStore>["addWatchPoint"];
 }
 function DefectDetailDialog({
   selected,
   setSelected,
   features,
   updateDefect,
+  campaigns,
+  addTestCase,
+  addRequirement,
+  addWatchPoint,
 }: DefectDetailDialogProps) {
   const { t } = useI18n();
+  const capitalizeTest = (d: Defect) => {
+    const campaign = campaigns.find((c) => c.productId === d.productId);
+    const id = addTestCase({
+      campaignId: campaign?.id ?? "",
+      featureId: d.featureId,
+      name: `Régression : ${d.title}`,
+      criticality: d.severity === "haute" ? "critique" : "haute",
+      type: "regression",
+      preconditions: ["Reproduire le contexte de l'incident"],
+      steps: ["Reproduire le scénario de l'incident", "Vérifier que le correctif tient"],
+      expected: ["Comportement conforme après correctif", "Pas de régression sur le reste"],
+      regression: true,
+    });
+    toast.success(`Cas de test créé : ${id} — à rejouer en régression.`);
+  };
+  const capitalizeRequirement = (d: Defect) => {
+    addRequirement({
+      productId: d.productId,
+      title: `Exigence issue de l'incident : ${d.title}`,
+      description: d.description,
+      priority: d.severity === "haute" ? "critique" : "haute",
+      status: "brouillon",
+      featureIds: d.featureId ? [d.featureId] : [],
+    });
+    toast.success("Exigence créée à partir de l'incident.");
+  };
+  const capitalizeWatchPoint = (d: Defect) => {
+    addWatchPoint({
+      productId: d.productId,
+      title: `Surveillance : ${d.title}`,
+      description: d.description,
+      level: d.severity === "haute" ? "vigilance" : "info",
+      status: "ouvert",
+      owner: d.assignee,
+    });
+    toast.success("Point à surveiller créé depuis l'incident.");
+  };
   return (
     <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
       <DialogContent className="max-w-xl">
@@ -236,6 +281,32 @@ function DefectDetailDialog({
                 {t("pages.anomalies.regression_note")} : « {selected.title} » (version{" "}
                 {selected.version}).
               </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Transformer cet incident en amélioration continue :
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => capitalizeTest(selected)}
+                >
+                  <Plus className="size-3.5" /> Nouveau cas de test
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => capitalizeRequirement(selected)}
+                >
+                  <Plus className="size-3.5" /> Nouvelle exigence
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => capitalizeWatchPoint(selected)}
+                >
+                  <Plus className="size-3.5" /> Point à surveiller
+                </Button>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setSelected(null)}>
@@ -439,7 +510,17 @@ export const Route = createFileRoute("/anomalies")({
 });
 
 function DefectsPage() {
-  const { defects, products, features, addDefect, updateDefect } = useStore();
+  const {
+    defects,
+    products,
+    features,
+    campaigns,
+    addDefect,
+    updateDefect,
+    addTestCase,
+    addRequirement,
+    addWatchPoint,
+  } = useStore();
   const { t } = useI18n();
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState("all");
@@ -595,6 +676,10 @@ function DefectsPage() {
         setSelected={setSelected}
         features={features}
         updateDefect={updateDefect}
+        campaigns={campaigns}
+        addTestCase={addTestCase}
+        addRequirement={addRequirement}
+        addWatchPoint={addWatchPoint}
       />
 
       <CreateDefectDialog

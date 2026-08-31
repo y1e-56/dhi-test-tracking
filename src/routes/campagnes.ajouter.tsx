@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { PEOPLE, type CampaignStatus } from "@/lib/dhi-data";
 import { EXECUTION_TABS } from "@/lib/dhi-nav";
-import { campaignStats, useStore } from "@/lib/dhi-store";
+import { campaignStats, suggestRegressionTests, useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/campagnes/ajouter")({
@@ -35,8 +35,51 @@ export const Route = createFileRoute("/campagnes/ajouter")({
 const CAMPAIGN_TYPES = ["Recette", "Régression", "Sécurité", "Performance", "Exploratoire"];
 const ENVIRONMENTS = ["RECETTE", "PREPROD", "DEV", "PROD"];
 
+function SuggestionPanel({
+  sourceId,
+  tests,
+  features,
+  defects,
+  dependencies,
+}: {
+  sourceId: string;
+  tests: ReturnType<typeof useStore>["tests"];
+  features: ReturnType<typeof useStore>["features"];
+  defects: ReturnType<typeof useStore>["defects"];
+  dependencies: ReturnType<typeof useStore>["dependencies"];
+}) {
+  const suggestions = suggestRegressionTests(sourceId, tests, features, defects, dependencies);
+  return (
+    <div className="mt-4 rounded-xl border border-warning/40 bg-warning-soft p-4">
+      <p className="mb-2 text-sm font-semibold">
+        Sélection intelligente du rejeu ({suggestions.length} test(s) suggéré(s))
+      </p>
+      {suggestions.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Aucun test prioritaire détecté à rejouer sur cette campagne source.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {suggestions.map((s) => (
+            <li key={s.id} className="rounded-lg border border-border bg-card px-3 py-2 text-sm">
+              <span className="num font-medium">{s.id}</span> — {s.name}{" "}
+              <span className="text-xs uppercase text-muted-foreground">({s.criticality})</span>
+              <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
+                {s.reasons.map((r) => (
+                  <li key={r}>{r}</li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function CreateCampaignPage() {
-  const { campaigns, tests, products, projects, addCampaign } = useStore();
+  const { campaigns, tests, products, projects, features, defects, dependencies, addCampaign } =
+    useStore();
   const navigate = useNavigate();
   const { t } = useI18n();
 
@@ -318,21 +361,32 @@ function CreateCampaignPage() {
                 {t("pages.add_campaign.recreate_from_existing")}
               </label>
               {form.clone ? (
-                <Select
-                  value={form.cloneFrom}
-                  onValueChange={(v) => setForm((f) => ({ ...f, cloneFrom: v }))}
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {campaigns.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <>
+                  <Select
+                    value={form.cloneFrom}
+                    onValueChange={(v) => setForm((f) => ({ ...f, cloneFrom: v }))}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {campaigns.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {form.cloneFrom ? (
+                    <SuggestionPanel
+                      sourceId={form.cloneFrom}
+                      tests={tests}
+                      features={features}
+                      defects={defects}
+                      dependencies={dependencies}
+                    />
+                  ) : null}
+                </>
               ) : null}
             </div>
 

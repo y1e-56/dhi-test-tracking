@@ -126,6 +126,8 @@ export interface Campaign {
   testers: string[];
 }
 
+export type MeasurableOperator = "<" | "<=" | "=" | ">=" | ">";
+
 export interface TestCase {
   id: string;
   campaignId: string;
@@ -141,9 +143,16 @@ export interface TestCase {
   comment: string;
   expectedValue?: string | undefined;
   measuredValue?: string | undefined;
+  metric?: string | undefined;
+  unit?: string | undefined;
+  operator?: MeasurableOperator | undefined;
+  tolerance?: string | undefined;
+  isMeasurable?: boolean | undefined;
   tester?: string | undefined;
   executedAt?: string | undefined;
   duration?: string | undefined;
+  regression?: boolean | undefined;
+  scenarioId?: string | undefined;
   evidence: { id: string; name: string; size: string; kind: "image" | "log" | "video" }[];
 }
 
@@ -271,6 +280,91 @@ export interface PlatformUser {
   active: boolean;
 }
 
+/*  3.8  Référentiel de critères qualité (BF-010..013) -------------------  */
+
+export interface QualityCriterion {
+  id: string;
+  key: string;
+  label: string;
+  weight: number; // 0..1 pondération
+  blocking: boolean; // critère bloquant indépendant du poids
+  active: boolean;
+  scope: "global" | "product" | "project";
+}
+
+/*  3.9  Scénario de test (§6.8) : regroupe plusieurs cas de tests -------  */
+
+export interface Scenario {
+  id: string;
+  campaignId: string;
+  name: string;
+  description: string;
+  criticality: Criticality;
+  testIds: string[];
+  owner: string;
+}
+
+/*  3.10 Dépendances entre tests (§20 / BF-080) --------------------------  */
+
+export type DependencyKind =
+  | "before" // doit être exécuté avant
+  | "after" // doit être exécuté après
+  | "requires_success" // nécessite la réussite de
+  | "blocks" // bloque
+  | "depends_functionally";
+
+export interface TestDependency {
+  id: string;
+  fromTestId: string;
+  toTestId: string; // from doit être exécuté avant / bloque / dépend de to
+  kind: DependencyKind;
+  rationale: string;
+}
+
+/*  3.11 Règles par type de test (BF-040) --------------------------------  */
+
+export type RuleLevel = "obligatoire" | "recommandee" | "informative";
+
+export interface TestTypeRule {
+  id: string;
+  testType: TestType;
+  label: string;
+  level: RuleLevel;
+}
+
+/*  3.12 Contrôle qualité / audit périodique (§5 "Contrôle qualité") -----  */
+
+export interface QualityControl {
+  id: string;
+  productId: string;
+  title: string;
+  domain: string;
+  expected: string;
+  observed: string;
+  conform: boolean;
+  owner: string;
+  date: string;
+  status: "realise" | "encours" | "planifie";
+}
+
+/*  3.13 Pilotage du non-fonctionnel (perf, charge, sécurité, résilience)  */
+
+export type NFDomain = "performance" | "charge" | "securite" | "resilience";
+
+export interface NonFunctionalTest {
+  id: string;
+  productId: string;
+  title: string;
+  domain: NFDomain;
+  subType: string;
+  metric: string;
+  unit: string;
+  threshold: number;
+  operator: MeasurableOperator;
+  measured: number;
+  status: "planifie" | "realise" | "echoue";
+}
+
 /*  --------------------------------------------------------------------------  */
 /*  4.  LABELS & TRANSLATIONS (Record<Type, string>)                            */
 /*  --------------------------------------------------------------------------  */
@@ -347,6 +441,38 @@ export const TEST_TYPES: { id: TestType; label: string; category: TestCategory }
   { id: "conformite", label: "Conformité réglementaire", category: "speciaux" },
 ];
 
+/*  4.7  Dépendances de tests -------------------------------------------  */
+
+export const DEPENDENCY_LABEL: Record<DependencyKind, string> = {
+  before: "Doit être exécuté avant",
+  after: "Doit être exécuté après",
+  requires_success: "Nécessite la réussite de",
+  blocks: "Bloque",
+  depends_functionally: "Dépend fonctionnellement de",
+};
+
+export const RULE_LEVEL_LABEL: Record<RuleLevel, string> = {
+  obligatoire: "Obligatoire",
+  recommandee: "Recommandée",
+  informative: "Informative",
+};
+
+/*  4.13  Domaine non-fonctionnel -----------------------------------------  */
+
+export const NF_DOMAIN_LABEL: Record<NFDomain, string> = {
+  performance: "Performance",
+  charge: "Charge",
+  securite: "Sécurité",
+  resilience: "Résilience",
+};
+
+export const NF_DOMAIN_ICON_HINT: Record<NFDomain, string> = {
+  performance: "Temps de réponse, débit, latence",
+  charge: "Montée en charge, pics de trafic, capacité",
+  securite: "Authentification, injection, vulnérabilités",
+  resilience: "Reprise après sinistre, tolérance aux pannes",
+};
+
 /*  4.3  Anomalies --------------------------------------------------------  */
 
 export const DEFECT_STATUS_LABEL: Record<DefectStatus, string> = {
@@ -414,14 +540,14 @@ export const ROLE_LABEL: Record<AppRole, string> = {
 
 /* Pages accessibles par rôle */
 export const ROLE_PAGES: Record<AppRole, string[]> = {
-  admin: ["/dashboard-admin", "/alertes", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/administration", "/administration/ajouter-utilisateur", "/audit"],
-  qa_lead: ["/", "/alertes", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/audit"],
-  quality_manager: ["/", "/alertes", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/audit"],
-  product_owner: ["/", "/produits", "/projets", "/fonctionnalites", "/exigences", "/go-live", "/points-a-surveiller", "/audit"],
-  chef_projet: ["/dashboard-chef", "/produits", "/projets", "/fonctionnalites", "/exigences", "/campagnes", "/campagnes/ajouter", "/go-live", "/audit"],
-  testeur: ["/dashboard-testeur", "/campagnes", "/anomalies", "/audit"],
-  approver: ["/", "/go-live", "/points-a-surveiller", "/audit"],
-  lecteur: ["/", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/go-live", "/points-a-surveiller", "/audit"],
+  admin: ["/dashboard-admin", "/alertes", "/non-fonctionnel", "/rapports", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/scenarios", "/dependances", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/controles-qualite", "/administration", "/administration/ajouter-utilisateur", "/audit"],
+  qa_lead: ["/", "/alertes", "/non-fonctionnel", "/rapports", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/scenarios", "/dependances", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/controles-qualite", "/audit"],
+  quality_manager: ["/", "/alertes", "/non-fonctionnel", "/rapports", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/scenarios", "/dependances", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/controles-qualite", "/audit"],
+  product_owner: ["/", "/non-fonctionnel", "/rapports", "/produits", "/projets", "/fonctionnalites", "/exigences", "/scenarios", "/dependances", "/go-live", "/points-a-surveiller", "/audit"],
+  chef_projet: ["/dashboard-chef", "/non-fonctionnel", "/rapports", "/produits", "/projets", "/fonctionnalites", "/exigences", "/campagnes", "/campagnes/ajouter", "/scenarios", "/dependances", "/go-live", "/audit"],
+  testeur: ["/dashboard-testeur", "/non-fonctionnel", "/campagnes", "/scenarios", "/dependances", "/anomalies", "/audit"],
+  approver: ["/", "/go-live", "/points-a-surveiller", "/controles-qualite", "/audit"],
+  lecteur: ["/", "/non-fonctionnel", "/rapports", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/scenarios", "/dependances", "/go-live", "/points-a-surveiller", "/controles-qualite", "/audit"],
 };
 
 /*  --------------------------------------------------------------------------  */
@@ -856,8 +982,12 @@ export const testCases: TestCase[] = [
     observed:
       "Paiement accepté, confirmation affichée, commande créée. Temps de réponse : 942 ms (> 800 ms attendus).",
     comment: "Délai de paiement supérieur au seuil. À investiguer avec l'équipe infra.",
-    expectedValue: "≤ 800 ms",
-    measuredValue: "942 ms",
+    expectedValue: "800",
+    measuredValue: "942",
+    metric: "Temps de réponse de bout en bout",
+    unit: "ms",
+    operator: "<=",
+    isMeasurable: true,
     tester: "Marie Martin",
     executedAt: "22/08/2024 14:32",
     duration: "5 min 23 sec",
@@ -1428,4 +1558,178 @@ export const platformUsers: PlatformUser[] = [
     active: true,
   },
   { id: "u-8", name: "Karim Ndiaye", email: "karim.ndiaye@dhi.io", role: "admin", active: true },
+];
+
+/*  7.14 Critères qualité (pondération par défaut) ----------------------  */
+
+export const qualityCriteria: QualityCriterion[] = [
+  { id: "qc-1", key: "fonctionnel", label: "Conformité fonctionnelle", weight: 0.3, blocking: false, active: true, scope: "global" },
+  { id: "qc-2", key: "securite", label: "Sécurité", weight: 0.2, blocking: true, active: true, scope: "global" },
+  { id: "qc-3", key: "performance", label: "Performance", weight: 0.15, blocking: false, active: true, scope: "global" },
+  { id: "qc-4", key: "fiabilite", label: "Fiabilité", weight: 0.15, blocking: false, active: true, scope: "global" },
+  { id: "qc-5", key: "maintenabilite", label: "Maintenabilité", weight: 0.1, blocking: false, active: true, scope: "global" },
+  { id: "qc-6", key: "documentation", label: "Documentation", weight: 0.05, blocking: false, active: true, scope: "global" },
+  { id: "qc-7", key: "testabilite", label: "Testabilité", weight: 0.05, blocking: false, active: true, scope: "global" },
+];
+
+/*  7.15 Scénarios de test ----------------------------------------------  */
+
+export const scenarios: Scenario[] = [
+  {
+    id: "SC-1",
+    campaignId: "c-recette-412",
+    name: "Parcours de paiement complet",
+    description: "Du panier à la confirmation : paiement, facture, notification client.",
+    criticality: "critique",
+    testIds: ["TC-1245"],
+    owner: "Marie Martin",
+  },
+  {
+    id: "SC-2",
+    campaignId: "c-recette-412",
+    name: "Authentification et session",
+    description: "Connexion, MFA et déconnexion.",
+    criticality: "critique",
+    testIds: [],
+    owner: "Marie Martin",
+  },
+  {
+    id: "SC-3",
+    campaignId: "c-securite-412",
+    name: "Parcours sécurité de paiement",
+    description: "Contrôles de sécurité sur le flux de paiement.",
+    criticality: "haute",
+    testIds: [],
+    owner: "Sophie Lemaire",
+  },
+];
+
+/*  7.16 Dépendances entre tests ----------------------------------------  */
+
+export const testDependencies: TestDependency[] = [
+  {
+    id: "DEP-1",
+    fromTestId: "TC-1245",
+    toTestId: "TC-1201",
+    kind: "requires_success",
+    rationale: "Le test de paiement nécessite une authentification réussie au préalable.",
+  },
+];
+
+/*  7.17 Règles par type de test ----------------------------------------  */
+
+export const testTypeRules: TestTypeRule[] = [
+  { id: "TR-1", testType: "performance", label: "Charge nominale définie", level: "obligatoire" },
+  { id: "TR-2", testType: "performance", label: "Charge maximale définie", level: "obligatoire" },
+  { id: "TR-3", testType: "performance", label: "Temps de réponse attendu (P95/P99)", level: "obligatoire" },
+  { id: "TR-4", testType: "performance", label: "Taux d'erreur maximal", level: "obligatoire" },
+  { id: "TR-5", testType: "performance", label: "Consommation CPU / mémoire / débit", level: "recommandee" },
+  { id: "TR-6", testType: "securite", label: "Scénario de menace identifié", level: "obligatoire" },
+  { id: "TR-7", testType: "securite", label: "Niveau de risque évalué", level: "obligatoire" },
+  { id: "TR-8", testType: "securite", label: "Résultat attendu documenté", level: "obligatoire" },
+  { id: "TR-9", testType: "securite", label: "Preuve et environnement consignés", level: "recommandee" },
+  { id: "TR-10", testType: "securite", label: "Outil utilisé renseigné", level: "recommandee" },
+  { id: "TR-11", testType: "fonctionnel", label: "Préconditions renseignées", level: "obligatoire" },
+  { id: "TR-12", testType: "fonctionnel", label: "Données d'entrée définies", level: "obligatoire" },
+  { id: "TR-13", testType: "fonctionnel", label: "Étapes détaillées", level: "obligatoire" },
+  { id: "TR-14", testType: "fonctionnel", label: "Critères d'acceptation clairs", level: "obligatoire" },
+  { id: "TR-15", testType: "fonctionnel", label: "Preuves rattachées", level: "recommandee" },
+];
+
+/*  7.18 Contrôles qualité / audits périodiques --------------------------  */
+
+export const qualityControls: QualityControl[] = [
+  {
+    id: "CQ-1",
+    productId: "p-paiement",
+    title: "Contrôle de non-régression des parcours critiques",
+    domain: "Régression",
+    expected: "Les 12 parcours critiques passent sans régression",
+    observed: "10/12 réussis, 2 en échec (latence)",
+    conform: false,
+    owner: "Marie Martin",
+    date: "2024-08-22",
+    status: "realise",
+  },
+  {
+    id: "CQ-2",
+    productId: "p-paiement",
+    title: "Audit de couverture sécurité",
+    domain: "Sécurité",
+    expected: "Couverture sécurité ≥ 90 % sur les fonctionnalités critiques",
+    observed: "Couverture sécurité 85 %, 1 trou détecté",
+    conform: false,
+    owner: "Sophie Lemaire",
+    date: "2024-08-20",
+    status: "realise",
+  },
+  {
+    id: "CQ-3",
+    productId: "p-paiement",
+    title: "Vérification des preuves de conformité",
+    domain: "Conformité",
+    expected: "Toutes les exécutions disposent d'une preuve",
+    observed: "",
+    conform: true,
+    owner: "Marie Martin",
+    date: "2024-08-25",
+    status: "encours",
+  },
+];
+
+/*  7.19 Tests non-fonctionnels (perf, charge, sécurité, résilience) -----  */
+
+export const nonFunctionalTests: NonFunctionalTest[] = [
+  {
+    id: "NF-1",
+    productId: "p-paiement",
+    title: "Temps de réponse page de paiement",
+    domain: "performance",
+    subType: "P95",
+    metric: "Temps de réponse",
+    unit: "ms",
+    threshold: 800,
+    operator: "<=",
+    measured: 620,
+    status: "realise",
+  },
+  {
+    id: "NF-2",
+    productId: "p-paiement",
+    title: "Montée en charge 1 000 utilisateurs simultanés",
+    domain: "charge",
+    subType: "Charge maximale",
+    metric: "Utilisateurs simulés",
+    unit: "u",
+    threshold: 1000,
+    operator: ">=",
+    measured: 1200,
+    status: "realise",
+  },
+  {
+    id: "NF-3",
+    productId: "p-paiement",
+    title: "Absence d'injections SQL sur l'API",
+    domain: "securite",
+    subType: "Scan DAST",
+    metric: "Vulnérabilités",
+    unit: "nb",
+    threshold: 0,
+    operator: "<=",
+    measured: 2,
+    status: "echoue",
+  },
+  {
+    id: "NF-4",
+    productId: "p-paiement",
+    title: "Reprise après coupure du service de paie",
+    domain: "resilience",
+    subType: "RPO",
+    metric: "Perte de données max",
+    unit: "min",
+    threshold: 15,
+    operator: "<=",
+    measured: 0,
+    status: "realise",
+  },
 ];

@@ -17,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { campaignStats, loadSnapshot, productScore, useStore } from "@/lib/dhi-store";
+import { campaignStats, loadSnapshot, productScore, scoreExplanation, useStore } from "@/lib/dhi-store";
 import {
   PROJECT_STATUS_LABEL,
   SCORE_LABELS,
@@ -57,6 +57,7 @@ function ProductDetail() {
 
   const score = productScore(product);
   const b = product.breakdown;
+  const explain = scoreExplanation(product);
   const prodProjects = projects.filter((pr) => pr.productId === product.id);
   const prodFeatures = features.filter((f) => f.productId === product.id);
   const prodCampaigns = campaigns.filter((c) => c.productId === product.id);
@@ -146,6 +147,42 @@ function ProductDetail() {
               </li>
             ))}
           </ul>
+          <div className="mt-4 space-y-2 border-t border-border pt-3 text-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Pourquoi ce score ?
+            </p>
+            {explain.positive.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-success">Facteurs positifs (≥ 80)</p>
+                <ul className="mt-1 space-y-1 text-muted-foreground">
+                  {explain.positive.map((x) => (
+                    <li key={x.label} className="flex justify-between">
+                      <span>{x.label}</span>
+                      <span className="num">{x.value}/100</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {explain.negative.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-danger">Facteurs à améliorer (&lt; 70)</p>
+                <ul className="mt-1 space-y-1 text-muted-foreground">
+                  {explain.negative.map((x) => (
+                    <li key={x.label} className="flex justify-between">
+                      <span>{x.label}</span>
+                      <span className="num">{x.value}/100</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {explain.positive.length === 0 && explain.negative.length === 0 && (
+              <p className="text-muted-foreground">
+                Toutes les composantes sont comprises entre 70 et 80.
+              </p>
+            )}
+          </div>
         </Panel>
       </div>
 
