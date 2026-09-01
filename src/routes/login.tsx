@@ -36,6 +36,7 @@ const DEMO_ACCOUNTS: { email: string; name: string; role: string }[] = [
   { email: "lea.moreau@dhi.io", name: "Léa Moreau", role: "product_owner" },
   { email: "ahmed.bakari@dhi.io", name: "Ahmed Bakari", role: "chef_projet" },
   { email: "pierre.durand@dhi.io", name: "Pierre Durand", role: "testeur" },
+  { email: "lucas.bernard@dhi.io", name: "Lucas Bernard", role: "developpeur" },
   { email: "jean.dupont@dhi.io", name: "Jean Dupont", role: "approver" },
 ];
 

@@ -9,6 +9,7 @@ export interface AppShellTab {
 export const PILOTAGE_TABS: AppShellTab[] = [
   { to: "/", label: "nav.dashboard", exact: true },
   { to: "/alertes", label: "nav.alertes" },
+  { to: "/notifications", label: "nav.notifications" },
 ];
 
 /** Onglets horizontaux — périmètre Qualité (Produit → Projet → Features / exigences / couverture). */
@@ -45,6 +46,7 @@ export const SEARCH_GROUPS: TranslationKey[] = [
 export const SEARCH_PAGES: { to: string; label: TranslationKey; group: TranslationKey }[] = [
   { to: "/", label: "nav.dashboard", group: "nav.pilotage" },
   { to: "/alertes", label: "nav.alertes", group: "nav.pilotage" },
+  { to: "/notifications", label: "nav.notifications", group: "nav.pilotage" },
   { to: "/produits", label: "nav.produits", group: "nav.qualite" },
   { to: "/projets", label: "nav.projets", group: "nav.qualite" },
   { to: "/fonctionnalites", label: "nav.fonctionnalites", group: "nav.qualite" },

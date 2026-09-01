@@ -43,6 +43,8 @@ function AddUserPage() {
     name: "",
     email: "",
     role: "lecteur" as AppRole,
+    password: "",
+    confirmPassword: "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -63,11 +65,27 @@ function AddUserPage() {
       return;
     }
 
+    if (!formData.password) {
+      toast.error(t("pages.add_user.password_required"));
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error(t("pages.add_user.password_min_length"));
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      toast.error(t("pages.add_user.password_mismatch"));
+      return;
+    }
+
     addUser({
       name: formData.name.trim(),
       email: formData.email.trim(),
       role: formData.role,
       active: true,
+      password: formData.password,
     });
 
     toast.success(t("pages.add_user.success").replace("{name}", formData.name.trim()));
@@ -156,6 +174,51 @@ function AddUserPage() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">{t("pages.add_user.role_hint")}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">
+                {t("pages.add_user.password_section")}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {t("pages.add_user.password_section_hint")}
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="password" className="text-sm font-medium">
+                  {t("pages.add_user.password")}
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder={t("pages.add_user.password_placeholder")}
+                  autoComplete="new-password"
+                  required
+                  className="h-11"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="confirmPassword" className="text-sm font-medium">
+                  {t("pages.add_user.confirm_password")}
+                </Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  placeholder={t("pages.add_user.confirm_password_placeholder")}
+                  autoComplete="new-password"
+                  required
+                  className="h-11"
+                />
               </div>
             </div>
           </div>

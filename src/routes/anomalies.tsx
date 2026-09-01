@@ -1,23 +1,14 @@
 // ============================================================
 // 1. Imports
 // ============================================================
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, Outlet, useMatches } from "@tanstack/react-router";
 import { Download, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
 import { DefectStatusBadge, KpiCard, SeverityBadge } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -25,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -34,20 +24,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  DEFECT_STATUS_LABEL,
-  DEFECT_TRANSITIONS,
-  PEOPLE,
-  SEVERITY_LABEL,
-  type Defect,
-  type DefectStatus,
-  type Severity,
-} from "@/lib/dhi-data";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { DEFECT_STATUS_LABEL, SEVERITY_LABEL, type Defect, type DefectStatus, type Severity } from "@/lib/dhi-data";
 import { useStore } from "@/lib/dhi-store";
 import { SYSTEM_TABS } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
+import { getUser, visibleDefects } from "@/lib/access";
 
 // ============================================================
 // 2. Helpers utilitaires (toCSV, etc.)
@@ -141,283 +122,6 @@ function DefectFilters({
   );
 }
 
-// ------------------------------------------------------------------
-// Sous-composant : Dialogue de détail d'une anomalie
-// ------------------------------------------------------------------
-interface DefectDetailDialogProps {
-  selected: Defect | null;
-  setSelected: (d: Defect | null) => void;
-  features: ReturnType<typeof useStore>["features"];
-  updateDefect: ReturnType<typeof useStore>["updateDefect"];
-}
-function DefectDetailDialog({
-  selected,
-  setSelected,
-  features,
-  updateDefect,
-}: DefectDetailDialogProps) {
-  const { t } = useI18n();
-  return (
-    <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
-      <DialogContent className="max-w-xl">
-        {selected ? (
-          <>
-            <DialogHeader>
-              <DialogTitle>
-                {selected.id} : {selected.title}
-              </DialogTitle>
-              <DialogDescription>
-                {t("pages.anomalies.detail_detected_by")} {selected.reporter}{" "}
-                {t("pages.anomalies.detail_detected_on")} {selected.createdAt} ·{" "}
-                {t("common.version")} {selected.version}
-                {selected.testId ? ` · ${t("pages.anomalies.detail_test")} ${selected.testId}` : ""}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-wrap gap-2">
-              <SeverityBadge level={selected.severity} />
-              <DefectStatusBadge status={selected.status} />
-              <span className="rounded-full border border-border px-2.5 py-0.5 text-xs font-medium">
-                {features.find((f) => f.id === selected.featureId)?.name ?? selected.featureId}
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground">{selected.description}</p>
-            <Separator />
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-1.5">
-                <Label>{t("pages.anomalies.assignee")}</Label>
-                <Select
-                  value={selected.assignee}
-                  onValueChange={(v) => {
-                    updateDefect(selected.id, { assignee: v });
-                    setSelected({ ...selected, assignee: v });
-                    toast.success(`${selected.id} ${t("pages.anomalies.reassigned")} ${v}.`);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PEOPLE.map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {p}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label>{t("common.statut")}</Label>
-                <Select
-                  value={selected.status}
-                  onValueChange={(v) => {
-                    updateDefect(selected.id, { status: v as DefectStatus });
-                    setSelected({ ...selected, status: v as DefectStatus });
-                    toast.success(
-                      `${t("pages.anomalies.status_updated")} : ${DEFECT_STATUS_LABEL[v as DefectStatus]}.`,
-                    );
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(DEFECT_STATUS_LABEL) as DefectStatus[]).map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {DEFECT_STATUS_LABEL[s]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="rounded-md border border-border bg-muted/50 p-3 text-sm">
-              <p className="font-medium">{t("pages.anomalies.capitalization")}</p>
-              <p className="mt-1 text-muted-foreground">
-                {t("pages.anomalies.regression_note")} : « {selected.title} » (version{" "}
-                {selected.version}).
-              </p>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setSelected(null)}>
-                {t("actions.fermer")}
-              </Button>
-            </DialogFooter>
-          </>
-        ) : null}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ------------------------------------------------------------------
-// Sous-composant : Dialogue de création d'une nouvelle anomalie
-// ------------------------------------------------------------------
-interface CreateDefectDialogProps {
-  open: boolean;
-  setOpen: (v: boolean) => void;
-  form: {
-    title: string;
-    description: string;
-    severity: Severity;
-    priority: Severity;
-    productId: string;
-    featureId: string;
-    assignee: string;
-  };
-  setForm: React.Dispatch<
-    React.SetStateAction<{
-      title: string;
-      description: string;
-      severity: Severity;
-      priority: Severity;
-      productId: string;
-      featureId: string;
-      assignee: string;
-    }>
-  >;
-  onSubmit: () => void;
-  products: ReturnType<typeof useStore>["products"];
-  features: ReturnType<typeof useStore>["features"];
-}
-function CreateDefectDialog({
-  open,
-  setOpen,
-  form,
-  setForm,
-  onSubmit,
-  products,
-  features,
-}: CreateDefectDialogProps) {
-  const { t } = useI18n();
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{t("pages.anomalies.new_anomaly")}</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4">
-          <div className="grid gap-1.5">
-            <Label htmlFor="d-title">{t("pages.anomalies.defect_title")}</Label>
-            <Input
-              id="d-title"
-              value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              placeholder={t("pages.anomalies.title_placeholder")}
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="d-desc">{t("common.description")}</Label>
-            <Textarea
-              id="d-desc"
-              rows={3}
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-1.5">
-              <Label>{t("common.produit")}</Label>
-              <Select
-                value={form.productId}
-                onValueChange={(v) => setForm((f) => ({ ...f, productId: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-1.5">
-              <Label>{t("common.fonctionnalite")}</Label>
-              <Select
-                value={form.featureId}
-                onValueChange={(v) => setForm((f) => ({ ...f, featureId: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {features.map((f) => (
-                    <SelectItem key={f.id} value={f.id}>
-                      {f.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-1.5">
-              <Label>{t("pages.anomalies.severity")}</Label>
-              <Select
-                value={form.severity}
-                onValueChange={(v) => setForm((f) => ({ ...f, severity: v as Severity }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(SEVERITY_LABEL) as Severity[]).map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {SEVERITY_LABEL[s]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-1.5">
-              <Label>{t("pages.anomalies.priority")}</Label>
-              <Select
-                value={form.priority}
-                onValueChange={(v) => setForm((f) => ({ ...f, priority: v as Severity }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(SEVERITY_LABEL) as Severity[]).map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {SEVERITY_LABEL[s]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-1.5">
-              <Label>{t("pages.anomalies.assignee")}</Label>
-              <Select
-                value={form.assignee}
-                onValueChange={(v) => setForm((f) => ({ ...f, assignee: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PEOPLE.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {p}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            {t("actions.annuler")}
-          </Button>
-          <Button onClick={onSubmit}>{t("pages.anomalies.create_anomaly")}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 // ============================================================
 // 4. Composant Route principal
 // ============================================================
@@ -439,26 +143,24 @@ export const Route = createFileRoute("/anomalies")({
 });
 
 function DefectsPage() {
-  const { defects, products, features, addDefect, updateDefect } = useStore();
+  const matches = useMatches();
+  if (matches[matches.length - 1]?.pathname !== "/anomalies") return <Outlet />;
+  return <DefectsList />;
+}
+
+function DefectsList() {
+  const { defects } = useStore();
   const { t } = useI18n();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selected, setSelected] = useState<Defect | null>(null);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    severity: "moyenne" as Severity,
-    priority: "moyenne" as Severity,
-    productId: "p-paiement",
-    featureId: "f-paiement",
-    assignee: "Pierre Durand",
-  });
+
+  const viewable = useMemo(() => visibleDefects(defects, getUser()), [defects]);
 
   const rows = useMemo(
     () =>
-      defects
+      viewable
         .filter((d) => severityFilter === "all" || d.severity === severityFilter)
         .filter((d) => statusFilter === "all" || d.status === statusFilter)
         .filter(
@@ -467,32 +169,8 @@ function DefectsPage() {
             d.title.toLowerCase().includes(search.toLowerCase()) ||
             d.id.toLowerCase().includes(search.toLowerCase()),
         ),
-    [defects, search, severityFilter, statusFilter],
+    [viewable, search, severityFilter, statusFilter],
   );
-
-  const submit = () => {
-    if (!form.title.trim()) {
-      toast.error(t("pages.anomalies.title_required"));
-      return;
-    }
-    const id = addDefect({
-      productId: form.productId,
-      title: form.title.trim(),
-      description: form.description,
-      severity: form.severity,
-      priority: form.priority,
-      status: "nouvelle",
-      featureId: form.featureId,
-      version: "4.12",
-      reporter: "Marie Martin",
-      assignee: form.assignee,
-      createdAt: new Date().toISOString().slice(0, 10),
-      targetDate: new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10),
-    });
-    toast.success(t("pages.anomalies.created_msg").replace("{id}", id));
-    setCreateOpen(false);
-    setForm({ ...form, title: "", description: "" });
-  };
 
   return (
     <AppShell
@@ -505,34 +183,36 @@ function DefectsPage() {
           <Button size="sm" variant="outline" onClick={() => exportToCsv(rows, t)}>
             <Download className="size-4" /> {t("actions.exporter")}
           </Button>
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" /> {t("pages.anomalies.new_anomaly")}
-          </Button>
+          <Link to="/anomalies/ajouter">
+            <Button size="sm">
+              <Plus className="size-4" /> {t("pages.anomalies.new_anomaly")}
+            </Button>
+          </Link>
         </div>
       }
     >
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           label={t("pages.anomalies.kpi_open")}
-          value={defects.filter((d) => d.status !== "fermee").length}
+          value={viewable.filter((d) => d.status !== "fermee").length}
           tone="warning"
           hint={t("pages.anomalies.kpi_open_hint")}
         />
         <KpiCard
           label={t("pages.anomalies.kpi_high_severity")}
-          value={defects.filter((d) => d.severity === "haute" && d.status !== "fermee").length}
+          value={viewable.filter((d) => d.severity === "haute" && d.status !== "fermee").length}
           tone="danger"
           hint={t("pages.anomalies.kpi_high_hint")}
         />
         <KpiCard
           label={t("pages.anomalies.kpi_fixing")}
-          value={defects.filter((d) => d.status === "encorrection").length}
+          value={viewable.filter((d) => d.status === "encorrection").length}
           tone="info"
           hint={t("pages.anomalies.kpi_fixing_hint")}
         />
         <KpiCard
           label={t("pages.anomalies.kpi_closed")}
-          value={defects.filter((d) => d.status === "fermee").length}
+          value={viewable.filter((d) => d.status === "fermee").length}
           tone="success"
           hint={t("pages.anomalies.kpi_closed_hint")}
         />
@@ -563,7 +243,11 @@ function DefectsPage() {
           </TableHeader>
           <TableBody>
             {rows.map((d) => (
-              <TableRow key={d.id} className="cursor-pointer" onClick={() => setSelected(d)}>
+              <TableRow
+                key={d.id}
+                className="cursor-pointer"
+                onClick={() => navigate({ to: "/anomalies/$defectId", params: { defectId: d.id } })}
+              >
                 <TableCell className="num font-medium">{d.id}</TableCell>
                 <TableCell className="max-w-sm truncate">{d.title}</TableCell>
                 <TableCell>
@@ -589,23 +273,6 @@ function DefectsPage() {
           </TableBody>
         </Table>
       </div>
-
-      <DefectDetailDialog
-        selected={selected}
-        setSelected={setSelected}
-        features={features}
-        updateDefect={updateDefect}
-      />
-
-      <CreateDefectDialog
-        open={createOpen}
-        setOpen={setCreateOpen}
-        form={form}
-        setForm={setForm}
-        onSubmit={submit}
-        products={products}
-        features={features}
-      />
     </AppShell>
   );
 }

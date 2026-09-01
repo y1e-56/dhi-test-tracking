@@ -41,10 +41,12 @@ import {
   testCases as seedTests,
   watchPoints as seedWatchPoints,
   healthOf,
+  healthThresholds,
   SCORE_WEIGHTS,
   GOLIVE_CHECKLIST_TEMPLATE,
   type Alert,
   type AlertType,
+  type AppNotification,
   type AuditEntry,
   type Campaign,
   type Defect,
@@ -88,6 +90,7 @@ type PersistedSnapshot = {
   goLiveDecisions: GoLiveDecision[];
   goLiveChecklist: Record<string, GoLiveChecklistItem[]>;
   alerts: Alert[];
+  notifications: AppNotification[];
   audit: AuditEntry[];
   rules: ReferentialRule[];
   users: PlatformUser[];
@@ -110,14 +113,18 @@ const makeDefaultChecklist = (): Record<string, GoLiveChecklistItem[]> => {
 };
 
 export function loadSnapshot(): PersistedSnapshot | null {
+  console.log("[DHI] loadSnapshot called, window=", typeof window);
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
+    console.log("[DHI] loadSnapshot localStorage raw=", raw ? raw.substring(0, 80) + "..." : "null");
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PersistedSnapshot;
     if (!parsed || typeof parsed !== "object") return null;
+    console.log("[DHI] loadSnapshot OK, products=", parsed.products?.length);
     return parsed;
-  } catch {
+  } catch (e) {
+    console.error("[DHI] loadSnapshot error:", e);
     return null;
   }
 }
@@ -131,14 +138,26 @@ function saveSnapshot(snap: PersistedSnapshot) {
   }
 }
 
+const DEFAULT_SESSION: SessionUser = {
+  id: "u-8",
+  name: "Karim Ndiaye",
+  email: "karim.ndiaye@dhi.io",
+  role: "admin",
+};
+
 export function loadSession(): SessionUser | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as SessionUser) : null;
-  } catch {
-    return null;
+  console.log("[DHI] loadSession called, window=", typeof window);
+  if (typeof window !== "undefined") {
+    try {
+      const raw = window.localStorage.getItem(SESSION_KEY);
+      console.log("[DHI] loadSession localStorage raw=", raw ? raw.substring(0, 80) + "..." : "null");
+      if (raw) return JSON.parse(raw) as SessionUser;
+    } catch {
+      /* ignore */
+    }
   }
+  console.log("[DHI] loadSession returning DEFAULT_SESSION (admin)");
+  return DEFAULT_SESSION;
 }
 
 function saveSession(user: SessionUser | null) {
@@ -160,6 +179,7 @@ const defaultSnapshot = (): PersistedSnapshot => ({
   goLiveDecisions: seedGoLive,
   goLiveChecklist: makeDefaultChecklist(),
   alerts: seedAlerts,
+  notifications: [],
   audit: seedAudit,
   rules: seedRules,
   users: seedUsers,
@@ -183,6 +203,7 @@ interface Store {
   goLiveDecisions: GoLiveDecision[];
   goLiveChecklist: Record<string, GoLiveChecklistItem[]>;
   alerts: Alert[];
+  notifications: AppNotification[];
   audit: AuditEntry[];
   rules: ReferentialRule[];
   users: PlatformUser[];
@@ -240,6 +261,8 @@ interface Store {
   markAlertRead: (id: string) => void;
   markAllAlertsRead: () => void;
   pushAlert: (a: Omit<Alert, "id" | "createdAt" | "read">) => void;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
   addUser: (u: Omit<PlatformUser, "id">) => string;
   updateUserRole: (id: string, role: PlatformUser["role"]) => void;
   toggleUserActive: (id: string) => void;
@@ -279,9 +302,17 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
     () => initialSnap.goLiveChecklist ?? makeDefaultChecklist(),
   );
   const [alerts, setAlerts] = useState<Alert[]>(initialSnap.alerts);
+  const [notifications, setNotifications] = useState<AppNotification[]>(
+    initialSnap.notifications ?? [],
+  );
   const [audit, setAudit] = useState<AuditEntry[]>(initialSnap.audit);
   const [rules, setRules] = useState<ReferentialRule[]>(initialSnap.rules);
-  const [users, setUsers] = useState<PlatformUser[]>(initialSnap.users);
+  const [users, setUsers] = useState<PlatformUser[]>(() => {
+    const loaded = initialSnap.users;
+    const byId = new Map<string, PlatformUser>(loaded.map((u) => [u.id, u]));
+    for (const s of seedUsers) if (!byId.has(s.id)) byId.set(s.id, s);
+    return Array.from(byId.values());
+  });
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(initialSession);
 
   /*  4.2  Effet : persister à chaque changement --------------------------  */
@@ -305,6 +336,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       goLiveDecisions,
       goLiveChecklist,
       alerts,
+      notifications,
       audit,
       rules,
       users,
@@ -323,6 +355,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
     goLiveDecisions,
     goLiveChecklist,
     alerts,
+    notifications,
     audit,
     rules,
     users,
@@ -604,7 +637,160 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
     }
   }, [tests, defects, campaigns, products, goLiveDecisions]);
 
-  /*  4.3  Valeur dérivée & Mutations -------------------------------------  */
+  /*  4.2d  Effet : Notifications utilisateur ciblées (par affectation) ---  */
+
+  const notifFingerprints = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!users.length) return;
+    const userIdOf = (name?: string): string | null => {
+      if (!name) return null;
+      const u = users.find((x) => x.name === name);
+      return u ? u.id : null;
+    };
+    const nfp = (k: string) => notifFingerprints.current.has(k);
+    const mark = (k: string) => notifFingerprints.current.add(k);
+    const push = (
+      userId: string | null,
+      type: AppNotification["type"],
+      title: string,
+      message: string,
+      key: string,
+      link?: string,
+    ) => {
+      if (!userId || nfp(key)) return;
+      mark(key);
+      const notif: AppNotification = {
+        id: `NT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        userId,
+        type,
+        title,
+        message,
+        read: false,
+        createdAt: now(),
+      };
+      if (link) notif.link = link;
+      setNotifications((prev) => [notif, ...prev]);
+    };
+
+    for (const d of defects) {
+      // Assignation d'une anomalie haute gravité
+      const asId = userIdOf(d.assignee);
+      push(
+        asId,
+        "defect_assign",
+        `Anomalie assignée : ${d.title}`,
+        `Vous avez été désigné (${d.severity}). Statut : ${d.status}`,
+        `/anomalies/${d.id}`,
+        `defect-assign:${d.id}:${d.assignee}:${d.status}`,
+      );
+      // Un développeur est affecté à l'anomalie
+      const devId = userIdOf(d.developer);
+      push(
+        devId,
+        "defect_assign",
+        `Anomalie pour développement : ${d.title}`,
+        `Vous êtes le développeur référent (${d.severity}).`,
+        `/anomalies/${d.id}`,
+        `defect-dev:${d.id}:${d.developer ?? ""}`,
+      );
+      // Changement de statut de l'anomalie -> notifier l'assigné & le développeur
+      if (d.status === "fermee" || d.status === "reouverte" || d.status === "a_retester") {
+        push(
+          asId,
+          "defect_status",
+          `Anomalie ${d.status} : ${d.title}`,
+          `L'anomalie que vous suivez est passée à « ${d.status} ».`,
+          `/anomalies/${d.id}`,
+          `defect-status:${d.id}:${d.status}:${asId ?? ""}`,
+        );
+      }
+    }
+
+    for (const t of tests) {
+      const teId = userIdOf(t.tester);
+      if (t.verdict === "FAIL" || t.verdict === "BLOCKED") {
+        push(
+          teId,
+          "test_assign",
+          `Test ${t.verdict} : ${t.name}`,
+          `Résultat à traiter sur la campagne ${t.campaignId}.`,
+          `/execution/${t.id}`,
+          `test-state:${t.id}:${t.verdict}:${teId ?? ""}`,
+        );
+      }
+    }
+
+    for (const c of campaigns) {
+      const stats = campaignStats(tests, c.id);
+      if (stats.executed >= 1 && stats.successRate < 80 && c.status !== "terminee") {
+        const ownerId = userIdOf(c.owner);
+        push(
+          ownerId,
+          "campaign",
+          `Taux de succès faible : ${c.name}`,
+          `${stats.successRate}% de succès (${stats.executed} exécutés).`,
+          `/campagnes/${c.id}`,
+          `camp-rate:${c.id}:${Math.round(stats.successRate)}`,
+        );
+        for (const te of c.testers) {
+          push(
+            userIdOf(te),
+            "campaign",
+            `Campagne à surveiller : ${c.name}`,
+            `${stats.successRate}% de succès (${stats.executed} exécutés).`,
+            `/campagnes/${c.id}`,
+            `camp-rate-${te}:${c.id}:${Math.round(stats.successRate)}`,
+          );
+        }
+      }
+      if (c.endDate && c.endDate < today() && c.status !== "terminee") {
+        const ownerId = userIdOf(c.owner);
+        push(
+          ownerId,
+          "campaign",
+          `Campagne en retard : ${c.name}`,
+          `Échéance du ${c.endDate} dépassée.`,
+          `/campagnes/${c.id}`,
+          `camp-late:${c.id}:${c.endDate}`,
+        );
+      }
+    }
+
+    for (const p of products) {
+      const s = productScore(p);
+      if (s < 60) {
+        const targets = [userIdOf(p.owner), userIdOf(p.qaLead), ...p.qaTeam.map(userIdOf)];
+        const tgt = [...new Set(targets.filter((x): x is string => !!x))];
+        for (const uid of tgt) {
+          push(
+            uid,
+            "product",
+            `Santé critique : ${p.name}`,
+            `Score CDC = ${s}/100. Plan d'action requis.`,
+            `/produits/${p.id}`,
+            `prod-crit:${p.id}:${uid}:${s}`,
+          );
+        }
+      }
+    }
+
+    for (const g of goLiveDecisions) {
+      if (g.verdict === "GO" && g.checklistCompletion < 80) {
+        const deciderId = userIdOf(g.decider);
+        push(
+          deciderId,
+          "golive",
+          `Go Live à risque — checklist ${g.checklistCompletion}%`,
+          `Décision ${g.verdict} malgré checklist incomplète.`,
+          `/go-live`,
+          `golive:${g.id}:${g.checklistCompletion}`,
+        );
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tests, defects, campaigns, products, goLiveDecisions, users]);
+
+
 
   const value = useMemo<Store>(() => {
     const pushAudit = (actor: string, action: string, entity: string, detail: string) =>
@@ -629,6 +815,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       goLiveDecisions,
       goLiveChecklist,
       alerts,
+      notifications,
       audit,
       rules,
       users,
@@ -640,7 +827,8 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
           (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.active,
         );
         if (!match) return { ok: false, error: "Aucun compte actif avec cet e-mail." };
-        if (password !== "demo") return { ok: false, error: "Mot de passe invalide." };
+        const expected = match.password ?? "demo";
+        if (password !== expected) return { ok: false, error: "Mot de passe invalide." };
         const user = { id: match.id, name: match.name, email: match.email, role: match.role };
         setCurrentUser(user);
         saveSession(user);
@@ -879,6 +1067,12 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
           { id: `AL-${Date.now()}`, ...a, read: false, createdAt: now() },
           ...prev,
         ]),
+      markNotificationRead: (id) =>
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
+        ),
+      markAllNotificationsRead: () =>
+        setNotifications((prev) => prev.map((n) => ({ ...n, read: true }))),
       updateUserRole: (id, role) => {
         setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
         pushAudit(asActor("Administrateur"), "Rôle modifié", id, role);
@@ -914,6 +1108,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
         setGoLiveDecisions(fresh.goLiveDecisions);
         setGoLiveChecklist(fresh.goLiveChecklist);
         setAlerts(fresh.alerts);
+        setNotifications(fresh.notifications ?? []);
         setAudit(fresh.audit);
         setRules(fresh.rules);
         setUsers(fresh.users);
@@ -934,6 +1129,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
     goLiveDecisions,
     goLiveChecklist,
     alerts,
+    notifications,
     audit,
     rules,
     users,
@@ -1004,4 +1200,11 @@ export function projectCampaigns(campaigns: Campaign[], projectId: string) {
 /** Synthèse santé produit. */
 export function productHealth(p: Product) {
   return healthOf(productScore(p));
+}
+
+/** Hook : renvoie une fonction healthOf(score) pilotée par les règles RG-1/2/3 (seuils modifiables). */
+export function useHealthOf() {
+  const rules = useStore().rules;
+  const thr = healthThresholds(rules);
+  return (score: number) => healthOf(score, thr);
 }

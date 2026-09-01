@@ -51,7 +51,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { SEARCH_PAGES, SEARCH_GROUPS, type AppShellTab } from "@/lib/dhi-nav";
-import { ROLE_LABEL, ROLE_PAGES } from "@/lib/dhi-data";
+import { ROLE_LABEL, ROLE_PAGES, NOTIFICATION_TYPE_LABEL } from "@/lib/dhi-data";
 import { useStore } from "@/lib/dhi-store";
 import { hasAccessToPage, getDefaultDashboardForRole } from "@/lib/role-protection";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
@@ -181,6 +181,84 @@ function Brand() {
 /* =========================================================
    4b. COMPOSANT — Menu utilisateur / Session
    ========================================================= */
+
+function NotificationBell() {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const { notifications, currentUser, markNotificationRead, markAllNotificationsRead } =
+    useStore();
+
+  if (!currentUser) return null;
+
+  const mine = notifications
+    .filter((n) => n.userId === currentUser.id)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const unread = mine.filter((n) => !n.read).length;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          size="icon"
+          className="relative"
+          aria-label={t("pages.notifications.title")}
+        >
+          <Bell className="size-4" />
+          {unread > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold leading-none text-white">
+              {unread > 99 ? "99+" : unread}
+            </span>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80">
+        <DropdownMenuLabel className="flex items-center justify-between">
+          <span>{t("pages.notifications.title")}</span>
+          <button
+            type="button"
+            onClick={markAllNotificationsRead}
+            className="text-xs font-normal text-muted-foreground hover:text-foreground"
+          >
+            {t("pages.notifications.mark_all_read")}
+          </button>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {mine.length === 0 ? (
+          <DropdownMenuItem disabled className="justify-center py-6 text-sm text-muted-foreground">
+            {t("pages.notifications.empty")}
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuGroup className="max-h-96 overflow-y-auto">
+            {mine.slice(0, 20).map((n) => (
+              <DropdownMenuItem
+                key={n.id}
+                className={n.read ? "opacity-60" : undefined}
+                onSelect={() => {
+                  if (!n.read) markNotificationRead(n.id);
+                  if (n.link) void navigate({ to: n.link as never });
+                }}
+              >
+                <div className="flex flex-col gap-0.5 py-1">
+                  <div className="flex items-center gap-2">
+                    <span className="label-eyebrow">{NOTIFICATION_TYPE_LABEL[n.type]}</span>
+                    {!n.read && <span className="h-2 w-2 rounded-full bg-primary" />}
+                  </div>
+                  <p className="text-sm font-medium">{n.title}</p>
+                  <p className="text-xs text-muted-foreground">{n.message}</p>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => void navigate({ to: "/notifications" })}>
+          {t("pages.notifications.view_all")}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 function UserMenu() {
   const navigate = useNavigate();
@@ -430,6 +508,7 @@ export function AppShell({
               </Button>
 
               {actions}
+              <NotificationBell />
               <UserMenu />
             </div>
           </div>

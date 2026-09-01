@@ -15,6 +15,19 @@ import { AppShell } from "@/components/dhi/AppShell";
 import { CriticalityBadge, Panel, VerdictBadge } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useStore } from "@/lib/dhi-store";
@@ -36,6 +49,7 @@ type DraftState = {
   observed: string;
   comment: string;
   measuredValue: string;
+  stepPassed: boolean[];
 };
 
 type CurrentState = DraftState;
@@ -76,15 +90,66 @@ function PreconditionsPanel({ preconditions }: { preconditions: TestCase["precon
   );
 }
 
-function StepsListPanel({ steps }: { steps: TestCase["steps"] }) {
+function StepsListPanel({
+  steps,
+  checked,
+  onToggle,
+}: {
+  steps: TestCase["steps"];
+  checked: boolean[];
+  onToggle: (index: number, passed: boolean) => void;
+}) {
   const { t } = useI18n();
+  const allChecked = steps.length > 0 && checked.every(Boolean);
   return (
-    <Panel title={t("pages.execution_detail.etapes")}>
-      <ol className="list-inside list-decimal space-y-1 text-sm">
-        {steps.map((s, i) => (
-          <li key={i}>{s}</li>
-        ))}
+    <Panel
+      title={t("pages.execution_detail.etapes")}
+      actions={
+        <button
+          type="button"
+          onClick={() => steps.forEach((_, i) => onToggle(i, !allChecked))}
+          className="text-xs font-medium text-primary hover:underline"
+        >
+          {allChecked ? t("pages.execution_detail.tout_decocher") : t("pages.execution_detail.tout_cocher")}
+        </button>
+      }
+    >
+      <ol className="space-y-1 text-sm">
+        {steps.map((s, i) => {
+          const isChecked = !!checked[i];
+          return (
+            <li
+              key={i}
+              className={`flex items-start gap-2.5 rounded-md border px-3 py-2 transition-colors ${
+                isChecked
+                  ? "border-success/40 bg-success-soft/60"
+                  : "border-border bg-subtle/40"
+              }`}
+            >
+              <label className="flex w-full cursor-pointer items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={(e) => onToggle(i, e.target.checked)}
+                  className="mt-0.5 size-4 shrink-0 accent-success"
+                />
+                <span
+                  className={
+                    isChecked
+                      ? "text-muted-foreground line-through decoration-success/60"
+                      : "text-foreground"
+                  }
+                >
+                  {i + 1}. {s}
+                </span>
+              </label>
+            </li>
+          );
+        })}
       </ol>
+      <p className="mt-2 text-xs text-muted-foreground">
+        {checked.filter(Boolean).length} / {steps.length} {t("pages.execution_detail.etapes_validees")}
+      </p>
     </Panel>
   );
 }
@@ -374,6 +439,22 @@ function ExecutionPage() {
     observed: test.observed,
     comment: test.comment,
     measuredValue: test.measuredValue ?? "",
+    stepPassed: test.steps.map(() => test.verdict === "PASS"),
+  };
+
+  const toggleStep = (index: number, passed: boolean) => {
+    setDraft((d) => {
+      const base = d ?? current;
+      const next = base.stepPassed.slice();
+      next[index] = passed;
+      const allPassed = next.length > 0 && next.every(Boolean);
+      const anyFailed = next.some((v) => !v);
+      return {
+        ...base,
+        stepPassed: next,
+        verdict: allPassed ? "PASS" : anyFailed ? "FAIL" : base.verdict,
+      };
+    });
   };
 
   const save = () => {
@@ -430,7 +511,7 @@ function ExecutionPage() {
     toast.success(t("pages.execution_detail.evidence_added").replace("{name}", file.name));
   };
 
-  const createDefect = () => {
+  const createDefect = (assignee: string) => {
     const id = addDefect({
       productId: campaign?.productId ?? "p-paiement",
       title: t("pages.execution_detail.defect_title_prefix")
@@ -444,12 +525,16 @@ function ExecutionPage() {
       version: campaign?.version ?? "4.12",
       testId: test.id,
       reporter: "Marie Martin",
-      assignee: "Pierre Durand",
+      assignee,
       createdAt: new Date().toISOString().slice(0, 10),
       targetDate: new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10),
     });
     toast.success(t("pages.execution_detail.defect_created").replace("{id}", id));
   };
+
+  const campaignTesters = campaign?.testers ?? [];
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newAssignee, setNewAssignee] = useState(campaignTesters[0] ?? "");
 
   return (
     <AppShell
@@ -475,7 +560,11 @@ function ExecutionPage() {
         <div className="space-y-4">
           <ContextPanel test={test} featureName={feature?.name} verdict={current.verdict} />
           <PreconditionsPanel preconditions={test.preconditions} />
-          <StepsListPanel steps={test.steps} />
+          <StepsListPanel
+            steps={test.steps}
+            checked={current.stepPassed}
+            onToggle={toggleStep}
+          />
           <ExpectedResultsPanel expected={test.expected} />
           <MeasuresPanel
             expectedValue={test.expectedValue}
@@ -503,10 +592,58 @@ function ExecutionPage() {
             onAddEvidence={addEvidence}
             onRemoveEvidence={removeEvidence}
           />
-          <DefectsListPanel defects={linkedDefects} onCreateDefect={createDefect} />
+          <DefectsListPanel
+            defects={linkedDefects}
+            onCreateDefect={() => setCreateOpen(true)}
+          />
           <TraceabilityPanel test={test} onRestart={restart} onSave={save} />
         </div>
       </div>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("pages.execution_detail.creer_anomalie")}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <p className="text-sm text-muted-foreground">
+              {t("pages.execution_detail.defect_assign_hint")}
+            </p>
+            <div className="space-y-2">
+              <Label>{t("pages.execution_detail.defect_assignee")}</Label>
+              <Select value={newAssignee} onValueChange={setNewAssignee}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {campaignTesters.length > 0 ? (
+                    campaignTesters.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="">{t("pages.execution_detail.awaiting_assign")}</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => setCreateOpen(false)}>
+                {t("actions.annuler")}
+              </Button>
+              <Button
+                onClick={() => {
+                  createDefect(newAssignee);
+                  setCreateOpen(false);
+                }}
+              >
+                {t("pages.execution_detail.creer_anomalie")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

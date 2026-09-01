@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link, Outlet, useMatches } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
 import { AppShell } from "@/components/dhi/AppShell";
@@ -40,6 +40,12 @@ export const Route = createFileRoute("/administration")({
 });
 
 function AdminPage() {
+  const matches = useMatches();
+  if (matches[matches.length - 1]?.pathname !== "/administration") return <Outlet />;
+  return <AdminList />;
+}
+
+function AdminList() {
   const { t } = useI18n();
   const { users, updateUserRole, toggleUserActive } = useStore();
   const roles = Object.keys(ROLE_LABEL) as AppRole[];

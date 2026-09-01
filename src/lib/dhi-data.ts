@@ -19,7 +19,7 @@ export type Criticality = "critique" | "haute" | "moyenne" | "basse";
 export type Severity = "haute" | "moyenne" | "basse";
 export type CampaignStatus = "planifiee" | "encours" | "terminee" | "avenir";
 export type DefectStatus =
-  "nouvelle" | "affectee" | "encorrection" | "avalider" | "fermee" | "reouverte";
+  | "nouvelle" | "affectee" | "encorrection" | "avalider" | "a_retester" | "fermee" | "reouverte";
 export type TestCategory = "fonctionnels" | "non_fonctionnels" | "speciaux";
 export type Verdict =
   "PASS" | "PASS_WITH_RESERVATION" | "FAIL" | "BLOCKED" | "NOT_RUN" | "NOT_APPLICABLE";
@@ -53,7 +53,7 @@ export type TestType =
 /*  --------------------------------------------------------------------------  */
 
 export type ProjectStatus = "encours" | "termine" | "planifie";
-export type ReleaseStatus = "preparee" | "encours" | "livree";
+export type ReleaseStatus = "planning" | "in_dev" | "in_test" | "ready" | "released" | "archived";
 export type RequirementStatus = "brouillon" | "validee" | "couverte";
 export type WatchLevel = "info" | "vigilance" | "critique";
 export type WatchStatus = "ouvert" | "suivi" | "clos";
@@ -65,7 +65,9 @@ export type AppRole =
   | "quality_manager"
   | "product_owner"
   | "chef_projet"
+  | "chef_testeur"
   | "testeur"
+  | "developpeur"
   | "approver"
   | "lecteur";
 
@@ -124,6 +126,7 @@ export interface Campaign {
   startDate: string;
   endDate: string;
   testers: string[];
+  developers?: string[] | undefined;
 }
 
 export interface TestCase {
@@ -162,6 +165,7 @@ export interface Defect {
   testId?: string | undefined;
   reporter: string;
   assignee: string;
+  developer?: string | undefined;
   createdAt: string;
   targetDate: string;
 }
@@ -206,6 +210,7 @@ export interface Requirement {
 export interface WatchPoint {
   id: string;
   productId: string;
+  featureId?: string;
   title: string;
   description: string;
   level: WatchLevel;
@@ -246,6 +251,36 @@ export interface Alert {
   createdAt: string;
 }
 
+export type NotificationType =
+  | "test_assign"
+  | "defect_assign"
+  | "defect_status"
+  | "campaign"
+  | "product"
+  | "golive"
+  | "system";
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  link?: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
+  test_assign: "Test",
+  defect_assign: "Anomalie",
+  defect_status: "Anomalie",
+  campaign: "Campagne",
+  product: "Produit",
+  golive: "Go Live",
+  system: "Système",
+};
+
 export interface AuditEntry {
   id: string;
   actor: string;
@@ -269,6 +304,7 @@ export interface PlatformUser {
   email: string;
   role: AppRole;
   active: boolean;
+  password?: string;
 }
 
 /*  --------------------------------------------------------------------------  */
@@ -354,6 +390,7 @@ export const DEFECT_STATUS_LABEL: Record<DefectStatus, string> = {
   affectee: "Affectée",
   encorrection: "En correction",
   avalider: "À valider",
+  a_retester: "À re-tester",
   fermee: "Fermée",
   reouverte: "Rouverte",
 };
@@ -367,9 +404,12 @@ export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
 };
 
 export const RELEASE_STATUS_LABEL: Record<ReleaseStatus, string> = {
-  preparee: "Préparée",
-  encours: "En cours",
-  livree: "Livrée",
+  planning: "PLANNING",
+  in_dev: "IN_DEV",
+  in_test: "IN_TEST",
+  ready: "READY",
+  released: "RELEASED",
+  archived: "ARCHIVED",
 };
 
 export const REQUIREMENT_STATUS_LABEL: Record<RequirementStatus, string> = {
@@ -407,7 +447,9 @@ export const ROLE_LABEL: Record<AppRole, string> = {
   quality_manager: "Quality Manager",
   product_owner: "Product Owner",
   chef_projet: "Chef de projet",
+  chef_testeur: "Chef d'équipe testeur",
   testeur: "Testeur / QA",
+  developpeur: "Développeur",
   approver: "Approver Go Live",
   lecteur: "Observateur / Auditeur",
 };
@@ -419,7 +461,9 @@ export const ROLE_PAGES: Record<AppRole, string[]> = {
   quality_manager: ["/", "/alertes", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/audit"],
   product_owner: ["/", "/produits", "/projets", "/fonctionnalites", "/exigences", "/go-live", "/points-a-surveiller", "/audit"],
   chef_projet: ["/dashboard-chef", "/produits", "/projets", "/fonctionnalites", "/exigences", "/campagnes", "/campagnes/ajouter", "/go-live", "/audit"],
+  chef_testeur: ["/dashboard-testeur", "/campagnes", "/campagnes/ajouter", "/anomalies", "/points-a-surveiller", "/audit"],
   testeur: ["/dashboard-testeur", "/campagnes", "/anomalies", "/audit"],
+  developpeur: ["/dashboard-developpeur", "/anomalies", "/campagnes", "/audit"],
   approver: ["/", "/go-live", "/points-a-surveiller", "/audit"],
   lecteur: ["/", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/go-live", "/points-a-surveiller", "/audit"],
 };
@@ -453,10 +497,11 @@ export const SCORE_LABELS: Record<keyof ScoreBreakdown, string> = {
 /*  5.2  Workflow cycle de vie d'une anomalie -----------------------------  */
 
 export const DEFECT_TRANSITIONS: Record<DefectStatus, DefectStatus[]> = {
-  nouvelle: ["affectee", "fermee"],
+  nouvelle: ["affectee"],
   affectee: ["encorrection", "nouvelle"],
-  encorrection: ["avalider", "affectee"],
+  encorrection: ["avalider", "a_retester"],
   avalider: ["fermee", "reouverte"],
+  a_retester: ["fermee", "reouverte"],
   fermee: ["reouverte"],
   reouverte: ["affectee", "encorrection"],
 };
@@ -485,13 +530,38 @@ export const PEOPLE = [
   "Ahmed Bakari",
 ];
 
+/* Annuaire des développeurs (correction des anomalies) */
+export const DEVELOPERS = ["Lucas Bernard", "Emma Girard", "Hugo Petit"];
+
 /*  --------------------------------------------------------------------------  */
 /*  6.  FONCTIONS UTILITAIRES                                                   */
 /*  --------------------------------------------------------------------------  */
 
 /** Déduit la santé d'un produit à partir de son score (/100). */
-export const healthOf = (score: number): Health =>
-  score >= 85 ? "sain" : score >= 75 ? "surveiller" : score >= 60 ? "risque" : "critique";
+export const healthOf = (
+  score: number,
+  thresholds?: { sain?: number; surveiller?: number; risque?: number },
+): Health => {
+  const s = thresholds?.sain ?? 85;
+  const sv = thresholds?.surveiller ?? 75;
+  const r = thresholds?.risque ?? 60;
+  return score >= s ? "sain" : score >= sv ? "surveiller" : score >= r ? "risque" : "critique";
+};
+
+/** Extrait les seuils santé depuis les règles opérationnelles RG-1/2/3 (retourne les défauts si inactives/absentes). */
+export function healthThresholds(rules: { id: string; active: boolean; threshold: string }[]): {
+  sain: number;
+  surveiller: number;
+  risque: number;
+} {
+  const num = (id: string, fallback: number) => {
+    const r = rules.find((x) => x.id === id);
+    if (!r || !r.active) return fallback;
+    const m = r.threshold.match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : fallback;
+  };
+  return { sain: num("RG-1", 85), surveiller: num("RG-2", 75), risque: num("RG-3", 60) };
+}
 
 /*  --------------------------------------------------------------------------  */
 /*  7.  DONNÉES SEED (jeu de données de démo)                                   */
@@ -1073,7 +1143,7 @@ export const releases: Release[] = [
     version: "4.12.0",
     plannedDate: "2024-09-05",
     environment: "PREPROD",
-    status: "encours",
+    status: "in_test",
   },
   {
     id: "rel-411",
@@ -1081,7 +1151,7 @@ export const releases: Release[] = [
     version: "4.11.0",
     plannedDate: "2024-08-10",
     environment: "PROD",
-    status: "livree",
+    status: "released",
   },
   {
     id: "rel-413",
@@ -1089,7 +1159,7 @@ export const releases: Release[] = [
     version: "4.13.0-rc1",
     plannedDate: "2024-10-15",
     environment: "DEV",
-    status: "preparee",
+    status: "planning",
   },
   {
     id: "rel-crm25",
@@ -1097,7 +1167,7 @@ export const releases: Release[] = [
     version: "2.5.0",
     plannedDate: "2024-09-20",
     environment: "RECETTE",
-    status: "encours",
+    status: "in_test",
   },
 ];
 
@@ -1166,6 +1236,7 @@ export const watchPoints: WatchPoint[] = [
   {
     id: "WP-01",
     productId: "p-paiement",
+    featureId: "f-paiement",
     title: "Latence paiement proche du seuil",
     description: "942 ms observés en recette, seuil à 800 ms. Suivi hebdomadaire avec l'infra.",
     level: "critique",
@@ -1176,6 +1247,7 @@ export const watchPoints: WatchPoint[] = [
   {
     id: "WP-02",
     productId: "p-paiement",
+    featureId: "f-webhook",
     title: "Taux d'erreur webhooks marchands",
     description: "2,1 % de timeouts sur la semaine écoulée, en légère hausse.",
     level: "vigilance",
@@ -1186,6 +1258,7 @@ export const watchPoints: WatchPoint[] = [
   {
     id: "WP-03",
     productId: "p-portail",
+    featureId: "f-portail-report",
     title: "Couverture insuffisante du reporting",
     description: "Seul le test fonctionnel est couvert ; aucune régression automatisée.",
     level: "vigilance",
@@ -1196,6 +1269,7 @@ export const watchPoints: WatchPoint[] = [
   {
     id: "WP-04",
     productId: "p-paiement",
+    featureId: "f-auth",
     title: "Montée de version du SDK 3DS",
     description: "Migration du SDK 3DS prévue en v4.13, impact à évaluer sur la régression.",
     level: "info",
@@ -1390,14 +1464,15 @@ export const referentialRules: ReferentialRule[] = [
 /*  7.13 Utilisateurs plateforme ----------------------------------------  */
 
 export const platformUsers: PlatformUser[] = [
-  { id: "u-1", name: "Jean Dupont", email: "jean.dupont@dhi.io", role: "approver", active: true },
-  { id: "u-2", name: "Marie Martin", email: "marie.martin@dhi.io", role: "qa_lead", active: true },
+  { id: "u-1", name: "Jean Dupont", email: "jean.dupont@dhi.io", role: "approver", active: true, password: "demo" },
+  { id: "u-2", name: "Marie Martin", email: "marie.martin@dhi.io", role: "qa_lead", active: true, password: "demo" },
   {
     id: "u-3",
     name: "Pierre Durand",
     email: "pierre.durand@dhi.io",
     role: "testeur",
     active: true,
+    password: "demo",
   },
   {
     id: "u-4",
@@ -1405,6 +1480,7 @@ export const platformUsers: PlatformUser[] = [
     email: "sophie.lemaire@dhi.io",
     role: "quality_manager",
     active: true,
+    password: "demo",
   },
   {
     id: "u-5",
@@ -1412,6 +1488,7 @@ export const platformUsers: PlatformUser[] = [
     email: "ahmed.bakari@dhi.io",
     role: "chef_projet",
     active: true,
+    password: "demo",
   },
   {
     id: "u-6",
@@ -1419,6 +1496,7 @@ export const platformUsers: PlatformUser[] = [
     email: "claire.robert@dhi.io",
     role: "lecteur",
     active: false,
+    password: "demo",
   },
   {
     id: "u-7",
@@ -1426,6 +1504,11 @@ export const platformUsers: PlatformUser[] = [
     email: "lea.moreau@dhi.io",
     role: "product_owner",
     active: true,
+    password: "demo",
   },
-  { id: "u-8", name: "Karim Ndiaye", email: "karim.ndiaye@dhi.io", role: "admin", active: true },
+  { id: "u-8", name: "Karim Ndiaye", email: "karim.ndiaye@dhi.io", role: "admin", active: true, password: "demo" },
+  { id: "u-9", name: "Lucas Bernard", email: "lucas.bernard@dhi.io", role: "developpeur", active: true, password: "demo" },
+  { id: "u-10", name: "Emma Girard", email: "emma.girard@dhi.io", role: "developpeur", active: true, password: "demo" },
+  { id: "u-11", name: "Hugo Petit", email: "hugo.petit@dhi.io", role: "developpeur", active: true, password: "demo" },
+  { id: "u-12", name: "Nadia Belkacem", email: "nadia.belkacem@dhi.io", role: "chef_testeur", active: true, password: "demo" },
 ];

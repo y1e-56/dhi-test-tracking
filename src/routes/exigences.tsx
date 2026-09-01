@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-router";
 import {
   ChevronDown,
   ChevronRight,
@@ -15,14 +15,6 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
 import { CriticalityBadge, KpiCard } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,8 +25,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -50,15 +40,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/dhi-store";
-import {
-  type Criticality,
-  type Requirement,
-  type RequirementStatus,
-  type TestCase,
-} from "@/lib/dhi-data";
+import { useVisibleProductIds } from "@/lib/use-scope";
+import { type Requirement, type RequirementStatus, type TestCase } from "@/lib/dhi-data";
+import { canCreate } from "@/lib/role-protection";
 import { QUALITY_TABS } from "@/lib/dhi-nav";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 
@@ -66,13 +52,6 @@ const REQUIREMENT_STATUS_T_KEY: Record<RequirementStatus, TranslationKey> = {
   brouillon: "pages.requirements.status_brouillon",
   validee: "pages.requirements.status_validee",
   couverte: "pages.requirements.status_couverte",
-};
-
-const PRIORITY_T_KEY: Record<Criticality, TranslationKey> = {
-  critique: "pages.requirements.priority_critique",
-  haute: "pages.requirements.priority_haute",
-  moyenne: "pages.requirements.priority_moyenne",
-  basse: "pages.requirements.priority_basse",
 };
 
 export const Route = createFileRoute("/exigences")({
@@ -112,65 +91,36 @@ function StatusPill({ status }: { status: RequirementStatus }) {
   );
 }
 
-type ReqForm = {
-  title: string;
-  description: string;
-  productId: string;
-  priority: Criticality;
-  status: RequirementStatus;
-  featureIds: string[];
-};
-
-function emptyReqForm(products: ReturnType<typeof useStore>["products"]): ReqForm {
-  return {
-    title: "",
-    description: "",
-    productId: products[0]?.id ?? "",
-    priority: "moyenne",
-    status: "brouillon",
-    featureIds: [],
-  };
-}
-
-function reqToForm(r: Requirement): ReqForm {
-  return {
-    title: r.title,
-    description: r.description,
-    productId: r.productId,
-    priority: r.priority,
-    status: r.status,
-    featureIds: [...r.featureIds],
-  };
-}
-
 function RequirementsPage() {
-  const {
-    requirements,
-    products,
-    features,
-    tests,
-    addRequirement,
-    updateRequirement,
-    deleteRequirement,
-  } = useStore();
+  const matches = useMatches();
+  if (matches[matches.length - 1]?.pathname !== "/exigences") return <Outlet />;
+  return <RequirementsList />;
+}
+
+function RequirementsList() {
+  const { requirements, products, features, tests, updateRequirement, deleteRequirement } =
+    useStore();
   const { t } = useI18n();
   const [productFilter, setProductFilter] = useState("all");
   const [expandedReq, setExpandedReq] = useState<Record<string, boolean>>({});
   const [expandedFeature, setExpandedFeature] = useState<Record<string, boolean>>({});
 
-  const [openCreate, setOpenCreate] = useState(false);
-  const [formCreate, setFormCreate] = useState<ReqForm>(() => emptyReqForm(products));
-
-  const [editingReq, setEditingReq] = useState<Requirement | null>(null);
-  const [formEdit, setFormEdit] = useState<ReqForm | null>(null);
-
   const [toDeleteReq, setToDeleteReq] = useState<Requirement | null>(null);
 
   const fmt = (key: TranslationKey, count: number) => t(key).replace("{count}", String(count));
 
+  const visiblePIds = useVisibleProductIds(products);
+  const visibleRequirements = useMemo(
+    () => requirements.filter((r) => visiblePIds.has(r.productId)),
+    [requirements, visiblePIds],
+  );
+
   const rows = useMemo(
-    () => requirements.filter((r) => productFilter === "all" || r.productId === productFilter),
-    [requirements, productFilter],
+    () =>
+      visibleRequirements.filter(
+        (r) => productFilter === "all" || r.productId === productFilter,
+      ),
+    [visibleRequirements, productFilter],
   );
 
   const testsForFeatures = useMemo(() => {
@@ -209,70 +159,17 @@ function RequirementsPage() {
 
   const orphanFeatures = useMemo(() => {
     const filteredProductIds =
-      productFilter === "all" ? new Set(products.map((p) => p.id)) : new Set([productFilter]);
+      productFilter === "all" ? visiblePIds : new Set<string>([productFilter]);
     return features.filter(
       (f) => filteredProductIds.has(f.productId) && !(requirementsByFeature[f.id]?.length ?? 0),
     );
-  }, [features, requirementsByFeature, productFilter, products]);
-
-  const featuresForProduct = (productId: string) =>
-    features.filter((f) => f.productId === productId);
-
-  const submitCreate = () => {
-    if (!formCreate.title.trim()) {
-      toast.error(t("pages.requirements.title_required"));
-      return;
-    }
-    addRequirement({
-      productId: formCreate.productId,
-      title: formCreate.title.trim(),
-      description: formCreate.description,
-      priority: formCreate.priority,
-      status: formCreate.status,
-      featureIds: formCreate.featureIds,
-    });
-    toast.success(t("pages.requirements.added"));
-    setOpenCreate(false);
-    setFormCreate(emptyReqForm(products));
-  };
-
-  const submitEdit = () => {
-    if (!editingReq || !formEdit) return;
-    if (!formEdit.title.trim()) {
-      toast.error(t("pages.requirements.title_required"));
-      return;
-    }
-    updateRequirement(editingReq.id, {
-      productId: formEdit.productId,
-      title: formEdit.title.trim(),
-      description: formEdit.description,
-      priority: formEdit.priority,
-      status: formEdit.status,
-      featureIds: formEdit.featureIds,
-    });
-    toast.success(t("pages.requirements.updated").replace("{id}", editingReq.id));
-    setEditingReq(null);
-    setFormEdit(null);
-  };
-
-  const openEdit = (r: Requirement) => {
-    setEditingReq(r);
-    setFormEdit(reqToForm(r));
-  };
+  }, [features, requirementsByFeature, productFilter, visiblePIds]);
 
   const confirmDelete = () => {
     if (!toDeleteReq) return;
     deleteRequirement(toDeleteReq.id);
     toast.success(t("pages.requirements.deleted").replace("{id}", toDeleteReq.id));
     setToDeleteReq(null);
-  };
-
-  const toggleFeatureInForm = (form: ReqForm, setForm: (f: ReqForm) => void, fid: string) => {
-    const has = form.featureIds.includes(fid);
-    setForm({
-      ...form,
-      featureIds: has ? form.featureIds.filter((x) => x !== fid) : [...form.featureIds, fid],
-    });
   };
 
   return (
@@ -282,32 +179,36 @@ function RequirementsPage() {
       breadcrumb={t("pages.requirements.breadcrumb")}
       tabs={QUALITY_TABS}
       actions={
-        <Button size="sm" onClick={() => setOpenCreate(true)}>
-          <Plus className="size-4" /> {t("pages.requirements.new_requirement")}
-        </Button>
+        canCreate() ? (
+          <Link to="/exigences/ajouter">
+            <Button size="sm">
+              <Plus className="size-4" /> {t("pages.requirements.new_requirement")}
+            </Button>
+          </Link>
+        ) : undefined
       }
     >
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           label={t("nav.exigences")}
-          value={requirements.length}
+          value={visibleRequirements.length}
           hint={t("pages.requirements.tous_produits")}
         />
         <KpiCard
           label={t("pages.requirements.couvertes")}
-          value={requirements.filter((r) => r.status === "couverte").length}
+          value={visibleRequirements.filter((r) => r.status === "couverte").length}
           tone="success"
           hint={t("pages.requirements.rattachees_a_des_tests")}
         />
         <KpiCard
           label={t("pages.requirements.validees")}
-          value={requirements.filter((r) => r.status === "validee").length}
+          value={visibleRequirements.filter((r) => r.status === "validee").length}
           tone="info"
           hint={t("pages.requirements.a_couvrir")}
         />
         <KpiCard
           label={t("pages.requirements.brouillons")}
-          value={requirements.filter((r) => r.status === "brouillon").length}
+          value={visibleRequirements.filter((r) => r.status === "brouillon").length}
           tone="warning"
           hint={t("pages.requirements.a_valider")}
         />
@@ -336,14 +237,14 @@ function RequirementsPage() {
                           <span className="num font-semibold mr-2">{r.id}</span>
                           <span className="truncate">{r.title}</span>
                         </span>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-6 shrink-0 ml-2"
-                          onClick={() => openEdit(r)}
+                        <Link
+                          to="/exigences/$requirementId/modifier"
+                          params={{ requirementId: r.id }}
                         >
-                          <Pencil className="size-3.5" />
-                        </Button>
+                          <Button size="icon" variant="ghost" className="size-6 shrink-0 ml-2">
+                            <Pencil className="size-3.5" />
+                          </Button>
+                        </Link>
                       </li>
                     ))}
                     {orphanRequirements.length > 4 ? (
@@ -414,11 +315,13 @@ function RequirementsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("pages.requirements.tous_les_produits")}</SelectItem>
-              {products.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
+              {products
+                .filter((p) => visiblePIds.has(p.id))
+                .map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
           <p className="label-eyebrow ml-auto">
@@ -536,15 +439,15 @@ function RequirementsPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-7"
-                        onClick={() => openEdit(r)}
+                      <Link
+                        to="/exigences/$requirementId/modifier"
+                        params={{ requirementId: r.id }}
                         title={t("pages.requirements.edit_requirement")}
                       >
-                        <Pencil className="size-4" />
-                      </Button>
+                        <Button size="icon" variant="ghost" className="size-7">
+                          <Pencil className="size-4" />
+                        </Button>
+                      </Link>
                       <Button
                         size="icon"
                         variant="ghost"
@@ -654,15 +557,15 @@ function RequirementsPage() {
                         {linkedFeatures.length === 0 ? (
                           <div className="py-6 text-center text-sm text-muted-foreground border border-dashed border-border rounded-md">
                             {t("pages.requirements.aucune_feature_liee")}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="ml-3"
-                              onClick={() => openEdit(r)}
+                            <Link
+                              to="/exigences/$requirementId/modifier"
+                              params={{ requirementId: r.id }}
                             >
-                              <Pencil className="size-3.5 mr-1" />{" "}
-                              {t("actions.lier_fonctionnalites")}
-                            </Button>
+                              <Button size="sm" variant="outline" className="ml-3">
+                                <Pencil className="size-3.5 mr-1" />{" "}
+                                {t("actions.lier_fonctionnalites")}
+                              </Button>
+                            </Link>
                           </div>
                         ) : (
                           <div className="space-y-2">
@@ -803,63 +706,6 @@ function RequirementsPage() {
         </div>
       </div>
 
-      <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{t("pages.requirements.new_requirement")}</DialogTitle>
-          </DialogHeader>
-          <RequirementFormFields
-            form={formCreate}
-            setForm={setFormCreate}
-            products={products}
-            features={features}
-            featuresForProduct={featuresForProduct}
-            toggleFeature={(fid) => toggleFeatureInForm(formCreate, setFormCreate, fid)}
-          />
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setOpenCreate(false)}>
-              {t("actions.annuler")}
-            </Button>
-            <Button onClick={submitCreate}>{t("actions.ajouter")}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={editingReq !== null}
-        onOpenChange={(o) => !o && (setEditingReq(null), setFormEdit(null))}
-      >
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {t("pages.requirements.edit_requirement")} {editingReq?.id ?? ""}
-            </DialogTitle>
-          </DialogHeader>
-          {formEdit ? (
-            <RequirementFormFields
-              form={formEdit}
-              setForm={setFormEdit}
-              products={products}
-              features={features}
-              featuresForProduct={featuresForProduct}
-              toggleFeature={(fid) => toggleFeatureInForm(formEdit, setFormEdit, fid)}
-            />
-          ) : null}
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setEditingReq(null);
-                setFormEdit(null);
-              }}
-            >
-              {t("actions.annuler")}
-            </Button>
-            <Button onClick={submitEdit}>{t("actions.enregistrer")}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <AlertDialog open={toDeleteReq !== null} onOpenChange={(o) => !o && setToDeleteReq(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -886,141 +732,5 @@ function RequirementsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </AppShell>
-  );
-}
-
-function RequirementFormFields({
-  form,
-  setForm,
-  products,
-  featuresForProduct,
-  toggleFeature,
-}: {
-  form: ReqForm;
-  setForm: (f: ReqForm) => void;
-  products: ReturnType<typeof useStore>["products"];
-  features: ReturnType<typeof useStore>["features"];
-  featuresForProduct: (productId: string) => ReturnType<typeof useStore>["features"];
-  toggleFeature: (fid: string) => void;
-}) {
-  const { t } = useI18n();
-  const linkedFeatures = featuresForProduct(form.productId);
-  return (
-    <div className="grid gap-4 py-2">
-      <div className="space-y-2">
-        <Label>{t("pages.requirements.form_title")}</Label>
-        <Input
-          value={form.title}
-          placeholder={t("pages.requirements.title_placeholder")}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>{t("pages.requirements.description_detaillee")}</Label>
-        <Textarea
-          rows={3}
-          value={form.description}
-          placeholder={t("pages.requirements.description_placeholder")}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-        />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="space-y-2">
-          <Label>{t("common.produit")}</Label>
-          <Select
-            value={form.productId}
-            onValueChange={(v) => setForm({ ...form, productId: v, featureIds: [] })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {products.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>{t("pages.requirements.priorite")}</Label>
-          <Select
-            value={form.priority}
-            onValueChange={(v) => setForm({ ...form, priority: v as Criticality })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {(Object.keys(PRIORITY_T_KEY) as Criticality[]).map((c) => (
-                <SelectItem key={c} value={c}>
-                  {t(PRIORITY_T_KEY[c])}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>{t("common.statut")}</Label>
-          <Select
-            value={form.status}
-            onValueChange={(v) => setForm({ ...form, status: v as RequirementStatus })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {(Object.keys(REQUIREMENT_STATUS_T_KEY) as RequirementStatus[]).map((s) => (
-                <SelectItem key={s} value={s}>
-                  {t(REQUIREMENT_STATUS_T_KEY[s])}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label>{t("pages.requirements.fonctionnalites_couvertes")}</Label>
-          <span className="text-[11px] text-muted-foreground">
-            {t("pages.requirements.selection_count").replace(
-              "{count}",
-              String(form.featureIds.length),
-            )}{" "}
-            / {linkedFeatures.length}
-          </span>
-        </div>
-        <div className="rounded-md border border-border bg-subtle/50 p-3 max-h-56 overflow-y-auto">
-          {linkedFeatures.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4">
-              {t("pages.requirements.aucune_feature_produit")}
-            </p>
-          ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {linkedFeatures.map((f) => (
-                <label
-                  key={f.id}
-                  className="flex items-start gap-2 rounded-md border border-border bg-white px-2.5 py-2 text-xs cursor-pointer hover:bg-primary/5"
-                >
-                  <Checkbox
-                    className="mt-0.5 size-3.5"
-                    checked={form.featureIds.includes(f.id)}
-                    onCheckedChange={() => toggleFeature(f.id)}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{f.name}</p>
-                    <p className="truncate text-[11px] text-muted-foreground">
-                      {f.description || t("pages.requirements.sans_description")}
-                    </p>
-                  </div>
-                  <CriticalityBadge level={f.criticality} />
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
   );
 }

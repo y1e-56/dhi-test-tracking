@@ -1,17 +1,10 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, Outlet, useMatches } from "@tanstack/react-router";
 import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
 import { HealthBadge, ScoreValue } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +16,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -39,9 +31,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PEOPLE, healthOf, type Product } from "@/lib/dhi-data";
+import { type Product } from "@/lib/dhi-data";
+import { canCreate } from "@/lib/role-protection";
+import { visibleProducts, getUser } from "@/lib/access";
 import { QUALITY_TABS } from "@/lib/dhi-nav";
-import { productScore, useStore } from "@/lib/dhi-store";
+import { productScore, useStore, useHealthOf } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/produits")({
@@ -60,36 +54,27 @@ export const Route = createFileRoute("/produits")({
 });
 
 type SortKey = "name" | "score" | "lastUpdate";
-type ProductForm = { name: string; owner: string; qaLead: string; description: string };
 
 function ProductsPage() {
+  const matches = useMatches();
+  if (matches[matches.length - 1]?.pathname !== "/produits") return <Outlet />;
+  return <ProductsList />;
+}
+
+function ProductsList() {
   const { t } = useI18n();
-  const { products, projects, addProduct, updateProduct, deleteProduct } = useStore();
+  const { products, projects, deleteProduct } = useStore();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("score");
   const [healthFilter, setHealthFilter] = useState<string>("all");
 
-  const [openCreate, setOpenCreate] = useState(false);
-  const [formCreate, setFormCreate] = useState<ProductForm>({
-    name: "",
-    owner: "",
-    qaLead: "",
-    description: "",
-  });
-
-  const [editing, setEditing] = useState<Product | null>(null);
-  const [formEdit, setFormEdit] = useState<ProductForm>({
-    name: "",
-    owner: "",
-    qaLead: "",
-    description: "",
-  });
-
   const [toDelete, setToDelete] = useState<Product | null>(null);
+  const healthOf = useHealthOf();
 
   const rows = useMemo(() => {
-    let list = products.map((p) => ({ p, score: productScore(p) }));
+    const viewable = visibleProducts(products, getUser());
+    let list = viewable.map((p) => ({ p, score: productScore(p) }));
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -105,53 +90,7 @@ function ProductsPage() {
           : b.p.lastUpdate.localeCompare(a.p.lastUpdate),
     );
     return list;
-  }, [products, search, sort, healthFilter]);
-
-  const submitCreate = () => {
-    if (!formCreate.name.trim() || !formCreate.owner || !formCreate.qaLead) {
-      toast.error(t("pages.products.required"));
-      return;
-    }
-    addProduct({
-      name: formCreate.name.trim(),
-      description: formCreate.description,
-      owner: formCreate.owner,
-      qaLead: formCreate.qaLead,
-      qaTeam: [formCreate.qaLead],
-      versions: ["1.0"],
-      score: 80,
-    });
-    toast.success(t("pages.products.created"));
-    setOpenCreate(false);
-    setFormCreate({ name: "", owner: "", qaLead: "", description: "" });
-  };
-
-  const startEdit = (p: Product) => {
-    setEditing(p);
-    setFormEdit({
-      name: p.name,
-      owner: p.owner,
-      qaLead: p.qaLead,
-      description: p.description,
-    });
-  };
-
-  const submitEdit = () => {
-    if (!editing) return;
-    if (!formEdit.name.trim() || !formEdit.owner || !formEdit.qaLead) {
-      toast.error(t("pages.products.required"));
-      return;
-    }
-    updateProduct(editing.id, {
-      name: formEdit.name.trim(),
-      description: formEdit.description,
-      owner: formEdit.owner,
-      qaLead: formEdit.qaLead,
-      qaTeam: [formEdit.qaLead],
-    });
-    toast.success(t("pages.products.updated_msg"));
-    setEditing(null);
-  };
+  }, [products, search, sort, healthFilter, healthOf]);
 
   const confirmDelete = () => {
     if (!toDelete) return;
@@ -167,9 +106,13 @@ function ProductsPage() {
       breadcrumb={t("pages.products.breadcrumb")}
       tabs={QUALITY_TABS}
       actions={
-        <Button size="sm" onClick={() => setOpenCreate(true)}>
-          <Plus className="size-4" /> {t("pages.products.new_product")}
-        </Button>
+        canCreate() ? (
+          <Link to="/produits/ajouter">
+            <Button size="sm">
+              <Plus className="size-4" /> {t("pages.products.new_product")}
+            </Button>
+          </Link>
+        ) : undefined
       }
     >
       <div className="panel">
@@ -248,15 +191,15 @@ function ProductsPage() {
                 <TableCell className="num text-sm text-muted-foreground">{p.lastUpdate}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-7"
+                    <Link
+                      to="/produits/$productId/modifier"
+                      params={{ productId: p.id }}
                       aria-label={`${t("pages.products.edit")} ${p.name}`}
-                      onClick={() => startEdit(p)}
                     >
-                      <Pencil className="size-3.5" />
-                    </Button>
+                      <Button size="icon" variant="ghost" className="size-7">
+                        <Pencil className="size-3.5" />
+                      </Button>
+                    </Link>
                     <Button
                       size="icon"
                       variant="ghost"
@@ -281,36 +224,6 @@ function ProductsPage() {
         </Table>
       </div>
 
-      <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("pages.products.new_product")}</DialogTitle>
-          </DialogHeader>
-          <ProductFormFields form={formCreate} setForm={setFormCreate} />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenCreate(false)}>
-              {t("actions.annuler")}
-            </Button>
-            <Button onClick={submitCreate}>{t("pages.products.create")}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("pages.products.edit_product")}</DialogTitle>
-          </DialogHeader>
-          <ProductFormFields form={formEdit} setForm={setFormEdit} />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>
-              {t("actions.annuler")}
-            </Button>
-            <Button onClick={submitEdit}>{t("actions.enregistrer")}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -330,68 +243,5 @@ function ProductsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </AppShell>
-  );
-}
-
-function ProductFormFields({
-  form,
-  setForm,
-}: {
-  form: ProductForm;
-  setForm: (f: ProductForm) => void;
-}) {
-  const { t } = useI18n();
-  return (
-    <div className="grid gap-4">
-      <div className="grid gap-1.5">
-        <Label htmlFor="pf-name">{t("pages.products.name_label")}</Label>
-        <Input
-          id="pf-name"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          placeholder={t("pages.products.name_placeholder")}
-        />
-      </div>
-      <div className="grid gap-1.5">
-        <Label htmlFor="pf-desc">{t("common.description")}</Label>
-        <Input
-          id="pf-desc"
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="grid gap-1.5">
-          <Label>{t("pages.products.owner")}</Label>
-          <Select value={form.owner} onValueChange={(v) => setForm({ ...form, owner: v })}>
-            <SelectTrigger>
-              <SelectValue placeholder={t("pages.go_live.choose")} />
-            </SelectTrigger>
-            <SelectContent>
-              {PEOPLE.map((p) => (
-                <SelectItem key={p} value={p}>
-                  {p}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid gap-1.5">
-          <Label>{t("pages.products.qa_lead")}</Label>
-          <Select value={form.qaLead} onValueChange={(v) => setForm({ ...form, qaLead: v })}>
-            <SelectTrigger>
-              <SelectValue placeholder={t("pages.go_live.choose")} />
-            </SelectTrigger>
-            <SelectContent>
-              {PEOPLE.map((p) => (
-                <SelectItem key={p} value={p}>
-                  {p}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-    </div>
   );
 }

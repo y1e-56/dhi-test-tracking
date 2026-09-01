@@ -14,10 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PEOPLE, type CampaignStatus } from "@/lib/dhi-data";
+import { DEVELOPERS, PEOPLE, type CampaignStatus } from "@/lib/dhi-data";
 import { EXECUTION_TABS } from "@/lib/dhi-nav";
 import { campaignStats, useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
+import { useVisibleProducts, useVisibleProjects, useVisibleCampaigns } from "@/lib/use-scope";
 
 export const Route = createFileRoute("/campagnes/ajouter")({
   head: () => ({
@@ -40,6 +41,10 @@ function CreateCampaignPage() {
   const navigate = useNavigate();
   const { t } = useI18n();
 
+  const viewableProducts = useVisibleProducts(products);
+  const viewableProjects = useVisibleProjects(projects, products);
+  const viewableCampaigns = useVisibleCampaigns(campaigns, products);
+
   const [form, setForm] = useState({
     name: "",
     type: "Recette",
@@ -53,9 +58,10 @@ function CreateCampaignPage() {
     clone: true,
     cloneFrom: "c-recette-412",
     testers: new Set<string>(["Marie Martin"]),
+    developers: new Set<string>(["Lucas Bernard"]),
   });
 
-  const formProjects = projects.filter((pr) => pr.productId === form.productId);
+  const formProjects = viewableProjects.filter((pr) => pr.productId === form.productId);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +93,7 @@ function CreateCampaignPage() {
         startDate: form.startDate,
         endDate: form.endDate || form.startDate,
         testers: [...form.testers],
+        developers: [...form.developers],
       },
       form.clone ? form.cloneFrom : undefined,
     );
@@ -170,7 +177,7 @@ function CreateCampaignPage() {
                   <Select
                     value={form.productId}
                     onValueChange={(v) => {
-                      const first = projects.find((pr) => pr.productId === v);
+                      const first = viewableProjects.find((pr) => pr.productId === v);
                       setForm((f) => ({
                         ...f,
                         productId: v,
@@ -183,7 +190,7 @@ function CreateCampaignPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {products.map((p) => (
+                      {viewableProducts.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.name}
                         </SelectItem>
@@ -196,7 +203,7 @@ function CreateCampaignPage() {
                   <Select
                     value={form.projectId}
                     onValueChange={(v) => {
-                      const pr = projects.find((p) => p.id === v);
+                      const pr = viewableProjects.find((p) => p.id === v);
                       setForm((f) => ({
                         ...f,
                         projectId: v,
@@ -326,7 +333,7 @@ function CreateCampaignPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {campaigns.map((c) => (
+                    {viewableCampaigns.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.name}
                       </SelectItem>
@@ -354,6 +361,33 @@ function CreateCampaignPage() {
                           if (checked) next.add(p);
                           else next.delete(p);
                           return { ...f, testers: next };
+                        })
+                      }
+                    />
+                    {p}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label className="text-sm font-medium">
+                {t("pages.add_campaign.assigned_developers")}
+              </Label>
+              <div className="grid grid-cols-2 gap-3">
+                {DEVELOPERS.map((p) => (
+                  <label
+                    key={p}
+                    className="flex items-center gap-2 text-sm p-3 rounded-lg border border-border hover:bg-subtle cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={form.developers.has(p)}
+                      onCheckedChange={(checked) =>
+                        setForm((f) => {
+                          const next = new Set(f.developers);
+                          if (checked) next.add(p);
+                          else next.delete(p);
+                          return { ...f, developers: next };
                         })
                       }
                     />
