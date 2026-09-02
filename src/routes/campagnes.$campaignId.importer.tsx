@@ -24,7 +24,7 @@ import {
   parseImportText,
   type ParsedTestRow,
 } from "@/lib/test-import";
-import { EXECUTION_TABS } from "@/lib/dhi-nav";
+import { campaignTabs } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/campagnes/$campaignId/importer")({
@@ -145,7 +145,7 @@ function ImportTestsPage() {
       title={`${t("common.campagne")} : ${campaign.name}`}
       subtitle={t("campagne_import.title")}
       breadcrumb={[t("nav.execution"), t("pages.campaigns.campaigns"), campaign.name]}
-      tabs={EXECUTION_TABS}
+      tabs={campaignTabs(campaignId)}
     >
       <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
         <div className="mb-6">

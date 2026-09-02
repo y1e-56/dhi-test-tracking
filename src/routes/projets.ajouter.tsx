@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PEOPLE, type ProjectStatus } from "@/lib/dhi-data";
+import { type ProjectStatus } from "@/lib/dhi-data";
 import { QUALITY_TABS } from "@/lib/dhi-nav";
 import { useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
@@ -41,15 +41,16 @@ type ProjectForm = {
 function CreateProjectPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { products, addProject } = useStore();
+  const { products, users, addProject } = useStore();
+  const activeMembers = users.filter((u) => u.active).map((u) => u.name);
 
   const [form, setForm] = useState<ProjectForm>({
     name: "",
     objective: "",
     productId: products[0]?.id ?? "",
     targetVersion: "",
-    manager: PEOPLE[0] ?? "",
-    qaLead: PEOPLE[1] ?? "",
+    manager: activeMembers[0] ?? "",
+    qaLead: activeMembers[1] ?? "",
     status: "planifie",
     startDate: new Date().toISOString().slice(0, 10),
     endDate: "",
@@ -221,7 +222,7 @@ function CreateProjectPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PEOPLE.map((p) => (
+                      {activeMembers.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>
@@ -239,7 +240,7 @@ function CreateProjectPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PEOPLE.map((p) => (
+                      {activeMembers.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>

@@ -127,6 +127,8 @@ export interface Campaign {
   endDate: string;
   testers: string[];
   developers?: string[] | undefined;
+  /** Fonctionnalités du registre importées/rattachées explicitement à cette campagne. */
+  featureIds?: string[] | undefined;
 }
 
 export interface TestCase {

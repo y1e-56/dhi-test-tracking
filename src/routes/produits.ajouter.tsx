@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PEOPLE } from "@/lib/dhi-data";
 import { QUALITY_TABS } from "@/lib/dhi-nav";
 import { useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
@@ -32,7 +31,8 @@ function CreateProductPage() {
   console.log("[DHI] CreateProductPage RENDERED");
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { addProduct } = useStore();
+  const { users, addProduct } = useStore();
+  const activeMembers = users.filter((u) => u.active).map((u) => u.name);
 
   const [form, setForm] = useState({
     name: "",
@@ -119,21 +119,12 @@ function CreateProductPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label className="text-sm font-medium">{t("pages.products.owner")}</Label>
-                  <Select
+                  <Input
                     value={form.owner}
-                    onValueChange={(v) => setForm((f) => ({ ...f, owner: v }))}
-                  >
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder={t("pages.go_live.choose")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PEOPLE.map((p) => (
-                        <SelectItem key={p} value={p}>
-                          {p}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(e) => setForm((f) => ({ ...f, owner: e.target.value }))}
+                    placeholder={t("pages.products.owner_placeholder")}
+                    className="h-11"
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label className="text-sm font-medium">{t("pages.products.qa_lead")}</Label>
@@ -145,7 +136,7 @@ function CreateProductPage() {
                       <SelectValue placeholder={t("pages.go_live.choose")} />
                     </SelectTrigger>
                     <SelectContent>
-                      {PEOPLE.map((p) => (
+                      {activeMembers.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>

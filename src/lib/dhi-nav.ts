@@ -4,6 +4,7 @@ export interface AppShellTab {
   to: string;
   label: TranslationKey;
   exact?: boolean;
+  params?: Record<string, string>;
 }
 
 export const PILOTAGE_TABS: AppShellTab[] = [
@@ -34,6 +35,79 @@ export const SYSTEM_TABS: AppShellTab[] = [
   { to: "/administration", label: "nav.administration" },
   { to: "/audit", label: "nav.audit" },
 ];
+
+/** Onglets horizontaux contextuels d'un produit (Aperçu → Projets → Fonctionnalités → Campagnes). */
+export function productTabs(productId: string): AppShellTab[] {
+  return [
+    {
+      to: "/produits/$productId",
+      label: "nav.product_overview",
+      exact: true,
+      params: { productId },
+    },
+    {
+      to: "/produits/$productId/projets",
+      label: "nav.product_projects",
+      params: { productId },
+    },
+    {
+      to: "/produits/$productId/fonctionnalites",
+      label: "nav.product_features",
+      params: { productId },
+    },
+    { to: "/produits/$productId/campagnes", label: "nav.product_campaigns", params: { productId } },
+  ];
+}
+
+/** Onglets horizontaux contextuels d'un projet (Vue d'ensemble → Fonctionnalités → Campagnes → Cas de test). */
+export function projectTabs(projectId: string): AppShellTab[] {
+  return [
+    {
+      to: "/projets/$projectId",
+      label: "nav.project_overview",
+      exact: true,
+      params: { projectId },
+    },
+    {
+      to: "/projets/$projectId/fonctionnalites",
+      label: "nav.project_features",
+      params: { projectId },
+    },
+    {
+      to: "/projets/$projectId/campagnes",
+      label: "nav.project_campaigns",
+      params: { projectId },
+    },
+    { to: "/projets/$projectId/tests", label: "nav.project_tests", params: { projectId } },
+  ];
+}
+
+/** Onglets horizontaux contextuels d'une campagne (Vue d'ensemble → Fonctionnalités → Cas de test → Importer). */
+export function campaignTabs(campaignId: string): AppShellTab[] {
+  return [
+    {
+      to: "/campagnes/$campaignId",
+      label: "nav.campaign_overview",
+      exact: true,
+      params: { campaignId },
+    },
+    {
+      to: "/campagnes/$campaignId/fonctionnalites",
+      label: "nav.campaign_features",
+      params: { campaignId },
+    },
+    {
+      to: "/campagnes/$campaignId/tests",
+      label: "nav.campaign_tests",
+      params: { campaignId },
+    },
+    {
+      to: "/campagnes/$campaignId/importer",
+      label: "nav.campaign_import",
+      params: { campaignId },
+    },
+  ];
+}
 
 export const SEARCH_GROUPS: TranslationKey[] = [
   "nav.pilotage",

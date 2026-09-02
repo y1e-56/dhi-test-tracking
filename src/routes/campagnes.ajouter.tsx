@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { AppShell } from "@/components/dhi/AppShell";
+import { MemberMultiSelect, type MemberOption } from "@/components/dhi/MemberMultiSelect";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DEVELOPERS, PEOPLE, type CampaignStatus } from "@/lib/dhi-data";
+import { type CampaignStatus } from "@/lib/dhi-data";
 import { EXECUTION_TABS } from "@/lib/dhi-nav";
 import { campaignStats, useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
@@ -37,9 +38,17 @@ const CAMPAIGN_TYPES = ["Recette", "Régression", "Sécurité", "Performance", "
 const ENVIRONMENTS = ["RECETTE", "PREPROD", "DEV", "PROD"];
 
 function CreateCampaignPage() {
-  const { campaigns, tests, products, projects, addCampaign } = useStore();
+  const { campaigns, tests, products, projects, users, addCampaign } = useStore();
   const navigate = useNavigate();
   const { t } = useI18n();
+
+  const memberOptions: MemberOption[] = users.map((u) => ({
+    name: u.name,
+    role: u.role,
+    active: u.active,
+  }));
+  const testerOptions = memberOptions.filter((o) => o.role === "testeur" || o.role === "chef_testeur");
+  const devOptions = memberOptions.filter((o) => o.role === "developpeur");
 
   const viewableProducts = useVisibleProducts(products);
   const viewableProjects = useVisibleProjects(projects, products);
@@ -265,11 +274,13 @@ function CreateCampaignPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PEOPLE.map((p) => (
-                        <SelectItem key={p} value={p}>
-                          {p}
-                        </SelectItem>
-                      ))}
+                      {memberOptions
+                        .filter((o) => o.active)
+                        .map((o) => (
+                          <SelectItem key={o.name} value={o.name}>
+                            {o.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -347,54 +358,34 @@ function CreateCampaignPage() {
               <Label className="text-sm font-medium">
                 {t("pages.add_campaign.assigned_testers")}
               </Label>
-              <div className="grid grid-cols-2 gap-3">
-                {PEOPLE.map((p) => (
-                  <label
-                    key={p}
-                    className="flex items-center gap-2 text-sm p-3 rounded-lg border border-border hover:bg-subtle cursor-pointer"
-                  >
-                    <Checkbox
-                      checked={form.testers.has(p)}
-                      onCheckedChange={(checked) =>
-                        setForm((f) => {
-                          const next = new Set(f.testers);
-                          if (checked) next.add(p);
-                          else next.delete(p);
-                          return { ...f, testers: next };
-                        })
-                      }
-                    />
-                    {p}
-                  </label>
-                ))}
-              </div>
+              <MemberMultiSelect
+                value={form.testers}
+                onChange={(next) => setForm((f) => ({ ...f, testers: next }))}
+                options={testerOptions}
+                showRole={false}
+                placeholder={t("pages.add_campaign.aucun_membre")}
+                selectionLabel={{
+                  label: t("pages.add_campaign.membre"),
+                  labelPlural: t("pages.add_campaign.membres"),
+                }}
+              />
             </div>
 
             <div className="grid gap-2">
               <Label className="text-sm font-medium">
                 {t("pages.add_campaign.assigned_developers")}
               </Label>
-              <div className="grid grid-cols-2 gap-3">
-                {DEVELOPERS.map((p) => (
-                  <label
-                    key={p}
-                    className="flex items-center gap-2 text-sm p-3 rounded-lg border border-border hover:bg-subtle cursor-pointer"
-                  >
-                    <Checkbox
-                      checked={form.developers.has(p)}
-                      onCheckedChange={(checked) =>
-                        setForm((f) => {
-                          const next = new Set(f.developers);
-                          if (checked) next.add(p);
-                          else next.delete(p);
-                          return { ...f, developers: next };
-                        })
-                      }
-                    />
-                    {p}
-                  </label>
-                ))}
-              </div>
+              <MemberMultiSelect
+                value={form.developers}
+                onChange={(next) => setForm((f) => ({ ...f, developers: next }))}
+                options={devOptions}
+                showRole={false}
+                placeholder={t("pages.add_campaign.aucun_membre")}
+                selectionLabel={{
+                  label: t("pages.add_campaign.membre"),
+                  labelPlural: t("pages.add_campaign.membres"),
+                }}
+              />
             </div>
           </div>
 

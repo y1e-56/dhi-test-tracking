@@ -2,12 +2,10 @@ import { createFileRoute, Link, notFound, Outlet, useMatches } from "@tanstack/r
 import { ArrowLeft, ShieldCheck, Users, GitBranch } from "lucide-react";
 import { AppShell } from "@/components/dhi/AppShell";
 import {
-  CriticalityBadge,
   HealthBadge,
   Panel,
   QualityBar,
   ScoreValue,
-  StatusBadge,
 } from "@/components/dhi/indicators";
 import {
   Table,
@@ -17,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { campaignStats, loadSnapshot, productScore, useStore } from "@/lib/dhi-store";
+import { loadSnapshot, productScore, useStore } from "@/lib/dhi-store";
 import {
   PROJECT_STATUS_LABEL,
   SCORE_LABELS,
@@ -25,7 +23,7 @@ import {
   products as seedProducts,
   type ScoreBreakdown,
 } from "@/lib/dhi-data";
-import { QUALITY_TABS } from "@/lib/dhi-nav";
+import { productTabs } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
 import { getUser, productVisibleTo } from "@/lib/access";
 import { ProductAccessDenied } from "@/components/dhi/AccessDenied";
@@ -35,8 +33,7 @@ export const Route = createFileRoute("/produits/$productId")({
     const snapshot = loadSnapshot();
     const products = snapshot?.products ?? seedProducts;
     const p = products.find((x) => x.id === params.productId);
-    if (!p) throw notFound();
-    return { name: p.name };
+    return { name: p?.name ?? "Produit" };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -84,7 +81,7 @@ function ProductDetail() {
       title={product.name}
       subtitle={`${t("common.produit")} · ${product.description}`}
       breadcrumb={[t("nav.qualite"), t("nav.produits"), product.name]}
-      tabs={QUALITY_TABS}
+      tabs={productTabs(productId)}
       actions={
         <Link
           to="/produits"
@@ -317,104 +314,35 @@ function ProductDetail() {
         </Panel>
       </div>
 
-      <Panel
-        title={t("pages.product_detail.campaigns_all_versions")}
-        actions={
-          <Link to="/campagnes" className="text-xs font-medium text-primary hover:underline">
-            {t("pages.campaigns.all_campaigns")}
-          </Link>
-        }
-      >
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("common.campagne")}</TableHead>
-              <TableHead>{t("common.projet")}</TableHead>
-              <TableHead>{t("common.version")}</TableHead>
-              <TableHead>{t("common.etat")}</TableHead>
-              <TableHead>{t("pages.campaigns.progress")}</TableHead>
-              <TableHead className="text-right">{t("pages.product_detail.success_rate")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {prodCampaigns.map((c) => {
-              const st = campaignStats(tests, c.id);
-              const pr = projects.find((p) => p.id === c.projectId);
-              return (
-                <TableRow key={c.id}>
-                  <TableCell>
-                    <Link
-                      to="/campagnes/$campaignId"
-                      params={{ campaignId: c.id }}
-                      className="font-medium text-primary hover:underline"
-                    >
-                      {c.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    {pr ? (
-                      <Link
-                        to="/projets/$projectId"
-                        params={{ projectId: pr.id }}
-                        className="text-sm text-primary hover:underline"
-                      >
-                        {pr.name}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                  <TableCell className="num">{c.version}</TableCell>
-                  <TableCell>
-                    <StatusBadge status={c.status} />
-                  </TableCell>
-                  <TableCell className="w-48">
-                    <QualityBar value={st.executionRate} neutral />
-                  </TableCell>
-                  <TableCell className="num text-right">{st.successRate} %</TableCell>
-                </TableRow>
-              );
-            })}
-            {prodCampaigns.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                  {t("pages.product_detail.no_campaigns_for_product")}
-                </TableCell>
-              </TableRow>
-            ) : null}
-          </TableBody>
-        </Table>
-      </Panel>
-
-      <Panel
-        title={t("pages.product_detail.features")}
-        actions={
-          <Link to="/fonctionnalites" className="text-xs font-medium text-primary hover:underline">
-            {t("pages.product_detail.registry")}
-          </Link>
-        }
-      >
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("common.fonctionnalite")}</TableHead>
-              <TableHead>{t("common.criticite")}</TableHead>
-              <TableHead>{t("common.description")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {prodFeatures.map((f) => (
-              <TableRow key={f.id}>
-                <TableCell className="font-medium">{f.name}</TableCell>
-                <TableCell>
-                  <CriticalityBadge level={f.criticality} />
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">{f.description}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Panel>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Link to="/produits/$productId/fonctionnalites" params={{ productId }}>
+          <div className="panel p-5 transition-colors hover:bg-subtle">
+            <p className="label-eyebrow">{t("nav.product_features")}</p>
+            <p className="num mt-1 text-3xl font-semibold">{prodFeatures.length}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("pages.product_detail.features")}
+            </p>
+          </div>
+        </Link>
+        <Link to="/produits/$productId/campagnes" params={{ productId }}>
+          <div className="panel p-5 transition-colors hover:bg-subtle">
+            <p className="label-eyebrow">{t("nav.product_campaigns")}</p>
+            <p className="num mt-1 text-3xl font-semibold">{prodCampaigns.length}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("pages.product_detail.campaigns_all_versions")}
+            </p>
+          </div>
+        </Link>
+        <Link to="/produits/$productId/projets" params={{ productId }}>
+          <div className="panel p-5 transition-colors hover:bg-subtle">
+            <p className="label-eyebrow">{t("nav.product_projects")}</p>
+            <p className="num mt-1 text-3xl font-semibold">{prodProjects.length}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("pages.product.associated_projects")}
+            </p>
+          </div>
+        </Link>
+      </div>
     </AppShell>
   );
 }

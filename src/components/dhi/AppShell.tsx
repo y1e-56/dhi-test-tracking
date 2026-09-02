@@ -520,6 +520,7 @@ export function AppShell({
                 <Link
                   key={tab.to}
                   to={tab.to}
+                  {...(tab.params ? { params: tab.params as never } : {})}
                   activeOptions={{ exact: tab.exact ?? false }}
                   className="-mb-px whitespace-nowrap border-b-2 border-transparent py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
                   activeProps={{ className: "border-foreground text-foreground" }}

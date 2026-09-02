@@ -23,7 +23,7 @@ import {
   type Criticality,
   type TestType,
 } from "@/lib/dhi-data";
-import { EXECUTION_TABS } from "@/lib/dhi-nav";
+import { campaignTabs } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/campagnes/$campaignId/tests/$testId/modifier")({
@@ -141,7 +141,7 @@ function EditTestPage() {
       title={`${t("common.campagne")} : ${campaign.name}`}
       subtitle={`${t("pages.campaign_detail.modifier_cas_test")} ${test.id}`}
       breadcrumb={[t("nav.execution"), t("pages.campaigns.campaigns"), campaign.name]}
-      tabs={EXECUTION_TABS}
+      tabs={campaignTabs(campaignId)}
     >
       <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
         <div className="mb-6">
