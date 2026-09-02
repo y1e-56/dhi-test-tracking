@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, Outlet, useMatches } from "@tanstack/react-router";
 import { ArrowLeft, ShieldCheck, Users, GitBranch } from "lucide-react";
 import { AppShell } from "@/components/dhi/AppShell";
 import {
@@ -27,6 +27,8 @@ import {
 } from "@/lib/dhi-data";
 import { QUALITY_TABS } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
+import { getUser, productVisibleTo } from "@/lib/access";
+import { ProductAccessDenied } from "@/components/dhi/AccessDenied";
 
 export const Route = createFileRoute("/produits/$productId")({
   loader: ({ params }) => {
@@ -52,7 +54,17 @@ function ProductDetail() {
   const { productId } = Route.useParams();
   const { t } = useI18n();
   const { products: allProducts, projects, features, campaigns, tests, defects } = useStore();
+
+  const matches = useMatches();
   const product = allProducts.find((p) => p.id === productId);
+  if (product && !productVisibleTo(product, getUser())) {
+    return <ProductAccessDenied subject={product.name} />;
+  }
+  const matchesExact = matches[matches.length - 1]?.pathname === `/produits/${productId}`;
+  if (!matchesExact) {
+    return <Outlet />;
+  }
+
   if (!product) return null;
 
   const score = productScore(product);

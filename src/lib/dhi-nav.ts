@@ -9,7 +9,7 @@ export interface AppShellTab {
 export const PILOTAGE_TABS: AppShellTab[] = [
   { to: "/", label: "nav.dashboard", exact: true },
   { to: "/alertes", label: "nav.alertes" },
-  { to: "/rapports", label: "nav.rapports" },
+  { to: "/notifications", label: "nav.notifications" },
 ];
 
 /** Onglets horizontaux — périmètre Qualité (Produit → Projet → Features / exigences / couverture). */
@@ -19,14 +19,9 @@ export const QUALITY_TABS: AppShellTab[] = [
   { to: "/fonctionnalites", label: "nav.fonctionnalites" },
   { to: "/exigences", label: "nav.exigences" },
   { to: "/couverture", label: "nav.couverture" },
-  { to: "/non-fonctionnel", label: "nav.non_fonctionnel" },
 ];
 
-export const EXECUTION_TABS: AppShellTab[] = [
-  { to: "/campagnes", label: "nav.campagnes" },
-  { to: "/scenarios", label: "nav.scenarios" },
-  { to: "/dependances", label: "nav.dependances" },
-];
+export const EXECUTION_TABS: AppShellTab[] = [{ to: "/campagnes", label: "nav.campagnes" }];
 
 export const DECISION_TABS: AppShellTab[] = [
   { to: "/go-live", label: "nav.go_live" },
@@ -36,7 +31,6 @@ export const DECISION_TABS: AppShellTab[] = [
 export const SYSTEM_TABS: AppShellTab[] = [
   { to: "/anomalies", label: "nav.anomalies" },
   { to: "/referentiels", label: "nav.referentiels" },
-  { to: "/controles-qualite", label: "nav.controles_qualite" },
   { to: "/administration", label: "nav.administration" },
   { to: "/audit", label: "nav.audit" },
 ];
@@ -52,21 +46,17 @@ export const SEARCH_GROUPS: TranslationKey[] = [
 export const SEARCH_PAGES: { to: string; label: TranslationKey; group: TranslationKey }[] = [
   { to: "/", label: "nav.dashboard", group: "nav.pilotage" },
   { to: "/alertes", label: "nav.alertes", group: "nav.pilotage" },
-  { to: "/rapports", label: "nav.rapports", group: "nav.pilotage" },
+  { to: "/notifications", label: "nav.notifications", group: "nav.pilotage" },
   { to: "/produits", label: "nav.produits", group: "nav.qualite" },
   { to: "/projets", label: "nav.projets", group: "nav.qualite" },
   { to: "/fonctionnalites", label: "nav.fonctionnalites", group: "nav.qualite" },
   { to: "/exigences", label: "nav.exigences", group: "nav.qualite" },
   { to: "/couverture", label: "nav.couverture", group: "nav.qualite" },
-  { to: "/non-fonctionnel", label: "nav.non_fonctionnel", group: "nav.qualite" },
   { to: "/campagnes", label: "nav.campagnes", group: "nav.execution" },
-  { to: "/scenarios", label: "nav.scenarios", group: "nav.execution" },
-  { to: "/dependances", label: "nav.dependances", group: "nav.execution" },
   { to: "/go-live", label: "nav.go_live", group: "nav.decision" },
   { to: "/points-a-surveiller", label: "nav.points_surveiller", group: "nav.decision" },
   { to: "/anomalies", label: "nav.anomalies", group: "nav.systeme" },
   { to: "/referentiels", label: "nav.referentiels", group: "nav.systeme" },
-  { to: "/controles-qualite", label: "nav.controles_qualite", group: "nav.systeme" },
   { to: "/administration", label: "nav.administration", group: "nav.systeme" },
   { to: "/audit", label: "nav.audit", group: "nav.systeme" },
 ];

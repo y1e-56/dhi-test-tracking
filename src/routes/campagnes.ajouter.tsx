@@ -14,10 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PEOPLE, type CampaignStatus } from "@/lib/dhi-data";
+import { DEVELOPERS, PEOPLE, type CampaignStatus } from "@/lib/dhi-data";
 import { EXECUTION_TABS } from "@/lib/dhi-nav";
-import { campaignStats, suggestRegressionTests, useStore } from "@/lib/dhi-store";
+import { campaignStats, useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
+import { useVisibleProducts, useVisibleProjects, useVisibleCampaigns } from "@/lib/use-scope";
 
 export const Route = createFileRoute("/campagnes/ajouter")({
   head: () => ({
@@ -35,53 +36,14 @@ export const Route = createFileRoute("/campagnes/ajouter")({
 const CAMPAIGN_TYPES = ["Recette", "Régression", "Sécurité", "Performance", "Exploratoire"];
 const ENVIRONMENTS = ["RECETTE", "PREPROD", "DEV", "PROD"];
 
-function SuggestionPanel({
-  sourceId,
-  tests,
-  features,
-  defects,
-  dependencies,
-}: {
-  sourceId: string;
-  tests: ReturnType<typeof useStore>["tests"];
-  features: ReturnType<typeof useStore>["features"];
-  defects: ReturnType<typeof useStore>["defects"];
-  dependencies: ReturnType<typeof useStore>["dependencies"];
-}) {
-  const suggestions = suggestRegressionTests(sourceId, tests, features, defects, dependencies);
-  return (
-    <div className="mt-4 rounded-xl border border-warning/40 bg-warning-soft p-4">
-      <p className="mb-2 text-sm font-semibold">
-        Sélection intelligente du rejeu ({suggestions.length} test(s) suggéré(s))
-      </p>
-      {suggestions.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Aucun test prioritaire détecté à rejouer sur cette campagne source.
-        </p>
-      ) : (
-        <ul className="space-y-2">
-          {suggestions.map((s) => (
-            <li key={s.id} className="rounded-lg border border-border bg-card px-3 py-2 text-sm">
-              <span className="num font-medium">{s.id}</span> — {s.name}{" "}
-              <span className="text-xs uppercase text-muted-foreground">({s.criticality})</span>
-              <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
-                {s.reasons.map((r) => (
-                  <li key={r}>{r}</li>
-                ))}
-              </ul>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
 function CreateCampaignPage() {
-  const { campaigns, tests, products, projects, features, defects, dependencies, addCampaign } =
-    useStore();
+  const { campaigns, tests, products, projects, addCampaign } = useStore();
   const navigate = useNavigate();
   const { t } = useI18n();
+
+  const viewableProducts = useVisibleProducts(products);
+  const viewableProjects = useVisibleProjects(projects, products);
+  const viewableCampaigns = useVisibleCampaigns(campaigns, products);
 
   const [form, setForm] = useState({
     name: "",
@@ -96,9 +58,10 @@ function CreateCampaignPage() {
     clone: true,
     cloneFrom: "c-recette-412",
     testers: new Set<string>(["Marie Martin"]),
+    developers: new Set<string>(["Lucas Bernard"]),
   });
 
-  const formProjects = projects.filter((pr) => pr.productId === form.productId);
+  const formProjects = viewableProjects.filter((pr) => pr.productId === form.productId);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,8 +69,8 @@ function CreateCampaignPage() {
       toast.error(t("pages.add_campaign.name_required"));
       return;
     }
-    if (form.clone && !form.cloneFrom) {
-      toast.error(t("pages.add_campaign.clone_required"));
+    if (!form.projectId) {
+      toast.error(t("pages.add_campaign.project_required"));
       return;
     }
 
@@ -126,13 +89,11 @@ function CreateCampaignPage() {
         version: form.version,
         environment: form.environment,
         owner: form.owner,
-        status:
-          form.startDate > new Date().toISOString().slice(0, 10)
-            ? ("avenir" as CampaignStatus)
-            : ("planifiee" as CampaignStatus),
+        status: "planifiee" as CampaignStatus,
         startDate: form.startDate,
         endDate: form.endDate || form.startDate,
         testers: [...form.testers],
+        developers: [...form.developers],
       },
       form.clone ? form.cloneFrom : undefined,
     );
@@ -153,7 +114,7 @@ function CreateCampaignPage() {
       ]}
       tabs={EXECUTION_TABS}
     >
-      <div className="panel">
+      <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
         <div className="mb-6">
           <Button
             variant="outline"
@@ -166,7 +127,7 @@ function CreateCampaignPage() {
           </Button>
         </div>
 
-        <form onSubmit={submit} className="max-w-6xl space-y-8">
+        <form onSubmit={submit} className="max-w-4xl space-y-8">
           <div className="space-y-4">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">
@@ -192,7 +153,7 @@ function CreateCampaignPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label className="text-sm font-medium">{t("common.type")}</Label>
                   <Select
@@ -216,7 +177,7 @@ function CreateCampaignPage() {
                   <Select
                     value={form.productId}
                     onValueChange={(v) => {
-                      const first = projects.find((pr) => pr.productId === v);
+                      const first = viewableProjects.find((pr) => pr.productId === v);
                       setForm((f) => ({
                         ...f,
                         productId: v,
@@ -229,7 +190,7 @@ function CreateCampaignPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {products.map((p) => (
+                      {viewableProducts.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.name}
                         </SelectItem>
@@ -238,14 +199,11 @@ function CreateCampaignPage() {
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label className="text-sm font-medium">
-                    {t("common.projet")}{" "}
-                    <span className="text-xs font-normal text-muted-foreground">(optionnel)</span>
-                  </Label>
+                  <Label className="text-sm font-medium">{t("common.projet")}</Label>
                   <Select
                     value={form.projectId}
                     onValueChange={(v) => {
-                      const pr = projects.find((p) => p.id === v);
+                      const pr = viewableProjects.find((p) => p.id === v);
                       setForm((f) => ({
                         ...f,
                         projectId: v,
@@ -258,7 +216,6 @@ function CreateCampaignPage() {
                       <SelectValue placeholder={t("pages.add_campaign.choose_project")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">— Aucun projet —</SelectItem>
                       {formProjects.map((pr) => (
                         <SelectItem key={pr.id} value={pr.id}>
                           {pr.name}
@@ -329,10 +286,8 @@ function CreateCampaignPage() {
                     value={form.startDate}
                     onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
                     className="h-11"
+                    min={new Date().toISOString().slice(0, 10)}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Une date ultérieure planifie la campagne (statut « À venir »).
-                  </p>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="c-end" className="text-sm font-medium">
@@ -370,32 +325,21 @@ function CreateCampaignPage() {
                 {t("pages.add_campaign.recreate_from_existing")}
               </label>
               {form.clone ? (
-                <>
-                  <Select
-                    value={form.cloneFrom}
-                    onValueChange={(v) => setForm((f) => ({ ...f, cloneFrom: v }))}
-                  >
-                    <SelectTrigger className="h-11">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {campaigns.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {form.cloneFrom ? (
-                    <SuggestionPanel
-                      sourceId={form.cloneFrom}
-                      tests={tests}
-                      features={features}
-                      defects={defects}
-                      dependencies={dependencies}
-                    />
-                  ) : null}
-                </>
+                <Select
+                  value={form.cloneFrom}
+                  onValueChange={(v) => setForm((f) => ({ ...f, cloneFrom: v }))}
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {viewableCampaigns.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               ) : null}
             </div>
 
@@ -417,6 +361,33 @@ function CreateCampaignPage() {
                           if (checked) next.add(p);
                           else next.delete(p);
                           return { ...f, testers: next };
+                        })
+                      }
+                    />
+                    {p}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label className="text-sm font-medium">
+                {t("pages.add_campaign.assigned_developers")}
+              </Label>
+              <div className="grid grid-cols-2 gap-3">
+                {DEVELOPERS.map((p) => (
+                  <label
+                    key={p}
+                    className="flex items-center gap-2 text-sm p-3 rounded-lg border border-border hover:bg-subtle cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={form.developers.has(p)}
+                      onCheckedChange={(checked) =>
+                        setForm((f) => {
+                          const next = new Set(f.developers);
+                          if (checked) next.add(p);
+                          else next.delete(p);
+                          return { ...f, developers: next };
                         })
                       }
                     />

@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { GOLIVE_VERDICT_LABEL, PEOPLE, type GoLiveVerdict } from "@/lib/dhi-data";
+import { GOLIVE_VERDICT_LABEL, type GoLiveVerdict } from "@/lib/dhi-data";
 import { DECISION_TABS } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
 import { campaignStats, useStore } from "@/lib/dhi-store";
@@ -45,15 +45,19 @@ function GoLivePage() {
     defects,
     goLiveChecklist,
     goLiveDecisions,
+    currentUser,
     toggleChecklistItem,
     addGoLiveDecision,
   } = useStore();
 
-  const pending = releases.filter((r) => r.status !== "livree");
+  const pending = releases.filter((r) => r.status !== "released");
   const [releaseId, setReleaseId] = useState(pending[0]?.id ?? releases[0]?.id ?? "");
   const [verdict, setVerdict] = useState<GoLiveVerdict>("GO");
-  const [decider, setDecider] = useState("Jean Dupont");
+  const [decider, setDecider] = useState<string>(currentUser?.name ?? "Jean Dupont");
   const [justification, setJustification] = useState("");
+
+  const decisionRoles: string[] = ["admin", "qa_lead", "quality_manager", "chef_projet"];
+  const canDecide = !!currentUser && decisionRoles.includes(currentUser.role);
 
   const release = releases.find((r) => r.id === releaseId);
   const project = projects.find((p) => p.id === release?.projectId);
@@ -275,50 +279,49 @@ function GoLivePage() {
       </Panel>
 
       <Panel title={t("pages.go_live.save_decision")}>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="grid gap-1.5">
-            <Label>{t("pages.go_live.verdict")}</Label>
-            <Select value={verdict} onValueChange={(v) => setVerdict(v as GoLiveVerdict)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(GOLIVE_VERDICT_LABEL) as GoLiveVerdict[]).map((v) => (
-                  <SelectItem key={v} value={v}>
-                    {GOLIVE_VERDICT_LABEL[v]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-1.5">
-            <Label>{t("pages.go_live.decider")}</Label>
-            <Select value={decider} onValueChange={setDecider}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PEOPLE.map((p) => (
-                  <SelectItem key={p} value={p}>
-                    {p}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="md:col-span-2 grid gap-1.5">
-            <Label>{t("pages.go_live.justification")}</Label>
-            <Textarea
-              value={justification}
-              onChange={(e) => setJustification(e.target.value)}
-              rows={3}
-              placeholder={t("pages.go_live.justification_placeholder")}
-            />
-          </div>
-        </div>
-        <Button className="mt-4" onClick={decide}>
-          {t("pages.go_live.record_decision")}
-        </Button>
+        {canDecide ? (
+          <>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label>{t("pages.go_live.verdict")}</Label>
+                <Select value={verdict} onValueChange={(v) => setVerdict(v as GoLiveVerdict)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(GOLIVE_VERDICT_LABEL) as GoLiveVerdict[]).map((v) => (
+                      <SelectItem key={v} value={v}>
+                        {GOLIVE_VERDICT_LABEL[v]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label>{t("pages.go_live.decider")}</Label>
+                <div className="flex h-9 items-center rounded-md border border-border px-3">
+                  <span className="text-sm font-medium">{decider}</span>
+                </div>
+              </div>
+              <div className="md:col-span-2 grid gap-1.5">
+                <Label>{t("pages.go_live.justification")}</Label>
+                <Textarea
+                  value={justification}
+                  onChange={(e) => setJustification(e.target.value)}
+                  rows={3}
+                  placeholder={t("pages.go_live.justification_placeholder")}
+                />
+              </div>
+            </div>
+            <Button className="mt-4" onClick={decide}>
+              {t("pages.go_live.record_decision")}
+            </Button>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {t("pages.go_live.no_permission")}
+          </p>
+        )}
       </Panel>
 
       <Panel title={t("pages.go_live.history_title")}>

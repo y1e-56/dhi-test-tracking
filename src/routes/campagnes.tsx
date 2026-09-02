@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, Outlet, useMatches } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { AppShell } from "@/components/dhi/AppShell";
 import { KpiCard, QualityBar, StatusBadge } from "@/components/dhi/indicators";
@@ -12,6 +12,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PEOPLE, type CampaignStatus } from "@/lib/dhi-data";
+import { canCreate } from "@/lib/role-protection";
+import { visibleCampaigns, getUser } from "@/lib/access";
 import { EXECUTION_TABS } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
 import { campaignStats, useStore } from "@/lib/dhi-store";
@@ -36,14 +38,22 @@ export const Route = createFileRoute("/campagnes")({
 });
 
 function CampaignsPage() {
+  const matches = useMatches();
+  if (matches[matches.length - 1]?.pathname !== "/campagnes") return <Outlet />;
+  return <CampaignsList />;
+}
+
+function CampaignsList() {
   const { t } = useI18n();
   const { campaigns, tests, products, projects } = useStore();
   const navigate = useNavigate();
 
-  const avgExecution = campaigns.length
+  const viewable = visibleCampaigns(campaigns, products, getUser());
+
+  const avgExecution = viewable.length
     ? Math.round(
-        campaigns.reduce((sum, c) => sum + campaignStats(tests, c.id).executionRate, 0) /
-          campaigns.length,
+        viewable.reduce((sum, c) => sum + campaignStats(tests, c.id).executionRate, 0) /
+          viewable.length,
       )
     : 0;
 
@@ -54,28 +64,30 @@ function CampaignsPage() {
       breadcrumb={t("pages.campaigns.breadcrumb")}
       tabs={EXECUTION_TABS}
       actions={
-        <Button size="sm" asChild>
-          <Link to="/campagnes/ajouter">
-            <Plus className="size-4" /> {t("pages.campaigns.new_campaign")}
-          </Link>
-        </Button>
+        canCreate() ? (
+          <Button size="sm" asChild>
+            <Link to="/campagnes/ajouter">
+              <Plus className="size-4" /> {t("pages.campaigns.new_campaign")}
+            </Link>
+          </Button>
+        ) : undefined
       }
     >
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           label={t("common.campagne")}
-          value={campaigns.length}
+          value={viewable.length}
           hint={t("pages.campaigns.all_versions")}
         />
         <KpiCard
           label={t("pages.campaigns.in_progress")}
-          value={campaigns.filter((c) => c.status === "encours").length}
+          value={viewable.filter((c) => c.status === "encours").length}
           tone="info"
           hint={t("pages.campaigns.in_progress_hint")}
         />
         <KpiCard
           label={t("pages.campaigns.planned")}
-          value={campaigns.filter((c) => c.status === "planifiee" || c.status === "avenir").length}
+          value={viewable.filter((c) => c.status === "planifiee" || c.status === "avenir").length}
           hint={t("pages.campaigns.to_start")}
         />
         <KpiCard
@@ -92,7 +104,7 @@ function CampaignsPage() {
             {t("pages.campaigns.all_campaigns")}
           </h2>
           <p className="label-eyebrow">
-            {t("pages.campaigns.entries").replace("{count}", String(campaigns.length))}
+            {t("pages.campaigns.entries").replace("{count}", String(viewable.length))}
           </p>
         </div>
         <Table>
@@ -109,7 +121,7 @@ function CampaignsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {campaigns.map((c) => {
+            {viewable.map((c) => {
               const st = campaignStats(tests, c.id);
               const product = products.find((p) => p.id === c.productId);
               const project = projects.find((p) => p.id === c.projectId);

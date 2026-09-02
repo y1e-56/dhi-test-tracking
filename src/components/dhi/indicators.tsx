@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 import {
-  healthOf,
   type CampaignStatus,
   type Criticality,
   type DefectStatus,
@@ -9,12 +8,14 @@ import {
 } from "@/lib/dhi-data";
 import type { ReactNode } from "react";
 import { useI18n } from "@/lib/i18n";
+import { useHealthOf } from "@/lib/dhi-store";
 
 const pill =
   "inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[11px] font-medium leading-4 whitespace-nowrap";
 
 export function HealthBadge({ score }: { score: number }) {
   const { t } = useI18n();
+  const healthOf = useHealthOf();
   const h = healthOf(score);
   return (
     <span
@@ -33,6 +34,7 @@ export function HealthBadge({ score }: { score: number }) {
 }
 
 export function ScoreValue({ score, size = "md" }: { score: number; size?: "sm" | "md" | "lg" }) {
+  const healthOf = useHealthOf();
   const h = healthOf(score);
   return (
     <span
@@ -132,6 +134,7 @@ export function DefectStatusBadge({ status }: { status: DefectStatus }) {
         status === "nouvelle" && "border-info/30 bg-info-soft text-info",
         status === "affectee" && "border-border bg-secondary text-secondary-foreground",
         status === "encorrection" && "border-warning/40 bg-warning-soft text-warning",
+        status === "a_retester" && "border-warning/40 bg-warning-soft text-warning",
         status === "fermee" && "border-success/30 bg-success-soft text-success",
       )}
     >

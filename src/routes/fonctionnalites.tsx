@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-router";
 import {
   FileText,
   Plus,
@@ -14,14 +14,6 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
 import { CriticalityBadge, QualityBar } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,8 +24,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -55,13 +45,14 @@ import {
   TEST_TYPES,
   REQUIREMENT_STATUS_LABEL,
   type Criticality,
-  type Feature,
   type TestCase,
   type TestType,
   type Verdict,
 } from "@/lib/dhi-data";
+import { canCreate } from "@/lib/role-protection";
 import { QUALITY_TABS } from "@/lib/dhi-nav";
 import { useStore } from "@/lib/dhi-store";
+import { useVisibleProductIds } from "@/lib/use-scope";
 import { VERDICT_LABEL } from "@/lib/dhi-data";
 import { useI18n } from "@/lib/i18n";
 
@@ -70,209 +61,6 @@ const coveragePct = (f: ReturnType<typeof useStore>["features"][number]) => {
   const covered = TEST_TYPES.filter((t) => f.coverage[t.id]).length;
   return Math.round((covered / total) * 100);
 };
-
-type FeatureForm = {
-  name: string;
-  productId: string;
-  criticality: Criticality;
-  description: string;
-  coverage: Set<TestType>;
-  requirementIds: string[];
-};
-
-function emptyFeatureForm(products: ReturnType<typeof useStore>["products"]): FeatureForm {
-  return {
-    name: "",
-    productId: products[0]?.id ?? "",
-    criticality: "moyenne",
-    description: "",
-    coverage: new Set(),
-    requirementIds: [],
-  };
-}
-
-function featureToForm(
-  f: Feature,
-  requirements: ReturnType<typeof useStore>["requirements"],
-): FeatureForm {
-  const coverage = new Set<TestType>();
-  for (const t of TEST_TYPES) if (f.coverage[t.id]) coverage.add(t.id);
-  const requirementIds = requirements.filter((r) => r.featureIds.includes(f.id)).map((r) => r.id);
-  return {
-    name: f.name,
-    productId: f.productId,
-    criticality: f.criticality,
-    description: f.description,
-    coverage,
-    requirementIds,
-  };
-}
-
-type NewFeatureDialogProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  form: FeatureForm;
-  setForm: React.Dispatch<React.SetStateAction<FeatureForm>>;
-  onSubmit: () => void;
-  products: ReturnType<typeof useStore>["products"];
-  requirements: ReturnType<typeof useStore>["requirements"];
-  toggleCoverage: (t: TestType) => void;
-  toggleRequirement: (rid: string) => void;
-};
-
-function FeatureDialog({
-  open,
-  onOpenChange,
-  form,
-  setForm,
-  onSubmit,
-  products,
-  requirements,
-  toggleCoverage,
-  toggleRequirement,
-  title,
-}: NewFeatureDialogProps & { title: string }) {
-  const { t } = useI18n();
-  const productRequirements = requirements.filter((r) => r.productId === form.productId);
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4">
-          <div className="grid gap-1.5">
-            <Label htmlFor="f-name">{t("common.nom")}</Label>
-            <Input
-              id="f-name"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder={t("pages.features.name_placeholder")}
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="f-desc">{t("common.description")}</Label>
-            <Input
-              id="f-desc"
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-1.5">
-              <Label>{t("common.produit")}</Label>
-              <Select
-                value={form.productId}
-                onValueChange={(v) => setForm((f) => ({ ...f, productId: v, requirementIds: [] }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-1.5">
-              <Label>{t("common.criticite")}</Label>
-              <Select
-                value={form.criticality}
-                onValueChange={(v) => setForm((f) => ({ ...f, criticality: v as Criticality }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(CRITICALITY_LABEL) as Criticality[]).map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {CRITICALITY_LABEL[c]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid gap-2">
-            <div className="flex items-center justify-between">
-              <Label>{t("pages.features.coverage_label")}</Label>
-              <span className="text-[11px] text-muted-foreground">
-                {form.coverage.size} / {TEST_TYPES.length} {t("pages.features.types")}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-2 rounded-md border border-border bg-subtle/50 p-3 max-h-48 overflow-y-auto">
-              {TEST_TYPES.map((t) => (
-                <label
-                  key={t.id}
-                  className="flex items-center gap-2 text-xs cursor-pointer hover:bg-primary/5 rounded px-1.5 py-1"
-                >
-                  <Checkbox
-                    checked={form.coverage.has(t.id)}
-                    onCheckedChange={() => toggleCoverage(t.id)}
-                  />
-                  <span className="truncate">{t.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid gap-2">
-            <div className="flex items-center justify-between">
-              <Label>{t("pages.features.requirements_satisfied")}</Label>
-              <span className="text-[11px] text-muted-foreground">
-                {t("pages.features.selected_count")
-                  .replace("{count}", String(form.requirementIds.length))
-                  .replace("{total}", String(productRequirements.length))}
-              </span>
-            </div>
-            <div className="rounded-md border border-border bg-subtle/50 p-3 max-h-48 overflow-y-auto">
-              {productRequirements.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">
-                  {t("pages.features.no_requirement_for_product")}
-                </p>
-              ) : (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {productRequirements.map((r) => (
-                    <label
-                      key={r.id}
-                      className="flex items-start gap-2 rounded-md border border-border bg-white px-2.5 py-2 text-xs cursor-pointer hover:bg-primary/5"
-                    >
-                      <Checkbox
-                        className="mt-0.5 size-3.5"
-                        checked={form.requirementIds.includes(r.id)}
-                        onCheckedChange={() => toggleRequirement(r.id)}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate">
-                          <span className="num font-semibold mr-1.5">{r.id}</span>
-                          <span className="font-medium truncate">{r.title}</span>
-                        </p>
-                        <p className="truncate text-[11px] text-muted-foreground">
-                          {REQUIREMENT_STATUS_LABEL[r.status]}
-                        </p>
-                      </div>
-                      <CriticalityBadge level={r.priority} />
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {t("actions.annuler")}
-          </Button>
-          <Button onClick={onSubmit}>{t("actions.enregistrer")}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 function VerdotChip({ verdict }: { verdict: Verdict }) {
   const tone: Record<Verdict, string> = {
@@ -296,36 +84,30 @@ function VerdotChip({ verdict }: { verdict: Verdict }) {
 }
 
 function FeaturesPage() {
-  const {
-    features,
-    products,
-    requirements,
-    tests,
-    addFeature,
-    updateFeature,
-    deleteFeature,
-    updateRequirement,
-  } = useStore();
+  const matches = useMatches();
+  if (matches[matches.length - 1]?.pathname !== "/fonctionnalites") return <Outlet />;
+  return <FeaturesList />;
+}
+
+function FeaturesList() {
+  const { features, products, requirements, tests, deleteFeature, updateRequirement } = useStore();
   const { t } = useI18n();
   const [productFilter, setProductFilter] = useState("all");
   const [critFilter, setCritFilter] = useState("all");
-
-  const [openCreate, setOpenCreate] = useState(false);
-  const [formCreate, setFormCreate] = useState<FeatureForm>(() => emptyFeatureForm(products));
-
-  const [editingFeature, setEditingFeature] = useState<Feature | null>(null);
-  const [formEdit, setFormEdit] = useState<FeatureForm | null>(null);
 
   const [toDeleteFeature, setToDeleteFeature] = useState<Feature | null>(null);
 
   const [expandedFeat, setExpandedFeat] = useState<Record<string, boolean>>({});
 
+  const visiblePIds = useVisibleProductIds(products);
+
   const rows = useMemo(
     () =>
       features
+        .filter((f) => visiblePIds.has(f.productId))
         .filter((f) => productFilter === "all" || f.productId === productFilter)
         .filter((f) => critFilter === "all" || f.criticality === critFilter),
-    [features, productFilter, critFilter],
+    [features, productFilter, critFilter, visiblePIds],
   );
 
   const reqsByFeature = useMemo(() => {
@@ -341,117 +123,6 @@ function FeaturesPage() {
     for (const t of tests) (map[t.featureId] ||= []).push(t);
     return map;
   }, [tests]);
-
-  const requirementsForProduct = (productId: string) =>
-    requirements.filter((r) => r.productId === productId);
-
-  const toggleCoverageCreate = (t: TestType) => {
-    setFormCreate((f) => {
-      const next = new Set(f.coverage);
-      if (next.has(t)) next.delete(t);
-      else next.add(t);
-      return { ...f, coverage: next };
-    });
-  };
-
-  const toggleRequirementCreate = (rid: string) => {
-    setFormCreate((f) => {
-      const has = f.requirementIds.includes(rid);
-      return {
-        ...f,
-        requirementIds: has
-          ? f.requirementIds.filter((x) => x !== rid)
-          : [...f.requirementIds, rid],
-      };
-    });
-  };
-
-  const toggleCoverageEdit = (t: TestType) => {
-    if (!formEdit) return;
-    setFormEdit((f) => {
-      if (!f) return f;
-      const next = new Set(f.coverage);
-      if (next.has(t)) next.delete(t);
-      else next.add(t);
-      return { ...f, coverage: next };
-    });
-  };
-
-  const toggleRequirementEdit = (rid: string) => {
-    if (!formEdit) return;
-    setFormEdit((f) => {
-      if (!f) return f;
-      const has = f.requirementIds.includes(rid);
-      return {
-        ...f,
-        requirementIds: has
-          ? f.requirementIds.filter((x) => x !== rid)
-          : [...f.requirementIds, rid],
-      };
-    });
-  };
-
-  const syncRequirementsBackLinks = (featureId: string, selectedRids: string[]) => {
-    for (const r of requirements) {
-      const wasLinked = r.featureIds.includes(featureId);
-      const shouldLink = selectedRids.includes(r.id);
-      if (wasLinked && !shouldLink) {
-        updateRequirement(r.id, {
-          featureIds: r.featureIds.filter((f) => f !== featureId),
-        });
-      } else if (!wasLinked && shouldLink) {
-        updateRequirement(r.id, {
-          featureIds: [...r.featureIds, featureId],
-        });
-      }
-    }
-  };
-
-  const submitCreate = () => {
-    if (!formCreate.name.trim()) {
-      toast.error(t("pages.features.name_required"));
-      return;
-    }
-    const coverage: Partial<Record<TestType, boolean>> = {};
-    for (const t of TEST_TYPES) coverage[t.id] = formCreate.coverage.has(t.id);
-    const fid = addFeature({
-      productId: formCreate.productId,
-      name: formCreate.name.trim(),
-      description: formCreate.description,
-      criticality: formCreate.criticality,
-      coverage,
-    });
-    syncRequirementsBackLinks(fid, formCreate.requirementIds);
-    toast.success(t("pages.features.created_msg").replace("{name}", formCreate.name.trim()));
-    setOpenCreate(false);
-    setFormCreate(emptyFeatureForm(products));
-  };
-
-  const submitEdit = () => {
-    if (!editingFeature || !formEdit) return;
-    if (!formEdit.name.trim()) {
-      toast.error(t("pages.features.name_required"));
-      return;
-    }
-    const coverage: Partial<Record<TestType, boolean>> = {};
-    for (const t of TEST_TYPES) coverage[t.id] = formEdit.coverage.has(t.id);
-    updateFeature(editingFeature.id, {
-      productId: formEdit.productId,
-      name: formEdit.name.trim(),
-      description: formEdit.description,
-      criticality: formEdit.criticality,
-      coverage,
-    });
-    syncRequirementsBackLinks(editingFeature.id, formEdit.requirementIds);
-    toast.success(t("pages.features.updated_msg").replace("{name}", formEdit.name.trim()));
-    setEditingFeature(null);
-    setFormEdit(null);
-  };
-
-  const openEdit = (f: Feature) => {
-    setEditingFeature(f);
-    setFormEdit(featureToForm(f, requirements));
-  };
 
   const confirmDelete = () => {
     if (!toDeleteFeature) return;
@@ -474,9 +145,13 @@ function FeaturesPage() {
       breadcrumb={[t("nav.qualite"), t("nav.fonctionnalites")]}
       tabs={QUALITY_TABS}
       actions={
-        <Button size="sm" onClick={() => setOpenCreate(true)}>
-          <Plus className="size-4" /> {t("pages.features.new_feature")}
-        </Button>
+        canCreate() ? (
+          <Link to="/fonctionnalites/ajouter">
+            <Button size="sm">
+              <Plus className="size-4" /> {t("pages.features.new_feature")}
+            </Button>
+          </Link>
+        ) : undefined
       }
     >
       <div className="panel">
@@ -487,11 +162,13 @@ function FeaturesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("pages.features.all_products")}</SelectItem>
-              {products.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
+              {products
+                .filter((p) => visiblePIds.has(p.id))
+                .map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
           <Select value={critFilter} onValueChange={setCritFilter}>
@@ -613,15 +290,15 @@ function FeaturesPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-7"
-                        onClick={() => openEdit(f)}
+                      <Link
+                        to="/fonctionnalites/$featureId/modifier"
+                        params={{ featureId: f.id }}
                         title={t("pages.features.edit_feature")}
                       >
-                        <Pencil className="size-4" />
-                      </Button>
+                        <Button size="icon" variant="ghost" className="size-7">
+                          <Pencil className="size-4" />
+                        </Button>
+                      </Link>
                       <Button
                         size="icon"
                         variant="ghost"
@@ -804,14 +481,14 @@ function FeaturesPage() {
                         {fReqs.length === 0 && fTests.length === 0 ? (
                           <p className="py-6 text-center text-sm text-muted-foreground border border-dashed border-border rounded-md">
                             {t("pages.features.no_requirement_or_test")}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="ml-3"
-                              onClick={() => openEdit(f)}
+                            <Link
+                              to="/fonctionnalites/$featureId/modifier"
+                              params={{ featureId: f.id }}
                             >
-                              <Pencil className="size-3.5 mr-1" /> {t("pages.features.complete")}
-                            </Button>
+                              <Button size="sm" variant="outline" className="ml-3">
+                                <Pencil className="size-3.5 mr-1" /> {t("pages.features.complete")}
+                              </Button>
+                            </Link>
                           </p>
                         ) : null}
                       </div>
@@ -823,38 +500,6 @@ function FeaturesPage() {
           )}
         </div>
       </div>
-
-      <FeatureDialog
-        open={openCreate}
-        onOpenChange={setOpenCreate}
-        form={formCreate}
-        setForm={setFormCreate}
-        onSubmit={submitCreate}
-        products={products}
-        requirements={requirements}
-        toggleCoverage={toggleCoverageCreate}
-        toggleRequirement={toggleRequirementCreate}
-        title={t("pages.features.new_feature")}
-      />
-
-      <FeatureDialog
-        open={editingFeature !== null}
-        onOpenChange={(o) => !o && (setEditingFeature(null), setFormEdit(null))}
-        form={formEdit ?? emptyFeatureForm(products)}
-        setForm={(updater) => {
-          if (typeof updater === "function" && formEdit) {
-            setFormEdit(updater(formEdit));
-          } else if (typeof updater !== "function") {
-            setFormEdit(updater);
-          }
-        }}
-        onSubmit={submitEdit}
-        products={products}
-        requirements={requirements}
-        toggleCoverage={toggleCoverageEdit}
-        toggleRequirement={toggleRequirementEdit}
-        title={`${t("pages.features.edit_feature")} ${editingFeature?.name ?? ""}`}
-      />
 
       <AlertDialog
         open={toDeleteFeature !== null}

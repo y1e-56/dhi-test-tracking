@@ -6,16 +6,14 @@ import {
   useRouter,
   HeadContent,
   Scripts,
-  redirect,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { DhiStoreProvider, loadSession } from "@/lib/dhi-store";
+import { DhiStoreProvider } from "@/lib/dhi-store";
 import { I18nProvider, useI18n } from "@/lib/i18n";
-import { hasAccessToPage, getRedirectForUnauthorizedAccess } from "@/lib/role-protection";
 
 function NotFoundComponent() {
   const { t } = useI18n();
@@ -80,25 +78,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  beforeLoad: async ({ location }) => {
-    const path = location.pathname;
-    if (path === "/login" || path.startsWith("/login/")) return;
-    const session = loadSession();
-    if (!session) {
-      if (path !== "/") {
-        throw redirect({
-          to: "/login",
-          search: { redirect: path },
-        });
-      }
-      throw redirect({ to: "/login" });
-    }
-    // Vérification des droits d'accès basés sur le rôle
-    if (!hasAccessToPage(path)) {
-      const redirectPath = getRedirectForUnauthorizedAccess(path);
-      throw redirect({ to: redirectPath });
-    }
-  },
+  beforeLoad: async () => {},
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -148,16 +128,44 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function ClientOnly({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    console.log("[DHI] ClientOnly mounting...");
+    window.addEventListener("error", (e) => {
+      console.error("[DHI] Global error:", e.message, e.filename, e.lineno);
+      setError(`Erreur: ${e.message} (${e.filename?.split("/").pop()}:${e.lineno})`);
+    });
+    setMounted(true);
+  }, []);
+  console.log("[DHI] ClientOnly render, mounted=", mounted, "error=", error);
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-8">
+        <div className="max-w-lg rounded-xl border border-danger/30 bg-danger/10 p-6 text-danger">
+          <h2 className="text-lg font-semibold">Erreur capturée</h2>
+          <p className="mt-2 text-sm font-mono">{error}</p>
+        </div>
+      </div>
+    );
+  }
+  if (!mounted) return null;
+  return <>{children}</>;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  console.log("[DHI] RootComponent RENDERED, queryClient=", !!queryClient);
 
   return (
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
         <DhiStoreProvider>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-          <Toaster richColors position="bottom-right" />
+          <ClientOnly>
+            <Outlet />
+            <Toaster richColors position="bottom-right" />
+          </ClientOnly>
         </DhiStoreProvider>
       </I18nProvider>
     </QueryClientProvider>

@@ -1,17 +1,10 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, Outlet, useMatches } from "@tanstack/react-router";
 import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
 import { HealthBadge, ScoreValue } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +16,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -39,7 +31,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PEOPLE, PROJECT_STATUS_LABEL, type Project, type ProjectStatus } from "@/lib/dhi-data";
+import { PROJECT_STATUS_LABEL, type Project } from "@/lib/dhi-data";
+import { visibleProjects, getUser } from "@/lib/access";
 import { QUALITY_TABS } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
 import { productScore, useStore } from "@/lib/dhi-store";
@@ -58,104 +51,29 @@ export const Route = createFileRoute("/projets")({
   component: ProjectsPage,
 });
 
-type ProjectForm = {
-  name: string;
-  objective: string;
-  productId: string;
-  targetVersion: string;
-  manager: string;
-  qaLead: string;
-  status: ProjectStatus;
-  startDate: string;
-  endDate: string;
-  progress: number;
-};
-
-const emptyProjectForm = (products: { id: string }[]): ProjectForm => ({
-  name: "",
-  objective: "",
-  productId: products[0]?.id ?? "p-paiement",
-  targetVersion: "",
-  manager: PEOPLE[0] ?? "",
-  qaLead: PEOPLE[1] ?? "",
-  status: "planifie",
-  startDate: new Date().toISOString().slice(0, 10),
-  endDate: "",
-  progress: 0,
-});
-
 function ProjectsPage() {
+  const matches = useMatches();
+  if (matches[matches.length - 1]?.pathname !== "/projets") return <Outlet />;
+  return <ProjectsList />;
+}
+
+function ProjectsList() {
   const { t } = useI18n();
-  const { products, projects, campaigns, releases, addProject, updateProject, deleteProject } =
-    useStore();
+  const { products, projects, campaigns, releases, deleteProject } = useStore();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [productFilter, setProductFilter] = useState("all");
 
-  const [openCreate, setOpenCreate] = useState(false);
-  const [formCreate, setFormCreate] = useState<ProjectForm>(emptyProjectForm(products));
-
-  const [editing, setEditing] = useState<Project | null>(null);
-  const [formEdit, setFormEdit] = useState<ProjectForm>(emptyProjectForm(products));
   const [toDelete, setToDelete] = useState<Project | null>(null);
 
   const rows = useMemo(() => {
-    return projects.filter((pr) => {
+    return visibleProjects(projects, products, getUser()).filter((pr) => {
       if (productFilter !== "all" && pr.productId !== productFilter) return false;
       if (!search) return true;
       const q = search.toLowerCase();
       return pr.name.toLowerCase().includes(q) || pr.objective.toLowerCase().includes(q);
     });
-  }, [projects, productFilter, search]);
-
-  const submitCreate = () => {
-    if (!formCreate.name.trim() || !formCreate.productId) {
-      toast.error(t("pages.projects.required"));
-      return;
-    }
-    addProject({
-      productId: formCreate.productId,
-      name: formCreate.name.trim(),
-      objective: formCreate.objective,
-      targetVersion: formCreate.targetVersion || "1.0",
-      status: formCreate.status,
-      startDate: formCreate.startDate,
-      endDate: formCreate.endDate,
-      manager: formCreate.manager,
-      qaLead: formCreate.qaLead,
-      progress: formCreate.progress,
-    });
-    toast.success(`${t("pages.projects.created")} « ${formCreate.name.trim()} »`);
-    setOpenCreate(false);
-    setFormCreate(emptyProjectForm(products));
-  };
-
-  const startEdit = (p: Project) => {
-    setEditing(p);
-    setFormEdit({
-      name: p.name,
-      objective: p.objective,
-      productId: p.productId,
-      targetVersion: p.targetVersion,
-      manager: p.manager,
-      qaLead: p.qaLead,
-      status: p.status,
-      startDate: p.startDate,
-      endDate: p.endDate,
-      progress: p.progress,
-    });
-  };
-
-  const submitEdit = () => {
-    if (!editing) return;
-    if (!formEdit.name.trim() || !formEdit.productId) {
-      toast.error(t("pages.projects.required"));
-      return;
-    }
-    updateProject(editing.id, formEdit);
-    toast.success(`${t("pages.projects.updated")} « ${formEdit.name.trim()} »`);
-    setEditing(null);
-  };
+  }, [projects, products, productFilter, search]);
 
   const confirmDelete = () => {
     if (!toDelete) return;
@@ -171,9 +89,11 @@ function ProjectsPage() {
       breadcrumb={t("pages.projects.breadcrumb")}
       tabs={QUALITY_TABS}
       actions={
-        <Button size="sm" onClick={() => setOpenCreate(true)}>
-          <Plus className="size-4" /> {t("pages.projects.new_project")}
-        </Button>
+        <Link to="/projets/ajouter">
+          <Button size="sm">
+            <Plus className="size-4" /> {t("pages.projects.new_project")}
+          </Button>
+        </Link>
       }
     >
       <div className="panel">
@@ -253,15 +173,15 @@ function ProjectsPage() {
                   <TableCell className="text-sm">{pr.manager}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-7"
-                        onClick={() => startEdit(pr)}
-                        aria-label={`${t("actions.editer")} ${pr.name}`}
+                      <Link
+                        to="/projets/$projectId/modifier"
+                        params={{ projectId: pr.id }}
+                        aria-label={`${t("actions.modifier")} ${pr.name}`}
                       >
-                        <Pencil className="size-3.5" />
-                      </Button>
+                        <Button size="icon" variant="ghost" className="size-7">
+                          <Pencil className="size-3.5" />
+                        </Button>
+                      </Link>
                       <Button
                         size="icon"
                         variant="ghost"
@@ -287,36 +207,6 @@ function ProjectsPage() {
         </Table>
       </div>
 
-      <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("pages.projects.new_project")}</DialogTitle>
-          </DialogHeader>
-          <ProjectFormFields form={formCreate} setForm={setFormCreate} products={products} />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenCreate(false)}>
-              {t("actions.annuler")}
-            </Button>
-            <Button onClick={submitCreate}>{t("pages.projects.new_project")}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("actions.modifier")}</DialogTitle>
-          </DialogHeader>
-          <ProjectFormFields form={formEdit} setForm={setFormEdit} products={products} />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>
-              {t("actions.annuler")}
-            </Button>
-            <Button onClick={submitEdit}>{t("actions.enregistrer")}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -336,149 +226,5 @@ function ProjectsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </AppShell>
-  );
-}
-
-function ProjectFormFields({
-  form,
-  setForm,
-  products,
-}: {
-  form: ProjectForm;
-  setForm: (f: ProjectForm) => void;
-  products: { id: string; name: string }[];
-}) {
-  const { t } = useI18n();
-  return (
-    <div className="grid gap-4">
-      <div className="grid gap-1.5">
-        <Label htmlFor="pfp-name">{t("pages.projects.name_label")}</Label>
-        <Input
-          id="pfp-name"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          placeholder={t("pages.projects.name_placeholder")}
-        />
-      </div>
-      <div className="grid gap-1.5">
-        <Label htmlFor="pfp-obj">{t("pages.projects.objective")}</Label>
-        <Input
-          id="pfp-obj"
-          value={form.objective}
-          onChange={(e) => setForm({ ...form, objective: e.target.value })}
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="grid gap-1.5">
-          <Label>{t("pages.projects.parent_product")}</Label>
-          <Select value={form.productId} onValueChange={(v) => setForm({ ...form, productId: v })}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {products.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="pfp-ver">{t("pages.projects.target_version")}</Label>
-          <Input
-            id="pfp-ver"
-            value={form.targetVersion}
-            onChange={(e) => setForm({ ...form, targetVersion: e.target.value })}
-            placeholder="4.12"
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="grid gap-1.5">
-          <Label>{t("common.statut")}</Label>
-          <Select
-            value={form.status}
-            onValueChange={(v) => setForm({ ...form, status: v as ProjectStatus })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="planifie">{t("pages.projects.status_planifie")}</SelectItem>
-              <SelectItem value="encours">{t("pages.projects.status_encours")}</SelectItem>
-              <SelectItem value="termine">{t("pages.projects.status_termine")}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid gap-1.5">
-          <Label>{t("pages.projects.progress")}</Label>
-          <Input
-            type="number"
-            min={0}
-            max={100}
-            value={form.progress}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                progress: Math.max(0, Math.min(100, Number(e.target.value) || 0)),
-              })
-            }
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="grid gap-1.5">
-          <Label htmlFor="pfp-start">{t("pages.projects.start_date")}</Label>
-          <Input
-            id="pfp-start"
-            type="date"
-            value={form.startDate}
-            onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="pfp-end">{t("pages.projects.end_date")}</Label>
-          <Input
-            id="pfp-end"
-            type="date"
-            value={form.endDate}
-            onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="grid gap-1.5">
-          <Label>{t("pages.projects.manager_label")}</Label>
-          <Select value={form.manager} onValueChange={(v) => setForm({ ...form, manager: v })}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PEOPLE.map((p) => (
-                <SelectItem key={p} value={p}>
-                  {p}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid gap-1.5">
-          <Label>{t("pages.projects.qa_lead")}</Label>
-          <Select value={form.qaLead} onValueChange={(v) => setForm({ ...form, qaLead: v })}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PEOPLE.map((p) => (
-                <SelectItem key={p} value={p}>
-                  {p}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-    </div>
   );
 }

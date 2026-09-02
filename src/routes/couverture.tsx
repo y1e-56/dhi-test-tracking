@@ -22,6 +22,7 @@ import { TEST_TYPES } from "@/lib/dhi-data";
 import { QUALITY_TABS } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
 import { useStore } from "@/lib/dhi-store";
+import { useVisibleProductIds } from "@/lib/use-scope";
 
 export const Route = createFileRoute("/couverture")({
   head: () => ({
@@ -46,10 +47,14 @@ function CoveragePage() {
   const { t } = useI18n();
   const { features, products } = useStore();
   const [productFilter, setProductFilter] = useState("all");
+  const visiblePIds = useVisibleProductIds(products);
 
   const rows = useMemo(
-    () => features.filter((f) => productFilter === "all" || f.productId === productFilter),
-    [features, productFilter],
+    () =>
+      features
+        .filter((f) => visiblePIds.has(f.productId))
+        .filter((f) => productFilter === "all" || f.productId === productFilter),
+    [features, productFilter, visiblePIds],
   );
 
   const totalCells = rows.length * TEST_TYPES.length;
@@ -74,11 +79,13 @@ function CoveragePage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("pages.couverture.all_products")}</SelectItem>
-              {products.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
+              {products
+                .filter((p) => visiblePIds.has(p.id))
+                .map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         }

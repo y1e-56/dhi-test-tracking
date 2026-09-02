@@ -55,9 +55,25 @@ export function getDefaultDashboardForRole(role: AppRole): string {
     quality_manager: "/",
     product_owner: "/",
     chef_projet: "/dashboard-chef",
+    chef_testeur: "/dashboard-testeur",
     testeur: "/dashboard-testeur",
+    developpeur: "/dashboard-developpeur",
     approver: "/",
     lecteur: "/",
   };
   return roleDashboards[role] || "/";
+}
+
+/**
+ * Rôles autorisés à créer (campagnes, produits, features, exigences).
+ */
+export const CREATE_ROLES: AppRole[] = ["admin", "qa_lead", "quality_manager"];
+
+/**
+ * Vérifie si l'utilisateur connecté peut créer des éléments.
+ */
+export function canCreate(): boolean {
+  const session = loadSession();
+  if (!session) return false;
+  return CREATE_ROLES.includes(session.role as AppRole);
 }

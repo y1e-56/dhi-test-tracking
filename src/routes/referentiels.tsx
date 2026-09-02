@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -131,7 +132,26 @@ function ReferentialsPage() {
                 <TableCell className="num font-medium">{r.id}</TableCell>
                 <TableCell className="text-sm">{r.domain}</TableCell>
                 <TableCell className="text-sm">{r.label}</TableCell>
-                <TableCell className="num text-sm">{r.threshold}</TableCell>
+                <TableCell className="text-sm">
+                  {["RG-1", "RG-2", "RG-3"].includes(r.id) ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        defaultValue={r.threshold}
+                        className="h-8 w-32 text-sm"
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v && v !== r.threshold) {
+                            updateRule(r.id, { threshold: v });
+                            toast.success(`${r.id} seuil mis à jour : ${v}`);
+                          }
+                        }}
+                      />
+                      <span className="text-[11px] text-muted-foreground">{t("pages.referentials.editable")}</span>
+                    </div>
+                  ) : (
+                    <span className="num text-sm">{r.threshold}</span>
+                  )}
+                </TableCell>
                 <TableCell className="text-right">
                   <Switch
                     checked={r.active}

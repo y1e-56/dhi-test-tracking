@@ -9,7 +9,7 @@ import { useI18n } from "@/lib/i18n";
 export const Route = createFileRoute("/dashboard-testeur")({
   beforeLoad: () => {
     const session = loadSession();
-    if (!session || session.role !== "testeur") {
+    if (!session || (session.role !== "testeur" && session.role !== "chef_testeur")) {
       throw redirect({ to: "/" });
     }
   },

@@ -1,19 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
-import { useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
 import { KpiCard, Panel } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -21,13 +11,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/dhi-store";
+import { useVisibleProductIds } from "@/lib/use-scope";
 import { DECISION_TABS } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
 import {
-  PEOPLE,
   WATCH_LEVEL_LABEL,
   WATCH_STATUS_LABEL,
   type WatchLevel,
@@ -61,34 +50,16 @@ const LEVEL_STYLE: Record<WatchLevel, string> = {
 const COLUMNS: WatchStatus[] = ["ouvert", "suivi", "clos"];
 
 function WatchPointsPage() {
-  const { t } = useI18n();
-  const { watchPoints, products, addWatchPoint, updateWatchPoint } = useStore();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    productId: products[0]?.id ?? "",
-    level: "vigilance" as WatchLevel,
-    owner: PEOPLE[0] ?? "",
-  });
+  const matches = useMatches();
+  if (matches[matches.length - 1]?.pathname !== "/points-a-surveiller") return <Outlet />;
+  return <WatchPointsList />;
+}
 
-  const submit = () => {
-    if (!form.title.trim()) {
-      toast.error(t("pages.watchpoints.title_required"));
-      return;
-    }
-    addWatchPoint({
-      productId: form.productId,
-      title: form.title.trim(),
-      description: form.description,
-      level: form.level,
-      status: "ouvert",
-      owner: form.owner,
-    });
-    toast.success(t("pages.watchpoints.saved"));
-    setOpen(false);
-    setForm({ ...form, title: "", description: "" });
-  };
+function WatchPointsList() {
+  const { t } = useI18n();
+  const { watchPoints, products, features, updateWatchPoint } = useStore();
+  const visiblePIds = useVisibleProductIds(products);
+  const visibleWps = watchPoints.filter((w) => visiblePIds.has(w.productId));
 
   return (
     <AppShell
@@ -97,32 +68,34 @@ function WatchPointsPage() {
       breadcrumb={t("pages.watchpoints.breadcrumb")}
       tabs={DECISION_TABS}
       actions={
-        <Button size="sm" onClick={() => setOpen(true)}>
-          <Plus className="size-4" /> {t("pages.watchpoints.new_point")}
-        </Button>
+        <Link to="/points-a-surveiller/ajouter">
+          <Button size="sm">
+            <Plus className="size-4" /> {t("pages.watchpoints.new_point")}
+          </Button>
+        </Link>
       }
     >
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           label={t("pages.watchpoints.kpi_tracked")}
-          value={watchPoints.length}
+          value={visibleWps.length}
           hint={t("pages.watchpoints.kpi_tracked_hint")}
         />
         <KpiCard
           label={t("pages.watchpoints.kpi_critical")}
-          value={watchPoints.filter((w) => w.level === "critique" && w.status !== "clos").length}
+          value={visibleWps.filter((w) => w.level === "critique" && w.status !== "clos").length}
           tone="danger"
           hint={t("pages.watchpoints.kpi_critical_hint")}
         />
         <KpiCard
           label={t("pages.watchpoints.kpi_followup")}
-          value={watchPoints.filter((w) => w.status === "suivi").length}
+          value={visibleWps.filter((w) => w.status === "suivi").length}
           tone="info"
           hint={t("pages.watchpoints.kpi_followup_hint")}
         />
         <KpiCard
           label={t("pages.watchpoints.kpi_closed")}
-          value={watchPoints.filter((w) => w.status === "clos").length}
+          value={visibleWps.filter((w) => w.status === "clos").length}
           tone="success"
           hint={t("pages.watchpoints.kpi_closed_hint")}
         />
@@ -130,7 +103,7 @@ function WatchPointsPage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         {COLUMNS.map((col) => {
-          const items = watchPoints.filter((w) => w.status === col);
+          const items = visibleWps.filter((w) => w.status === col);
           return (
             <Panel
               key={col}
@@ -166,6 +139,12 @@ function WatchPointsPage() {
                           >
                             {products.find((p) => p.id === w.productId)?.name ?? "—"}
                           </Link>
+                          {w.featureId && (
+                            <>
+                              {" · "}
+                              {features.find((f) => f.id === w.featureId)?.name ?? "—"}
+                            </>
+                          )}
                           {" · "}
                           {w.owner}
                         </p>
@@ -200,96 +179,6 @@ function WatchPointsPage() {
           );
         })}
       </div>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t("pages.watchpoints.new_point_dialog")}</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4">
-            <div className="grid gap-1.5">
-              <Label htmlFor="w-title">{t("pages.watchpoints.titre")}</Label>
-              <Input
-                id="w-title"
-                value={form.title}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                placeholder={t("pages.watchpoints.title_placeholder")}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="w-desc">{t("pages.watchpoints.description")}</Label>
-              <Textarea
-                id="w-desc"
-                rows={3}
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="grid gap-1.5">
-                <Label>{t("pages.watchpoints.produit")}</Label>
-                <Select
-                  value={form.productId}
-                  onValueChange={(v) => setForm((f) => ({ ...f, productId: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label>{t("pages.watchpoints.niveau")}</Label>
-                <Select
-                  value={form.level}
-                  onValueChange={(v) => setForm((f) => ({ ...f, level: v as WatchLevel }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(WATCH_LEVEL_LABEL) as WatchLevel[]).map((l) => (
-                      <SelectItem key={l} value={l}>
-                        {WATCH_LEVEL_LABEL[l]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label>{t("pages.watchpoints.responsable")}</Label>
-                <Select
-                  value={form.owner}
-                  onValueChange={(v) => setForm((f) => ({ ...f, owner: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PEOPLE.map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {p}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              {t("pages.watchpoints.annuler")}
-            </Button>
-            <Button onClick={submit}>{t("pages.watchpoints.enregistrer")}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </AppShell>
   );
 }

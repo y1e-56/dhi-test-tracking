@@ -35,50 +35,36 @@ import {
   platformUsers as seedUsers,
   products as seedProducts,
   projects as seedProjects,
-  qualityCriteria as seedCriteria,
-  qualityControls as seedControls,
   referentialRules as seedRules,
   releases as seedReleases,
   requirements as seedRequirements,
-  scenarios as seedScenarios,
   testCases as seedTests,
-  testDependencies as seedDependencies,
-  testTypeRules as seedTypeRules,
   watchPoints as seedWatchPoints,
-  nonFunctionalTests as seedNF,
   healthOf,
+  healthThresholds,
   SCORE_WEIGHTS,
   GOLIVE_CHECKLIST_TEMPLATE,
   type Alert,
   type AlertType,
+  type AppNotification,
   type AuditEntry,
   type Campaign,
-  type Criticality,
   type Defect,
-  type DependencyKind,
   type Feature,
   type GoLiveChecklistItem,
   type GoLiveDecision,
   type GoLiveVerdict,
-  type MeasurableOperator,
   type PlatformUser,
   type Product,
   type Project,
-  type NonFunctionalTest,
-  type QualityControl,
-  type QualityCriterion,
   type ReferentialRule,
   type Release,
   type ReleaseStatus,
   type Requirement,
-  type RuleLevel,
-  type Scenario,
   type ScoreBreakdown,
   type Severity,
   type TestCase,
-  type TestDependency,
   type TestType,
-  type TestTypeRule,
   type Verdict,
   type WatchPoint,
   type AppRole,
@@ -104,15 +90,10 @@ type PersistedSnapshot = {
   goLiveDecisions: GoLiveDecision[];
   goLiveChecklist: Record<string, GoLiveChecklistItem[]>;
   alerts: Alert[];
+  notifications: AppNotification[];
   audit: AuditEntry[];
   rules: ReferentialRule[];
   users: PlatformUser[];
-  criteria: QualityCriterion[];
-  scenarios: Scenario[];
-  dependencies: TestDependency[];
-  typeRules: TestTypeRule[];
-  controls: QualityControl[];
-  nonFunctional: NonFunctionalTest[];
 };
 
 export type SessionUser = { id: string; name: string; email: string; role: AppRole };
@@ -132,14 +113,18 @@ const makeDefaultChecklist = (): Record<string, GoLiveChecklistItem[]> => {
 };
 
 export function loadSnapshot(): PersistedSnapshot | null {
+  console.log("[DHI] loadSnapshot called, window=", typeof window);
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
+    console.log("[DHI] loadSnapshot localStorage raw=", raw ? raw.substring(0, 80) + "..." : "null");
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PersistedSnapshot;
     if (!parsed || typeof parsed !== "object") return null;
+    console.log("[DHI] loadSnapshot OK, products=", parsed.products?.length);
     return parsed;
-  } catch {
+  } catch (e) {
+    console.error("[DHI] loadSnapshot error:", e);
     return null;
   }
 }
@@ -153,14 +138,26 @@ function saveSnapshot(snap: PersistedSnapshot) {
   }
 }
 
+const DEFAULT_SESSION: SessionUser = {
+  id: "u-8",
+  name: "Karim Ndiaye",
+  email: "karim.ndiaye@dhi.io",
+  role: "admin",
+};
+
 export function loadSession(): SessionUser | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as SessionUser) : null;
-  } catch {
-    return null;
+  console.log("[DHI] loadSession called, window=", typeof window);
+  if (typeof window !== "undefined") {
+    try {
+      const raw = window.localStorage.getItem(SESSION_KEY);
+      console.log("[DHI] loadSession localStorage raw=", raw ? raw.substring(0, 80) + "..." : "null");
+      if (raw) return JSON.parse(raw) as SessionUser;
+    } catch {
+      /* ignore */
+    }
   }
+  console.log("[DHI] loadSession returning DEFAULT_SESSION (admin)");
+  return DEFAULT_SESSION;
 }
 
 function saveSession(user: SessionUser | null) {
@@ -182,15 +179,10 @@ const defaultSnapshot = (): PersistedSnapshot => ({
   goLiveDecisions: seedGoLive,
   goLiveChecklist: makeDefaultChecklist(),
   alerts: seedAlerts,
+  notifications: [],
   audit: seedAudit,
   rules: seedRules,
   users: seedUsers,
-  criteria: seedCriteria,
-  scenarios: seedScenarios,
-  dependencies: seedDependencies,
-  typeRules: seedTypeRules,
-  controls: seedControls,
-  nonFunctional: seedNF,
 });
 
 /* -------------------------------------------------------------------------- */
@@ -211,15 +203,10 @@ interface Store {
   goLiveDecisions: GoLiveDecision[];
   goLiveChecklist: Record<string, GoLiveChecklistItem[]>;
   alerts: Alert[];
+  notifications: AppNotification[];
   audit: AuditEntry[];
   rules: ReferentialRule[];
   users: PlatformUser[];
-  criteria: QualityCriterion[];
-  scenarios: Scenario[];
-  dependencies: TestDependency[];
-  typeRules: TestTypeRule[];
-  controls: QualityControl[];
-  nonFunctional: NonFunctionalTest[];
   currentUser: SessionUser | null;
 
   /*  2.2  Session / Auth -----------------------------------------------  */
@@ -246,7 +233,7 @@ interface Store {
   addCampaign: (c: Omit<Campaign, "id">, cloneFrom?: string) => string;
   updateCampaign: (id: string, patch: Partial<Campaign>) => void;
   deleteCampaign: (id: string) => void;
-  addTestCase: (t: Omit<TestCase, "id" | "verdict" | "observed" | "comment" | "evidence"> & { verdict?: Verdict; observed?: string; comment?: string }) => string;
+  addTestCase: (t: Omit<TestCase, "id" | "verdict" | "observed" | "comment" | "evidence"> & { verdict?: Verdict }) => string;
   updateTest: (id: string, patch: Partial<TestCase>) => void;
   deleteTest: (id: string) => void;
 
@@ -274,31 +261,13 @@ interface Store {
   markAlertRead: (id: string) => void;
   markAllAlertsRead: () => void;
   pushAlert: (a: Omit<Alert, "id" | "createdAt" | "read">) => void;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
   addUser: (u: Omit<PlatformUser, "id">) => string;
   updateUserRole: (id: string, role: PlatformUser["role"]) => void;
   toggleUserActive: (id: string) => void;
   updateRule: (id: string, patch: Partial<ReferentialRule>) => void;
   deleteRule: (id: string) => void;
-
-  /*  2.8b Mutations : Critères qualité / Scénarios / Dépendances / Contrôles -  */
-  updateCriterion: (id: string, patch: Partial<QualityCriterion>) => void;
-  addCriterion: (c: Omit<QualityCriterion, "id">) => void;
-  deleteCriterion: (id: string) => void;
-  addScenario: (s: Omit<Scenario, "id">) => string;
-  updateScenario: (id: string, patch: Partial<Scenario>) => void;
-  deleteScenario: (id: string) => void;
-  addScenarioTest: (scenarioId: string, testId: string) => void;
-  removeScenarioTest: (scenarioId: string, testId: string) => void;
-  addDependency: (d: Omit<TestDependency, "id">) => void;
-  updateDependency: (id: string, patch: Partial<TestDependency>) => void;
-  deleteDependency: (id: string) => void;
-  updateTypeRule: (id: string, patch: Partial<TestTypeRule>) => void;
-  addControl: (c: Omit<QualityControl, "id">) => void;
-  updateControl: (id: string, patch: Partial<QualityControl>) => void;
-  deleteControl: (id: string) => void;
-  addNF: (n: Omit<NonFunctionalTest, "id">) => void;
-  updateNF: (id: string, patch: Partial<NonFunctionalTest>) => void;
-  deleteNF: (id: string) => void;
 
   /*  2.9  Audit & Reset ------------------------------------------------  */
   logAudit: (actor: string, action: string, entity: string, detail: string) => void;
@@ -333,17 +302,17 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
     () => initialSnap.goLiveChecklist ?? makeDefaultChecklist(),
   );
   const [alerts, setAlerts] = useState<Alert[]>(initialSnap.alerts);
+  const [notifications, setNotifications] = useState<AppNotification[]>(
+    initialSnap.notifications ?? [],
+  );
   const [audit, setAudit] = useState<AuditEntry[]>(initialSnap.audit);
   const [rules, setRules] = useState<ReferentialRule[]>(initialSnap.rules);
-  const [users, setUsers] = useState<PlatformUser[]>(initialSnap.users);
-  const [criteria, setCriteria] = useState<QualityCriterion[]>(initialSnap.criteria);
-  const [scenarios, setScenarios] = useState<Scenario[]>(initialSnap.scenarios);
-  const [dependencies, setDependencies] = useState<TestDependency[]>(initialSnap.dependencies);
-  const [typeRules, setTypeRules] = useState<TestTypeRule[]>(initialSnap.typeRules);
-  const [controls, setControls] = useState<QualityControl[]>(initialSnap.controls);
-  const [nonFunctional, setNonFunctional] = useState<NonFunctionalTest[]>(
-    initialSnap.nonFunctional ?? seedNF,
-  );
+  const [users, setUsers] = useState<PlatformUser[]>(() => {
+    const loaded = initialSnap.users;
+    const byId = new Map<string, PlatformUser>(loaded.map((u) => [u.id, u]));
+    for (const s of seedUsers) if (!byId.has(s.id)) byId.set(s.id, s);
+    return Array.from(byId.values());
+  });
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(initialSession);
 
   /*  4.2  Effet : persister à chaque changement --------------------------  */
@@ -367,15 +336,10 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       goLiveDecisions,
       goLiveChecklist,
       alerts,
+      notifications,
       audit,
       rules,
       users,
-      criteria,
-      scenarios,
-      dependencies,
-      typeRules,
-      controls,
-      nonFunctional,
     };
     saveSnapshot(snap);
   }, [
@@ -391,15 +355,10 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
     goLiveDecisions,
     goLiveChecklist,
     alerts,
+    notifications,
     audit,
     rules,
     users,
-    criteria,
-    scenarios,
-    dependencies,
-    typeRules,
-    controls,
-    nonFunctional,
   ]);
 
   useEffect(() => {
@@ -653,25 +612,6 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Règle 7 : trous de tests — fonctionnalité critique sans test rattaché
-    for (const f of features) {
-      if (f.criticality !== "critique" && f.criticality !== "haute") continue;
-      const hasTest = tests.some((t) => t.featureId === f.id && t.verdict !== "NOT_RUN");
-      if (!hasTest) {
-        const k = fp("COVERAGE-GAP", f.id);
-        if (!alertFingerprints.current.has(k)) {
-          alertFingerprints.current.add(k);
-          fires.push({
-            type: "couverture",
-            severity: "moyenne",
-            title: `Trou de test : ${f.name} sans test exécuté`,
-            message: `Fonctionnalité ${f.criticality} sans aucun test exécuté — couverture manquante`,
-            entityId: f.id,
-          });
-        }
-      }
-    }
-
     // Injection des alertes détectées
     if (fires.length) {
       setAlerts((prev) => {
@@ -695,9 +635,162 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
         return next;
       });
     }
-  }, [tests, defects, campaigns, products, goLiveDecisions, features]);
+  }, [tests, defects, campaigns, products, goLiveDecisions]);
 
-  /*  4.3  Valeur dérivée & Mutations -------------------------------------  */
+  /*  4.2d  Effet : Notifications utilisateur ciblées (par affectation) ---  */
+
+  const notifFingerprints = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!users.length) return;
+    const userIdOf = (name?: string): string | null => {
+      if (!name) return null;
+      const u = users.find((x) => x.name === name);
+      return u ? u.id : null;
+    };
+    const nfp = (k: string) => notifFingerprints.current.has(k);
+    const mark = (k: string) => notifFingerprints.current.add(k);
+    const push = (
+      userId: string | null,
+      type: AppNotification["type"],
+      title: string,
+      message: string,
+      key: string,
+      link?: string,
+    ) => {
+      if (!userId || nfp(key)) return;
+      mark(key);
+      const notif: AppNotification = {
+        id: `NT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        userId,
+        type,
+        title,
+        message,
+        read: false,
+        createdAt: now(),
+      };
+      if (link) notif.link = link;
+      setNotifications((prev) => [notif, ...prev]);
+    };
+
+    for (const d of defects) {
+      // Assignation d'une anomalie haute gravité
+      const asId = userIdOf(d.assignee);
+      push(
+        asId,
+        "defect_assign",
+        `Anomalie assignée : ${d.title}`,
+        `Vous avez été désigné (${d.severity}). Statut : ${d.status}`,
+        `/anomalies/${d.id}`,
+        `defect-assign:${d.id}:${d.assignee}:${d.status}`,
+      );
+      // Un développeur est affecté à l'anomalie
+      const devId = userIdOf(d.developer);
+      push(
+        devId,
+        "defect_assign",
+        `Anomalie pour développement : ${d.title}`,
+        `Vous êtes le développeur référent (${d.severity}).`,
+        `/anomalies/${d.id}`,
+        `defect-dev:${d.id}:${d.developer ?? ""}`,
+      );
+      // Changement de statut de l'anomalie -> notifier l'assigné & le développeur
+      if (d.status === "fermee" || d.status === "reouverte" || d.status === "a_retester") {
+        push(
+          asId,
+          "defect_status",
+          `Anomalie ${d.status} : ${d.title}`,
+          `L'anomalie que vous suivez est passée à « ${d.status} ».`,
+          `/anomalies/${d.id}`,
+          `defect-status:${d.id}:${d.status}:${asId ?? ""}`,
+        );
+      }
+    }
+
+    for (const t of tests) {
+      const teId = userIdOf(t.tester);
+      if (t.verdict === "FAIL" || t.verdict === "BLOCKED") {
+        push(
+          teId,
+          "test_assign",
+          `Test ${t.verdict} : ${t.name}`,
+          `Résultat à traiter sur la campagne ${t.campaignId}.`,
+          `/execution/${t.id}`,
+          `test-state:${t.id}:${t.verdict}:${teId ?? ""}`,
+        );
+      }
+    }
+
+    for (const c of campaigns) {
+      const stats = campaignStats(tests, c.id);
+      if (stats.executed >= 1 && stats.successRate < 80 && c.status !== "terminee") {
+        const ownerId = userIdOf(c.owner);
+        push(
+          ownerId,
+          "campaign",
+          `Taux de succès faible : ${c.name}`,
+          `${stats.successRate}% de succès (${stats.executed} exécutés).`,
+          `/campagnes/${c.id}`,
+          `camp-rate:${c.id}:${Math.round(stats.successRate)}`,
+        );
+        for (const te of c.testers) {
+          push(
+            userIdOf(te),
+            "campaign",
+            `Campagne à surveiller : ${c.name}`,
+            `${stats.successRate}% de succès (${stats.executed} exécutés).`,
+            `/campagnes/${c.id}`,
+            `camp-rate-${te}:${c.id}:${Math.round(stats.successRate)}`,
+          );
+        }
+      }
+      if (c.endDate && c.endDate < today() && c.status !== "terminee") {
+        const ownerId = userIdOf(c.owner);
+        push(
+          ownerId,
+          "campaign",
+          `Campagne en retard : ${c.name}`,
+          `Échéance du ${c.endDate} dépassée.`,
+          `/campagnes/${c.id}`,
+          `camp-late:${c.id}:${c.endDate}`,
+        );
+      }
+    }
+
+    for (const p of products) {
+      const s = productScore(p);
+      if (s < 60) {
+        const targets = [userIdOf(p.owner), userIdOf(p.qaLead), ...p.qaTeam.map(userIdOf)];
+        const tgt = [...new Set(targets.filter((x): x is string => !!x))];
+        for (const uid of tgt) {
+          push(
+            uid,
+            "product",
+            `Santé critique : ${p.name}`,
+            `Score CDC = ${s}/100. Plan d'action requis.`,
+            `/produits/${p.id}`,
+            `prod-crit:${p.id}:${uid}:${s}`,
+          );
+        }
+      }
+    }
+
+    for (const g of goLiveDecisions) {
+      if (g.verdict === "GO" && g.checklistCompletion < 80) {
+        const deciderId = userIdOf(g.decider);
+        push(
+          deciderId,
+          "golive",
+          `Go Live à risque — checklist ${g.checklistCompletion}%`,
+          `Décision ${g.verdict} malgré checklist incomplète.`,
+          `/go-live`,
+          `golive:${g.id}:${g.checklistCompletion}`,
+        );
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tests, defects, campaigns, products, goLiveDecisions, users]);
+
+
 
   const value = useMemo<Store>(() => {
     const pushAudit = (actor: string, action: string, entity: string, detail: string) =>
@@ -722,15 +815,10 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       goLiveDecisions,
       goLiveChecklist,
       alerts,
+      notifications,
       audit,
       rules,
       users,
-      criteria,
-      scenarios,
-      dependencies,
-      typeRules,
-      controls,
-      nonFunctional,
       currentUser,
 
       /* Session / Auth -----------------------------------------------  */
@@ -739,7 +827,8 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
           (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.active,
         );
         if (!match) return { ok: false, error: "Aucun compte actif avec cet e-mail." };
-        if (password !== "demo") return { ok: false, error: "Mot de passe invalide." };
+        const expected = match.password ?? "demo";
+        if (password !== expected) return { ok: false, error: "Mot de passe invalide." };
         const user = { id: match.id, name: match.name, email: match.email, role: match.role };
         setCurrentUser(user);
         saveSession(user);
@@ -871,8 +960,8 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
             ...t,
             id,
             verdict: t.verdict ?? ("NOT_RUN" as Verdict),
-            observed: t.observed ?? "",
-            comment: t.comment ?? "",
+            observed: "",
+            comment: "",
             evidence: [],
           },
         ]);
@@ -978,6 +1067,12 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
           { id: `AL-${Date.now()}`, ...a, read: false, createdAt: now() },
           ...prev,
         ]),
+      markNotificationRead: (id) =>
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
+        ),
+      markAllNotificationsRead: () =>
+        setNotifications((prev) => prev.map((n) => ({ ...n, read: true }))),
       updateUserRole: (id, role) => {
         setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
         pushAudit(asActor("Administrateur"), "Rôle modifié", id, role);
@@ -997,70 +1092,6 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
         pushAudit(asActor("Système"), "Règle supprimée", id, "—");
       },
 
-      /* Critères qualité / Scénarios / Dépendances / Contrôles ---------  */
-      updateCriterion: (id, patch) =>
-        setCriteria((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c))),
-      addCriterion: (c) =>
-        setCriteria((prev) => [...prev, { ...c, id: `qc-${Date.now()}` }]),
-      deleteCriterion: (id) => {
-        setCriteria((prev) => prev.filter((c) => c.id !== id));
-        pushAudit(asActor("Système"), "Critère supprimé", id, "—");
-      },
-      addScenario: (s) => {
-        const id = `SC-${Date.now()}`;
-        setScenarios((prev) => [...prev, { ...s, id }]);
-        pushAudit(asActor(s.owner ?? "Système"), "Scénario créé", id, s.name);
-        return id;
-      },
-      updateScenario: (id, patch) =>
-        setScenarios((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s))),
-      deleteScenario: (id) => {
-        setScenarios((prev) => prev.filter((s) => s.id !== id));
-        pushAudit(asActor("Système"), "Scénario supprimé", id, "—");
-      },
-      addScenarioTest: (scenarioId, testId) =>
-        setScenarios((prev) =>
-          prev.map((s) =>
-            s.id === scenarioId && !s.testIds.includes(testId)
-              ? { ...s, testIds: [...s.testIds, testId] }
-              : s,
-          ),
-        ),
-      removeScenarioTest: (scenarioId, testId) =>
-        setScenarios((prev) =>
-          prev.map((s) =>
-            s.id === scenarioId ? { ...s, testIds: s.testIds.filter((t) => t !== testId) } : s,
-          ),
-        ),
-      addDependency: (d) =>
-        setDependencies((prev) => [...prev, { ...d, id: `DEP-${Date.now()}` }]),
-      updateDependency: (id, patch) =>
-        setDependencies((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d))),
-      deleteDependency: (id) => {
-        setDependencies((prev) => prev.filter((d) => d.id !== id));
-        pushAudit(asActor("Système"), "Dépendance supprimée", id, "—");
-      },
-      updateTypeRule: (id, patch) =>
-        setTypeRules((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r))),
-      addControl: (c) =>
-        setControls((prev) => [{ ...c, id: `CQ-${Date.now()}` }, ...prev]),
-      updateControl: (id, patch) =>
-        setControls((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c))),
-      deleteControl: (id) => {
-        setControls((prev) => prev.filter((c) => c.id !== id));
-        pushAudit(asActor("Système"), "Contrôle qualité supprimé", id, "—");
-      },
-      addNF: (n) =>
-        setNonFunctional((prev) => [{ ...n, id: `NF-${Date.now()}` }, ...prev]),
-      updateNF: (id, patch) =>
-        setNonFunctional((prev) =>
-          prev.map((n) => (n.id === id ? { ...n, ...patch } : n)),
-        ),
-      deleteNF: (id) => {
-        setNonFunctional((prev) => prev.filter((n) => n.id !== id));
-        pushAudit(asActor("Système"), "Test non-fonctionnel supprimé", id, "—");
-      },
-
       /* Audit & Reset ------------------------------------------------  */
       logAudit: pushAudit,
       resetAllData: () => {
@@ -1077,14 +1108,10 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
         setGoLiveDecisions(fresh.goLiveDecisions);
         setGoLiveChecklist(fresh.goLiveChecklist);
         setAlerts(fresh.alerts);
+        setNotifications(fresh.notifications ?? []);
         setAudit(fresh.audit);
         setRules(fresh.rules);
         setUsers(fresh.users);
-        setCriteria(fresh.criteria);
-        setScenarios(fresh.scenarios);
-        setDependencies(fresh.dependencies);
-        setTypeRules(fresh.typeRules);
-        setControls(fresh.controls);
         saveSnapshot(fresh);
         pushAudit(asActor("Administrateur"), "Reset global", "—", "Données démo réinitialisées");
       },
@@ -1102,15 +1129,10 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
     goLiveDecisions,
     goLiveChecklist,
     alerts,
+    notifications,
     audit,
     rules,
     users,
-    criteria,
-    scenarios,
-    dependencies,
-    typeRules,
-    controls,
-    nonFunctional,
     currentUser,
   ]);
 
@@ -1175,106 +1197,14 @@ export function projectCampaigns(campaigns: Campaign[], projectId: string) {
   return campaigns.filter((c) => c.projectId === projectId);
 }
 
-/** Suggestion intelligente du rejeu (BF-071) pour une campagne source. */
-export function suggestRegressionTests(
-  sourceCampaignId: string,
-  tests: TestCase[],
-  features: Feature[],
-  defects: Defect[],
-  dependencies: TestDependency[],
-): { id: string; name: string; criticality: Criticality; reasons: string[] }[] {
-  const source = tests.filter((t) => t.campaignId === sourceCampaignId);
-  const suggestions: { id: string; name: string; criticality: Criticality; reasons: string[] }[] =
-    [];
-
-  for (const t of source) {
-    const reasons: string[] = [];
-    // 1) Criticité élevée
-    if (t.criticality === "critique" || t.criticality === "haute") {
-      reasons.push("Criticité élevée");
-    }
-    // 2) Échoué lors de la campagne précédente
-    if (t.verdict === "FAIL" || t.verdict === "PASS_WITH_RESERVATION") {
-      reasons.push("Échec ou réserve lors de la campagne précédente");
-    }
-    // 3) Incidents rattachés à la fonctionnalité
-    const linkedDefects = defects.filter(
-      (d) => d.featureId === t.featureId && d.status !== "fermee",
-    );
-    if (linkedDefects.length > 0) {
-      reasons.push(`${linkedDefects.length} incident(s) ouvert(s) sur la fonctionnalité`);
-    }
-    // 4) Dépendances impactées
-    const deps = dependencies.some(
-      (d) => d.fromTestId === t.id || d.toTestId === t.id,
-    );
-    if (deps) reasons.push("Test impliqué dans un graphe de dépendances");
-    // 5) Tester sans exécution (garde-fou : couverture)
-    const featureCovered = features.some(
-      (f) => f.id === t.featureId && f.criticality === "critique" && t.verdict === "NOT_RUN",
-    );
-    if (featureCovered) reasons.push("Fonctionnalité critique sans exécution");
-
-    if (reasons.length > 0) {
-      suggestions.push({ id: t.id, name: t.name, criticality: t.criticality, reasons });
-    }
-  }
-  return suggestions;
-}
-
 /** Synthèse santé produit. */
 export function productHealth(p: Product) {
   return healthOf(productScore(p));
 }
 
-/** Explicabilité du score (BF-023) : facteurs positifs / négatifs. */
-export function scoreExplanation(p: Product): {
-  score: number;
-  positive: { label: string; value: number }[];
-  negative: { label: string; value: number }[];
-} {
-  const b = p.breakdown;
-  const items = [
-    { key: "results" as const, label: "Résultats des tests" },
-    { key: "coverage" as const, label: "Couverture" },
-    { key: "critical" as const, label: "Éléments critiques" },
-    { key: "incidents" as const, label: "Incidents / anomalies" },
-    { key: "nonFunctional" as const, label: "Non-fonctionnel" },
-    { key: "testability" as const, label: "Testabilité" },
-    { key: "qualityControl" as const, label: "Contrôles qualité" },
-  ];
-  const positive: { label: string; value: number }[] = [];
-  const negative: { label: string; value: number }[] = [];
-  for (const it of items) {
-    const val = b[it.key];
-    if (val >= 80) positive.push({ label: it.label, value: val });
-    else if (val < 70) negative.push({ label: it.label, value: val });
-  }
-  return { score: productScore(p), positive, negative };
-}
-
-/** Calcule automatiquement le verdict d'un test mesurable à partir de la valeur observée. */
-export function autoVerdict(t: TestCase): Verdict | null {
-  if (!t.isMeasurable || !t.metric || t.measuredValue === undefined || t.measuredValue === "") {
-    return null;
-  }
-  const op: MeasurableOperator = t.operator ?? "<=";
-  const rawObs = parseFloat(t.measuredValue);
-  const rawExp = t.expectedValue ? parseFloat(t.expectedValue) : NaN;
-  if (Number.isNaN(rawObs) || Number.isNaN(rawExp)) return null;
-  const ok = (() => {
-    switch (op) {
-      case "<":
-        return rawObs < rawExp;
-      case "<=":
-        return rawObs <= rawExp;
-      case ">":
-        return rawObs > rawExp;
-      case ">=":
-        return rawObs >= rawExp;
-      case "=":
-        return rawObs === rawExp;
-    }
-  })();
-  return ok ? "PASS" : "FAIL";
+/** Hook : renvoie une fonction healthOf(score) pilotée par les règles RG-1/2/3 (seuils modifiables). */
+export function useHealthOf() {
+  const rules = useStore().rules;
+  const thr = healthThresholds(rules);
+  return (score: number) => healthOf(score, thr);
 }
