@@ -85,7 +85,7 @@ function CreateProjectPage() {
       breadcrumb={t("pages.projects.breadcrumb")}
       tabs={QUALITY_TABS}
     >
-      <div className="panel">
+      <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
         <div className="mb-6">
           <Button
             variant="outline"
