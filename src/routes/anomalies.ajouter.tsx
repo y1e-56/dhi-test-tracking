@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { DEVELOPERS, PEOPLE, SEVERITY_LABEL, type Severity } from "@/lib/dhi-data";
+import { SEVERITY_LABEL, type Severity } from "@/lib/dhi-data";
 import { SYSTEM_TABS } from "@/lib/dhi-nav";
 import { useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
@@ -41,14 +41,16 @@ type DefectForm = {
 function CreateDefectPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { products, features, addDefect, currentUser } = useStore();
+  const { products, features, users, addDefect, currentUser } = useStore();
   const viewableProducts = useVisibleProducts(products);
 
+  const universe = users.filter((u) => u.active).map((u) => u.name);
+  const devs = users.filter((u) => u.active && u.role === "developpeur").map((u) => u.name);
   const isDev = (currentUser?.role as string) === "developpeur";
   const defaultDeveloper =
-    isDev && currentUser && DEVELOPERS.includes(currentUser.name)
+    isDev && currentUser && devs.includes(currentUser.name)
       ? currentUser.name
-      : DEVELOPERS[0] ?? "";
+      : devs[0] ?? "";
 
   const [form, setForm] = useState<DefectForm>({
     title: "",
@@ -57,7 +59,7 @@ function CreateDefectPage() {
     priority: "moyenne",
     productId: viewableProducts[0]?.id ?? "",
     featureId: features[0]?.id ?? "",
-    assignee: currentUser?.name && PEOPLE.includes(currentUser.name) ? currentUser.name : PEOPLE[0] ?? "",
+    assignee: currentUser?.name && universe.includes(currentUser.name) ? currentUser.name : universe[0] ?? "",
     developer: defaultDeveloper,
   });
 
@@ -215,7 +217,7 @@ function CreateDefectPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PEOPLE.map((p) => (
+                      {universe.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>
@@ -233,7 +235,7 @@ function CreateDefectPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {DEVELOPERS.map((p) => (
+                      {devs.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>

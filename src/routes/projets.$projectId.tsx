@@ -42,7 +42,7 @@ import {
   projects as seedProjects,
   type ReleaseStatus,
 } from "@/lib/dhi-data";
-import { QUALITY_TABS } from "@/lib/dhi-nav";
+import { projectTabs } from "@/lib/dhi-nav";
 import { campaignStats, loadSnapshot, productScore, useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 import { getUser, projectVisibleTo } from "@/lib/access";
@@ -66,6 +66,7 @@ function ProjectDetail() {
   const { projectId } = Route.useParams();
   const { products, projects, campaigns, tests, releases, goLiveDecisions, features, defects, addRelease, updateRelease } =
     useStore();
+  const [selRel, setSelRel] = useState("");
 
   const matches = useMatches();
   const project = projects.find((p) => p.id === projectId);
@@ -79,7 +80,7 @@ function ProjectDetail() {
 
   if (!project) {
     return (
-      <AppShell title={t("pages.project_detail.not_found")} tabs={QUALITY_TABS}>
+      <AppShell title={t("pages.project_detail.not_found")} tabs={projectTabs(projectId)}>
         <p className="text-sm text-muted-foreground">
           {t("pages.project_detail.not_found_message")}
         </p>
@@ -95,7 +96,6 @@ function ProjectDetail() {
   const projCampaigns = campaigns.filter((c) => c.projectId === project.id);
 
   const linkableReleases = releases.filter((r) => r.projectId !== project.id);
-  const [selRel, setSelRel] = useState("");
   const linkRelease = () => {
     if (!selRel) {
       toast.error(t("pages.releases.select_link"));
@@ -121,7 +121,7 @@ function ProjectDetail() {
         "pages.project_detail.target",
       )} ${project.targetVersion}`}
       breadcrumb={[t("nav.qualite"), t("nav.projets"), project.name]}
-      tabs={QUALITY_TABS}
+      tabs={projectTabs(projectId)}
       actions={
         <Link
           to="/projets"

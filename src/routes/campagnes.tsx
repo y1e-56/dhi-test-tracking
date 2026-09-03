@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PEOPLE, type CampaignStatus } from "@/lib/dhi-data";
+import { type CampaignStatus } from "@/lib/dhi-data";
 import { canCreate } from "@/lib/role-protection";
 import { visibleCampaigns, getUser } from "@/lib/access";
 import { EXECUTION_TABS } from "@/lib/dhi-nav";

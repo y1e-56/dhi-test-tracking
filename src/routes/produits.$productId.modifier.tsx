@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PEOPLE, products as seedProducts } from "@/lib/dhi-data";
+import { products as seedProducts } from "@/lib/dhi-data";
 import { QUALITY_TABS } from "@/lib/dhi-nav";
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
 import { getUser, productVisibleTo } from "@/lib/access";
@@ -37,7 +37,8 @@ function EditProductPage() {
   const { productId } = Route.useParams();
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { products, updateProduct } = useStore();
+  const { products, users, updateProduct } = useStore();
+  const activeMembers = users.filter((u) => u.active).map((u) => u.name);
   const product = products.find((p) => p.id === productId);
 
   const [form, setForm] = useState(() => ({
@@ -128,21 +129,12 @@ function EditProductPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label className="text-sm font-medium">{t("pages.products.owner")}</Label>
-                  <Select
+                  <Input
                     value={form.owner}
-                    onValueChange={(v) => setForm((f) => ({ ...f, owner: v }))}
-                  >
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder={t("pages.go_live.choose")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PEOPLE.map((p) => (
-                        <SelectItem key={p} value={p}>
-                          {p}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(e) => setForm((f) => ({ ...f, owner: e.target.value }))}
+                    placeholder={t("pages.products.owner_placeholder")}
+                    className="h-11"
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label className="text-sm font-medium">{t("pages.products.qa_lead")}</Label>
@@ -154,7 +146,7 @@ function EditProductPage() {
                       <SelectValue placeholder={t("pages.go_live.choose")} />
                     </SelectTrigger>
                     <SelectContent>
-                      {PEOPLE.map((p) => (
+                      {activeMembers.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>

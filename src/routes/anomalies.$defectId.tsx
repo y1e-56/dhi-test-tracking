@@ -16,8 +16,6 @@ import { Separator } from "@/components/ui/separator";
 import {
   DEFECT_STATUS_LABEL,
   DEFECT_TRANSITIONS,
-  DEVELOPERS,
-  PEOPLE,
   defects as seedDefects,
   type DefectStatus,
 } from "@/lib/dhi-data";
@@ -48,9 +46,11 @@ export const Route = createFileRoute("/anomalies/$defectId")({
 function DefectDetailPage() {
   const { defectId } = Route.useParams();
   const { t } = useI18n();
-  const { defects, features, updateDefect, currentUser } = useStore();
+  const { defects, features, users, updateDefect, currentUser } = useStore();
   const defect = defects.find((d) => d.id === defectId);
   if (!defect) return null;
+  const universe = users.filter((u) => u.active).map((u) => u.name);
+  const devs = users.filter((u) => u.active && u.role === "developpeur").map((u) => u.name);
 
   const reassign = (v: string) => {
     updateDefect(defect.id, { assignee: v });
@@ -113,7 +113,7 @@ function DefectDetailPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {PEOPLE.map((p) => (
+                {universe.map((p) => (
                   <SelectItem key={p} value={p}>
                     {p}
                   </SelectItem>
@@ -136,7 +136,7 @@ function DefectDetailPage() {
                 />
               </SelectTrigger>
               <SelectContent>
-                {DEVELOPERS.map((p) => (
+                {devs.map((p) => (
                   <SelectItem key={p} value={p}>
                     {p}
                   </SelectItem>

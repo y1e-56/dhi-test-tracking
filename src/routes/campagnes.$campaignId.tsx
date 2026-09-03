@@ -8,10 +8,20 @@ import {
   Trash2,
   Upload,
   FileUp,
+  Users,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
+import { MemberMultiSelect, type MemberOption } from "@/components/dhi/MemberMultiSelect";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   CriticalityBadge,
   Panel,
@@ -20,6 +30,7 @@ import {
   VerdictBadge,
 } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,7 +65,7 @@ import {
   type Feature,
   type TestCase,
 } from "@/lib/dhi-data";
-import { EXECUTION_TABS } from "@/lib/dhi-nav";
+import { campaignTabs } from "@/lib/dhi-nav";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 
 type TestStats = ReturnType<typeof campaignStats>;
@@ -420,6 +431,80 @@ function exportTemplateCsv(featureList: Feature[], t: TranslateFn) {
   toast.success(t("pages.campaign_detail.modele_csv_telecharge"));
 }
 
+function ManageMembersButton({ campaign }: { campaign: Campaign }) {
+  const { t } = useI18n();
+  const { users, updateCampaign } = useStore();
+  const [open, setOpen] = useState(false);
+  const [testers, setTesters] = useState<Set<string>>(new Set(campaign.testers));
+  const [developers, setDevelopers] = useState<Set<string>>(new Set(campaign.developers ?? []));
+
+  const memberOptions: MemberOption[] = users.map((u) => ({
+    name: u.name,
+    role: u.role,
+    active: u.active,
+  }));
+  const testerOptions = memberOptions.filter((o) => o.role === "testeur" || o.role === "chef_testeur");
+  const devOptions = memberOptions.filter((o) => o.role === "developpeur");
+
+  const save = () => {
+    updateCampaign(campaign.id, { testers: [...testers], developers: [...developers] });
+    toast.success(t("pages.add_campaign.membres_update_ok"));
+    setOpen(false);
+  };
+
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        <Users className="size-4" /> {t("pages.add_campaign.gerer_membres")}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("pages.add_campaign.gerer_membres")}</DialogTitle>
+            <DialogDescription>{campaign.name}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label className="text-sm font-medium">{t("pages.add_campaign.membres_testeurs")}</Label>
+              <MemberMultiSelect
+                value={testers}
+                onChange={setTesters}
+                options={testerOptions}
+                showRole={false}
+                placeholder={t("pages.add_campaign.aucun_membre")}
+                selectionLabel={{
+                  label: t("pages.add_campaign.membre"),
+                  labelPlural: t("pages.add_campaign.membres"),
+                }}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label className="text-sm font-medium">{t("pages.add_campaign.membres_developpeurs")}</Label>
+              <MemberMultiSelect
+                value={developers}
+                onChange={setDevelopers}
+                options={devOptions}
+                showRole={false}
+                placeholder={t("pages.add_campaign.aucun_membre")}
+                selectionLabel={{
+                  label: t("pages.add_campaign.membre"),
+                  labelPlural: t("pages.add_campaign.membres"),
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              {t("pages.campaign_detail.fermer")}
+            </Button>
+            <Button onClick={save}>{t("actions.enregistrer")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 function CampaignDetail() {
   const { campaignId } = Route.useParams();
   const { campaigns, tests, products, projects, features, updateCampaign, deleteTest } = useStore();
@@ -462,15 +547,18 @@ function CampaignDetail() {
       title={`${t("common.campagne")} : ${campaign.name}`}
       subtitle={`${CAMPAIGN_STATUS_LABEL[campaign.status]} · ${st.executionRate} % ${t("pages.campaigns.executed")} · ${campaign.environment}`}
       breadcrumb={[t("nav.execution"), t("pages.campaigns.campaigns"), campaign.name]}
-      tabs={EXECUTION_TABS}
+      tabs={campaignTabs(campaignId)}
       actions={
-        <CampaignActions
-          campaign={campaign}
-          st={st}
-          onExport={onExport}
-          onTransition={onTransition}
-          onExportTemplate={onExportTemplate}
-        />
+        <>
+          <ManageMembersButton campaign={campaign} />
+          <CampaignActions
+            campaign={campaign}
+            st={st}
+            onExport={onExport}
+            onTransition={onTransition}
+            onExportTemplate={onExportTemplate}
+          />
+        </>
       }
     >
       <div className="grid gap-4 lg:grid-cols-3">

@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PEOPLE, projects as seedProjects, type ProjectStatus } from "@/lib/dhi-data";
+import { projects as seedProjects, type ProjectStatus } from "@/lib/dhi-data";
 import { QUALITY_TABS } from "@/lib/dhi-nav";
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
@@ -51,7 +51,8 @@ function EditProjectPage() {
   const { projectId } = Route.useParams();
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { products, projects, updateProject } = useStore();
+  const { products, projects, users, updateProject } = useStore();
+  const activeMembers = users.filter((u) => u.active).map((u) => u.name);
   const viewableProducts = useVisibleProducts(products);
   const project = projects.find((p) => p.id === projectId);
 
@@ -227,7 +228,7 @@ function EditProjectPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PEOPLE.map((p) => (
+                      {activeMembers.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>
@@ -245,7 +246,7 @@ function EditProjectPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PEOPLE.map((p) => (
+                      {activeMembers.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>

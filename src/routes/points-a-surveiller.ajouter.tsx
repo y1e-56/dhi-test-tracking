@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { PEOPLE, WATCH_LEVEL_LABEL, type WatchLevel } from "@/lib/dhi-data";
+import { WATCH_LEVEL_LABEL, type WatchLevel } from "@/lib/dhi-data";
 import { useVisibleProductIds } from "@/lib/use-scope";
 import { DECISION_TABS } from "@/lib/dhi-nav";
 import { useStore } from "@/lib/dhi-store";
@@ -39,7 +39,8 @@ type WatchPointForm = {
 function CreateWatchPointPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { products, features, addWatchPoint } = useStore();
+  const { products, features, users, addWatchPoint } = useStore();
+  const activeMembers = users.filter((u) => u.active).map((u) => u.name);
   const productIds = useVisibleProductIds(products);
   const visibleProducts = products.filter((p) => productIds.has(p.id));
 
@@ -49,7 +50,7 @@ function CreateWatchPointPage() {
     productId: visibleProducts[0]?.id ?? "",
     featureId: "",
     level: "vigilance",
-    owner: PEOPLE[0] ?? "",
+    owner: activeMembers[0] ?? "",
   });
 
   const submit = (e: React.FormEvent) => {
@@ -184,7 +185,7 @@ function CreateWatchPointPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PEOPLE.map((p) => (
+                      {activeMembers.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>
