@@ -34,6 +34,8 @@ export type ParsedTestRow = {
   preconditions: string[];
   steps: string[];
   expected: string[];
+  observed: string[];
+  comment: string;
   _raw: Record<string, string>;
   errors: string[];
 };
@@ -117,6 +119,9 @@ function isNorHeader(line: string): string {
     "résultats attendus:",
     "resultats attendus:",
     "résultat attendu:",
+    "résultat obtenu:",
+    "resultat obtenu:",
+    "commentaire:",
   ]) {
     if (l.startsWith(k)) return k;
   }
@@ -131,6 +136,8 @@ function parseNor(text: string, features: Feature[]): ParsedTestRow[] {
   let preconditions: string[] = [];
   let steps: string[] = [];
   let expected: string[] = [];
+  let observed: string[] = [];
+  let comment = "";
   let section = "";
 
   const flush = () => {
@@ -152,6 +159,8 @@ function parseNor(text: string, features: Feature[]): ParsedTestRow[] {
         preconditions: normalizedP,
         steps: normalizedS,
         expected: splitLines(expected.join("\n")),
+        observed: splitLines(observed.join("\n")),
+        comment: comment.trim(),
         _raw: {},
         errors: rowErrors,
       });
@@ -161,6 +170,8 @@ function parseNor(text: string, features: Feature[]): ParsedTestRow[] {
     preconditions = [];
     steps = [];
     expected = [];
+    observed = [];
+    comment = "";
   };
 
   for (const rawLine of lines) {
@@ -192,6 +203,11 @@ function parseNor(text: string, features: Feature[]): ParsedTestRow[] {
     } else if (section.startsWith("rés") || section.startsWith("res")) {
       if (bullet) expected.push(line.replace(/^[-*●•]\s+/, ""));
       else expected.push(line.replace(/^\d+[.)]\s*/, ""));
+    } else if (section.startsWith("résultat obtenu") || section.startsWith("resultat obtenu")) {
+      if (bullet) observed.push(line.replace(/^[-*●•]\s+/, ""));
+      else observed.push(line.replace(/^\d+[.)]\s*/, ""));
+    } else if (section.startsWith("commentaire")) {
+      comment = comment ? `${comment}\n${line}` : line;
     }
   }
   flush();
@@ -210,7 +226,11 @@ function parseCsv(text: string, features: Feature[]): ParsedTestRow[] {
   const iTesteur = idx("testeur");
   const iPrec = idx("preconditions");
   const iSteps = idx("steps");
-  const iExp = idx("expected");
+  const iExp = idx("resultat_attendu") >= 0 ? idx("resultat_attendu") : idx("expected");
+  const iObs =
+    idx("resultat_obtenu") >= 0 ? idx("resultat_obtenu") : idx("observed");
+  const iComment =
+    idx("commentaires") >= 0 ? idx("commentaires") : idx("comment");
   if (iNom < 0) return [];
 
   const rows: ParsedTestRow[] = [];
@@ -230,7 +250,22 @@ function parseCsv(text: string, features: Feature[]): ParsedTestRow[] {
     const preconditions = iPrec >= 0 ? splitPipe(cells[iPrec] ?? "") : [];
     const steps = iSteps >= 0 ? splitPipe(cells[iSteps] ?? "") : [];
     const expected = iExp >= 0 ? splitPipe(cells[iExp] ?? "") : [];
-    rows.push({ name, featureId: fid, criticality, type, tester, preconditions, steps, expected, _raw: raw, errors });
+    const observed = iObs >= 0 ? splitPipe(cells[iObs] ?? "") : [];
+    const comment = iComment >= 0 ? (cells[iComment] ?? "").trim() : "";
+    rows.push({
+      name,
+      featureId: fid,
+      criticality,
+      type,
+      tester,
+      preconditions,
+      steps,
+      expected,
+      observed,
+      comment,
+      _raw: raw,
+      errors,
+    });
   }
   return rows;
 }
@@ -244,7 +279,18 @@ export function parseImportText(text: string, features: Feature[], filename: str
 }
 
 export function exportCsvTemplate(featureList: Feature[]): void {
-  const headers = ["nom", "fonctionnalite", "criticite", "type", "testeur", "preconditions", "steps", "expected"];
+  const headers = [
+    "nom",
+    "fonctionnalite",
+    "criticite",
+    "type",
+    "testeur",
+    "preconditions",
+    "steps",
+    "resultat_attendu",
+    "resultat_obtenu",
+    "commentaires",
+  ];
   const header = headers.join(CSV_SEP) + "\n";
   const sampleFeature = featureList[0] ? `${featureList[0].name} (${featureList[0].id})` : "Authentification (f-auth)";
   const sample = [
@@ -256,6 +302,8 @@ export function exportCsvTemplate(featureList: Feature[]): void {
     "Utilisateur enregistré|||Page de connexion ouverte",
     "Saisir email|||Saisir mdp demo|||Cliquer sur Se connecter",
     "Champ email ok|||Champ mdp ok|||Redirection tableau de bord",
+    "Comportement conforme (ou à renseigner à l'exécution)",
+    "Test rapide à exécuter (commentaire optionnel)",
   ]
     .map((v) => (v.includes(CSV_SEP) || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v))
     .join(CSV_SEP);
@@ -289,6 +337,12 @@ export function exportNorTemplate(featureList: Feature[]): void {
     "- Champ email OK",
     "- Champ mot de passe OK",
     "- Redirection vers le tableau de bord",
+    "",
+    "Résultat obtenu:",
+    "- (à renseigner à l'exécution)",
+    "",
+    "Commentaire:",
+    "(optionnel)",
   ];
   const blob = new Blob([content.join("\n")], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);

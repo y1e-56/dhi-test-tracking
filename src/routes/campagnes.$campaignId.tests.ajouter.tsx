@@ -71,6 +71,8 @@ type TestForm = {
   preconditions: string;
   steps: string;
   expected: string;
+  observed: string;
+  comment: string;
 };
 
 function splitLines(s: string): string[] {
@@ -102,6 +104,8 @@ function AddTestPage() {
     preconditions: "",
     steps: "",
     expected: "",
+    observed: "",
+    comment: "",
   }));
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -125,6 +129,8 @@ function AddTestPage() {
         preconditions: row.preconditions.join("\n"),
         steps: row.steps.join("\n"),
         expected: row.expected.join("\n"),
+        observed: row.observed?.join("\n") ?? "",
+        comment: row.comment ?? "",
       });
       toast.success(
         `Fichier « ${file.name} » : ${row.name.trim()}${
@@ -155,6 +161,8 @@ function AddTestPage() {
       preconditions: splitLines(form.preconditions),
       steps: splitLines(form.steps),
       expected: splitLines(form.expected),
+      observed: form.observed.trim(),
+      comment: form.comment.trim(),
       tester: form.tester.trim() || undefined,
     });
     toast.success(t("pages.campaign_detail.cas_test_creer").replace("{id}", id));
@@ -342,6 +350,24 @@ function AddTestPage() {
                   value={form.expected}
                   placeholder={t("pages.campaign_detail.expected_placeholder")}
                   onChange={(e) => setForm({ ...form, expected: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("pages.campaign_detail.resultat_obtenu")}</Label>
+                <Textarea
+                  rows={3}
+                  value={form.observed}
+                  placeholder={t("pages.campaign_detail.resultat_obtenu_placeholder")}
+                  onChange={(e) => setForm({ ...form, observed: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("pages.campaign_detail.commentaires")}</Label>
+                <Textarea
+                  rows={3}
+                  value={form.comment}
+                  placeholder={t("pages.campaign_detail.commentaires_placeholder")}
+                  onChange={(e) => setForm({ ...form, comment: e.target.value })}
                 />
               </div>
             </div>

@@ -233,7 +233,13 @@ interface Store {
   addCampaign: (c: Omit<Campaign, "id">, cloneFrom?: string) => string;
   updateCampaign: (id: string, patch: Partial<Campaign>) => void;
   deleteCampaign: (id: string) => void;
-  addTestCase: (t: Omit<TestCase, "id" | "verdict" | "observed" | "comment" | "evidence"> & { verdict?: Verdict }) => string;
+  addTestCase: (
+      t: Omit<TestCase, "id" | "verdict" | "observed" | "comment" | "evidence"> & {
+        verdict?: Verdict;
+        observed?: string;
+        comment?: string;
+      },
+    ) => string;
   updateTest: (id: string, patch: Partial<TestCase>) => void;
   deleteTest: (id: string) => void;
 
@@ -960,8 +966,8 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
             ...t,
             id,
             verdict: t.verdict ?? ("NOT_RUN" as Verdict),
-            observed: "",
-            comment: "",
+            observed: t.observed ?? "",
+            comment: t.comment ?? "",
             evidence: [],
           },
         ]);

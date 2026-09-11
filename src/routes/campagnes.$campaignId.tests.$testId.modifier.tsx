@@ -77,6 +77,8 @@ type TestForm = {
   preconditions: string;
   steps: string;
   expected: string;
+  observed: string;
+  comment: string;
 };
 
 function splitLines(s: string): string[] {
@@ -109,6 +111,8 @@ function EditTestPage() {
     preconditions: test?.preconditions.join("\n") ?? "",
     steps: test?.steps.join("\n") ?? "",
     expected: test?.expected.join("\n") ?? "",
+    observed: test?.observed ?? "",
+    comment: test?.comment ?? "",
   }));
 
   if (campaign && !campaignVisibleTo(campaign, products, getUser())) {
@@ -131,6 +135,8 @@ function EditTestPage() {
       preconditions: splitLines(form.preconditions),
       steps: splitLines(form.steps),
       expected: splitLines(form.expected),
+      observed: form.observed.trim(),
+      comment: form.comment.trim(),
     });
     toast.success(t("pages.campaign_detail.cas_test_modifier").replace("{id}", test.id));
     navigate({ to: "/campagnes/$campaignId", params: { campaignId: campaign.id } });
@@ -280,6 +286,24 @@ function EditTestPage() {
                   value={form.expected}
                   placeholder={t("pages.campaign_detail.expected_placeholder")}
                   onChange={(e) => setForm({ ...form, expected: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("pages.campaign_detail.resultat_obtenu")}</Label>
+                <Textarea
+                  rows={3}
+                  value={form.observed}
+                  placeholder={t("pages.campaign_detail.resultat_obtenu_placeholder")}
+                  onChange={(e) => setForm({ ...form, observed: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("pages.campaign_detail.commentaires")}</Label>
+                <Textarea
+                  rows={3}
+                  value={form.comment}
+                  placeholder={t("pages.campaign_detail.commentaires_placeholder")}
+                  onChange={(e) => setForm({ ...form, comment: e.target.value })}
                 />
               </div>
             </div>

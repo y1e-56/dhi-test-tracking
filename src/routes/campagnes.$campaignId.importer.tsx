@@ -129,6 +129,8 @@ function ImportTestsPage() {
         preconditions: row.preconditions,
         steps: row.steps,
         expected: row.expected,
+        observed: row.observed?.join("\n") ?? "",
+        comment: row.comment ?? "",
       });
       created++;
     }
@@ -171,11 +173,14 @@ function ImportTestsPage() {
             <p className="text-xs text-muted-foreground">
               {t("campagne_import.format_colonnes")} :{" "}
               <code className="text-[11px]">
-                nom ; fonctionnalite ; criticite ; type ; testeur ; preconditions ; steps ; expected
+                nom ; fonctionnalite ; criticite ; type ; testeur ; preconditions ; steps ;
+                resultat_attendu ; resultat_obtenu ; commentaires
               </code>
               . {t("campagne_import.separateur")} : <strong>{CSV_SEP}</strong>.{" "}
               {t("pages.campaign_detail.multilignes")}. Format <strong>NOR (.txt)</strong> : titres
-              de sections <em>Préconditions:</em>, <em>Étapes:</em>, <em>Résultats attendus:</em>.
+              de sections <em>Préconditions:</em>, <em>Étapes:</em>, <em>Résultats attendus:</em>,{" "}
+              <em>Résultat obtenu:</em>, <em>Commentaire:</em>. Colonnes compatibles aussi avec{" "}
+              <code>expected</code> / <code>observed</code> / <code>comment</code>.
             </p>
           </div>
 
@@ -236,8 +241,8 @@ function ImportTestsPage() {
                 <code>type</code> : fonctionnel, regression, securite, performance, etc.
               </li>
               <li>
-                <code>preconditions / steps / expected</code> :{" "}
-                {t("pages.campaign_detail.aide_separateurs")}
+                <code>preconditions / steps / resultat_attendu / resultat_obtenu / commentaires</code>{" "}
+                : {t("pages.campaign_detail.aide_separateurs")}
               </li>
             </ul>
           </div>

@@ -55,6 +55,7 @@ function CampaignTests() {
               <TableHead>{t("common.criticite")}</TableHead>
               <TableHead>{t("common.type")}</TableHead>
               <TableHead>{t("common.verdict")}</TableHead>
+              <TableHead>{t("pages.campaign_detail.resultat_obtenu")}</TableHead>
               <TableHead>{t("common.testeur")}</TableHead>
               <TableHead className="text-right">{t("pages.campaign_detail.execution")}</TableHead>
             </TableRow>
@@ -71,6 +72,16 @@ function CampaignTests() {
                 <TableCell>
                   <VerdictBadge verdict={tc.verdict} />
                 </TableCell>
+                <TableCell className="max-w-[220px]">
+                  <span
+                    className="block truncate text-sm"
+                    title={
+                      [tc.observed, tc.comment].filter(Boolean).join(" — ") || t("pages.campaign_detail.vide_paren")
+                    }
+                  >
+                    {tc.observed || "—"}
+                  </span>
+                </TableCell>
                 <TableCell className="text-sm">{tc.tester ?? "—"}</TableCell>
                 <TableCell className="text-right">
                   <Link
@@ -85,7 +96,7 @@ function CampaignTests() {
             ))}
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                   {t("pages.product_detail.no_campaigns_for_product")}
                 </TableCell>
               </TableRow>

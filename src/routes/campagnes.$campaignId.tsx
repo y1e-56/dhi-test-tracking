@@ -73,12 +73,31 @@ type Campaign = (typeof seedCampaigns)[number];
 
 type TranslateFn = (key: TranslationKey, fallback?: string) => string;
 
+function csvField(value: string): string {
+  return value.includes(";") || value.includes('"') || value.includes("\n")
+    ? `"${value.replace(/"/g, '""')}"`
+    : value;
+}
+
 function exportCsv(list: TestStats["list"], campaignName: string, t: TranslateFn) {
-  const header = "id;nom;criticite;verdict;testeur;date\n";
+  const header =
+    "id;nom;criticite;type;verdict;testeur;preconditions;steps;resultat_attendu;resultat_obtenu;commentaires;date\n";
   const rows = list
-    .map(
-      (t) =>
-        `${t.id};"${t.name}";${t.criticality};${t.verdict};${t.tester ?? ""};${t.executedAt ?? ""}`,
+    .map((x) =>
+      [
+        x.id,
+        csvField(x.name),
+        x.criticality,
+        x.type,
+        x.verdict,
+        csvField(x.tester ?? ""),
+        csvField(x.preconditions.join("|||")),
+        csvField(x.steps.join("|||")),
+        csvField(x.expected.join("|||")),
+        csvField(x.observed ?? ""),
+        csvField(x.comment ?? ""),
+        csvField(x.executedAt ?? ""),
+      ].join(";"),
     )
     .join("\n");
   const blob = new Blob([header + rows], { type: "text/csv" });
@@ -265,6 +284,7 @@ function CampaignTestsTable({
             <TableHead>{t("common.criticite")}</TableHead>
             <TableHead>{t("common.type")}</TableHead>
             <TableHead>{t("common.verdict")}</TableHead>
+            <TableHead>{t("pages.campaign_detail.resultat_obtenu")}</TableHead>
             <TableHead>{t("common.testeur")}</TableHead>
             <TableHead>{t("pages.campaign_detail.execution")}</TableHead>
             <TableHead className="text-right">{t("pages.campaign_detail.actions")}</TableHead>
@@ -281,6 +301,16 @@ function CampaignTestsTable({
               <TableCell className="text-sm capitalize">{tc.type.replace(/_/g, " ")}</TableCell>
               <TableCell>
                 <VerdictBadge verdict={tc.verdict} />
+              </TableCell>
+              <TableCell className="max-w-[200px]">
+                <span
+                  className="block truncate text-sm"
+                  title={
+                    [tc.observed, tc.comment].filter(Boolean).join(" — ") || t("pages.campaign_detail.vide_paren")
+                  }
+                >
+                  {tc.observed || "—"}
+                </span>
               </TableCell>
               <TableCell className="text-sm">
                 <Select value={tc.tester ?? ""} onValueChange={(v) => reassign(tc.id, v)}>
@@ -401,7 +431,9 @@ const CSV_TEMPLATE_HEADERS = [
   "testeur",
   "preconditions",
   "steps",
-  "expected",
+  "resultat_attendu",
+  "resultat_obtenu",
+  "commentaires",
 ];
 
 function exportTemplateCsv(featureList: Feature[], t: TranslateFn) {
@@ -418,6 +450,8 @@ function exportTemplateCsv(featureList: Feature[], t: TranslateFn) {
     "Utilisateur enregistré|||Page de connexion ouverte",
     "Saisir email|||Saisir mdp demo|||Cliquer sur Se connecter",
     "Champ email ok|||Champ mdp ok|||Redirection tableau de bord",
+    "Comportement conforme (ou à renseigner à l'exécution)",
+    "Commentaire optionnel",
   ]
     .map((v) => (v.includes(CSV_SEP) || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v))
     .join(CSV_SEP);
