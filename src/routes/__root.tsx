@@ -13,6 +13,7 @@ import { Toaster } from "@/components/ui/sonner";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { DhiStoreProvider, loadSession, validateSessionBackend } from "@/lib/dhi-store";
+import { hasAccessToPage, getRedirectForUnauthorizedAccess } from "@/lib/role-protection";
 import { I18nProvider, useI18n } from "@/lib/i18n";
 
 function NotFoundComponent() {
@@ -78,11 +79,15 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     if (typeof window === "undefined") return undefined;
-    if (!loadSession()) return undefined;
+    const session = loadSession();
+    if (!session) return undefined;
     const valid = await validateSessionBackend();
     if (!valid) return { redirect: "/login" } as const;
+    if (location.pathname !== "/login" && !hasAccessToPage(location.pathname)) {
+      return { redirect: getRedirectForUnauthorizedAccess(location.pathname) } as const;
+    }
     return undefined;
   },
   head: () => ({

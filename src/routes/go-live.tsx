@@ -56,7 +56,7 @@ function GoLivePage() {
   const [decider, setDecider] = useState<string>(currentUser?.name ?? "Jean Dupont");
   const [justification, setJustification] = useState("");
 
-  const decisionRoles: string[] = ["admin", "qa_lead", "quality_manager", "chef_projet"];
+  const decisionRoles: string[] = ["admin", "chef_testeur", "quality_manager", "qa_lead", "approver"];
   const canDecide = !!currentUser && decisionRoles.includes(currentUser.role);
 
   const release = releases.find((r) => r.id === releaseId);

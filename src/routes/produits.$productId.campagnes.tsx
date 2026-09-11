@@ -16,7 +16,7 @@ import {
 import { campaignStats, loadSnapshot, useStore } from "@/lib/dhi-store";
 import { products as seedProducts } from "@/lib/dhi-data";
 import { productTabs } from "@/lib/dhi-nav";
-import { canCreate } from "@/lib/role-protection";
+import { canCreateCampaign } from "@/lib/role-protection";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/produits/$productId/campagnes")({
@@ -60,7 +60,7 @@ function ProductCampaigns() {
       breadcrumb={[t("nav.qualite"), t("nav.produits"), product?.name ?? "", t("nav.product_campaigns")]}
       tabs={productTabs(productId)}
       actions={
-        canCreate() ? (
+        canCreateCampaign() ? (
           <Link to="/campagnes/ajouter">
             <Button size="sm">
               <Plus className="size-4" /> {t("pages.campaigns.new_campaign")}

@@ -52,7 +52,7 @@ import {
   type TestType,
   type Verdict,
 } from "@/lib/dhi-data";
-import { canCreate } from "@/lib/role-protection";
+import { canCreateFeature } from "@/lib/role-protection";
 
 import { useStore } from "@/lib/dhi-store";
 import { useVisibleProductIds } from "@/lib/use-scope";
@@ -159,7 +159,7 @@ function FeaturesList() {
       subtitle={t("pages.features.subtitle")}
       breadcrumb={[t("nav.qualite"), t("nav.fonctionnalites")]}
       actions={
-        canCreate() ? (
+        canCreateFeature() ? (
           <Link to="/fonctionnalites/ajouter">
             <Button size="sm">
               <Plus className="size-4" /> {t("pages.features.new_feature")}

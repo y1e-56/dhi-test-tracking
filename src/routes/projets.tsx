@@ -35,6 +35,7 @@ import { PROJECT_STATUS_LABEL, type Project } from "@/lib/dhi-data";
 import { visibleProjects, getUser } from "@/lib/access";
 import { useI18n } from "@/lib/i18n";
 import { productScore, useStore } from "@/lib/dhi-store";
+import { canCreateProject } from "@/lib/role-protection";
 
 export const Route = createFileRoute("/projets")({
   head: () => ({
@@ -87,11 +88,13 @@ function ProjectsList() {
       subtitle={t("pages.projects.subtitle")}
       breadcrumb={t("pages.projects.breadcrumb")}
       actions={
-        <Link to="/projets/ajouter">
-          <Button size="sm">
-            <Plus className="size-4" /> {t("pages.projects.new_project")}
-          </Button>
-        </Link>
+        canCreateProject() ? (
+          <Link to="/projets/ajouter">
+            <Button size="sm">
+              <Plus className="size-4" /> {t("pages.projects.new_project")}
+            </Button>
+          </Link>
+        ) : null
       }
     >
       <div className="panel">

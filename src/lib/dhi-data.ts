@@ -556,16 +556,16 @@ export const ROLE_LABEL: Record<AppRole, string> = {
 
 /* Pages accessibles par rôle */
 export const ROLE_PAGES: Record<AppRole, string[]> = {
-  admin: ["/dashboard-admin", "/alertes", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/administration", "/administration/ajouter-utilisateur", "/audit"],
-  qa_lead: ["/", "/alertes", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/audit"],
-  quality_manager: ["/", "/alertes", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/audit"],
-  product_owner: ["/", "/produits", "/projets", "/fonctionnalites", "/exigences", "/go-live", "/points-a-surveiller", "/audit"],
-  chef_projet: ["/dashboard-chef", "/produits", "/projets", "/fonctionnalites", "/exigences", "/campagnes", "/campagnes/ajouter", "/go-live", "/audit"],
-  chef_testeur: ["/dashboard-testeur", "/campagnes", "/campagnes/ajouter", "/anomalies", "/points-a-surveiller", "/audit"],
-  testeur: ["/dashboard-testeur", "/campagnes", "/anomalies", "/audit"],
-  developpeur: ["/dashboard-developpeur", "/anomalies", "/campagnes", "/audit"],
-  approver: ["/", "/go-live", "/points-a-surveiller", "/audit"],
-  lecteur: ["/", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/go-live", "/points-a-surveiller", "/audit"],
+  admin: ["/", "/dashboard-admin", "/alertes", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/execution", "/administration", "/administration/ajouter-utilisateur", "/audit"],
+  qa_lead: ["/", "/alertes", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/execution", "/audit"],
+  quality_manager: ["/", "/alertes", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/execution", "/audit"],
+  product_owner: ["/", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/audit"],
+  chef_projet: ["/", "/dashboard-chef", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/execution", "/audit"],
+  chef_testeur: ["/", "/dashboard-testeur", "/notifications", "/produits", "/projets", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/execution", "/audit"],
+  testeur: ["/", "/dashboard-testeur", "/notifications", "/campagnes", "/anomalies", "/execution", "/audit"],
+  developpeur: ["/", "/dashboard-developpeur", "/notifications", "/anomalies", "/campagnes", "/audit"],
+  approver: ["/", "/notifications", "/go-live", "/points-a-surveiller", "/audit"],
+  lecteur: ["/", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/go-live", "/points-a-surveiller"],
 };
 
 /*  --------------------------------------------------------------------------  */

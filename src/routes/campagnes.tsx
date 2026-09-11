@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { type CampaignStatus } from "@/lib/dhi-data";
-import { canCreate } from "@/lib/role-protection";
+import { canCreateCampaign } from "@/lib/role-protection";
 import { visibleCampaigns, getUser } from "@/lib/access";
 
 import { useI18n } from "@/lib/i18n";
@@ -77,7 +77,7 @@ function CampaignsList() {
       subtitle={t("pages.campaigns.subtitle")}
       breadcrumb={t("pages.campaigns.breadcrumb")}
       actions={
-        canCreate() ? (
+        canCreateCampaign() ? (
           <Button size="sm" asChild>
             <Link to="/campagnes/ajouter">
               <Plus className="size-4" /> {t("pages.campaigns.new_campaign")}

@@ -65,15 +65,55 @@ export function getDefaultDashboardForRole(role: AppRole): string {
 }
 
 /**
- * Rôles autorisés à créer (campagnes, produits, features, exigences).
+ * Rôles autorisés à créer — aligné sur les matrices d'écriture du backend
+ * (backend/src/routes : products.js, projects.js, campaigns.js, features.js, requirements.js).
  */
-export const CREATE_ROLES: AppRole[] = ["admin", "qa_lead", "quality_manager"];
+export const CREATE_PRODUCT_ROLES: AppRole[] = ["admin", "quality_manager", "qa_lead"];
+export const CREATE_PROJECT_ROLES: AppRole[] = ["admin"];
+export const CREATE_CAMPAIGN_ROLES: AppRole[] = [
+  "admin",
+  "chef_testeur",
+  "quality_manager",
+  "qa_lead",
+  "chef_projet",
+];
+export const CREATE_FEATURE_ROLES: AppRole[] = [
+  "admin",
+  "quality_manager",
+  "qa_lead",
+  "chef_projet",
+  "chef_testeur",
+  "product_owner",
+];
+export const CREATE_REQUIREMENT_ROLES: AppRole[] = CREATE_FEATURE_ROLES;
 
-/**
- * Vérifie si l'utilisateur connecté peut créer des éléments.
- */
-export function canCreate(): boolean {
+function roleIs(...roles: AppRole[]): boolean {
   const session = loadSession();
   if (!session) return false;
-  return CREATE_ROLES.includes(session.role as AppRole);
+  return roles.includes(session.role as AppRole);
+}
+
+/** L'utilisateur connecté peut-il créer un produit ? */
+export function canCreateProduct(): boolean {
+  return roleIs(...CREATE_PRODUCT_ROLES);
+}
+
+/** L'utilisateur connecté peut-il créer un projet ? */
+export function canCreateProject(): boolean {
+  return roleIs(...CREATE_PROJECT_ROLES);
+}
+
+/** L'utilisateur connecté peut-il créer une campagne de tests ? */
+export function canCreateCampaign(): boolean {
+  return roleIs(...CREATE_CAMPAIGN_ROLES);
+}
+
+/** L'utilisateur connecté peut-il créer une fonctionnalité ? */
+export function canCreateFeature(): boolean {
+  return roleIs(...CREATE_FEATURE_ROLES);
+}
+
+/** L'utilisateur connecté peut-il créer une exigence ? */
+export function canCreateRequirement(): boolean {
+  return roleIs(...CREATE_REQUIREMENT_ROLES);
 }

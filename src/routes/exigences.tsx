@@ -44,7 +44,7 @@ import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/dhi-store";
 import { useVisibleProductIds } from "@/lib/use-scope";
 import { type Requirement, type RequirementStatus, type TestCase } from "@/lib/dhi-data";
-import { canCreate } from "@/lib/role-protection";
+import { canCreateRequirement } from "@/lib/role-protection";
 
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 
@@ -178,7 +178,7 @@ function RequirementsList() {
       subtitle={t("pages.requirements.subtitle")}
       breadcrumb={t("pages.requirements.breadcrumb")}
       actions={
-        canCreate() ? (
+        canCreateRequirement() ? (
           <Link to="/exigences/ajouter">
             <Button size="sm">
               <Plus className="size-4" /> {t("pages.requirements.new_requirement")}

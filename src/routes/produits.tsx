@@ -32,7 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { type Product } from "@/lib/dhi-data";
-import { canCreate } from "@/lib/role-protection";
+import { canCreateProduct } from "@/lib/role-protection";
 import { visibleProducts, getUser } from "@/lib/access";
 import { productScore, useStore, useHealthOf } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
@@ -104,7 +104,7 @@ function ProductsList() {
       subtitle={t("pages.products.subtitle")}
       breadcrumb={t("pages.products.breadcrumb")}
       actions={
-        canCreate() ? (
+        canCreateProduct() ? (
           <Link to="/produits/ajouter">
             <Button size="sm">
               <Plus className="size-4" /> {t("pages.products.new_product")}

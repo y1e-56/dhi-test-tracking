@@ -24,7 +24,7 @@ import { ROLE_LABEL, type AppRole } from "@/lib/dhi-data";
 import { useI18n } from "@/lib/i18n";
 import { loadSession, useStore } from "@/lib/dhi-store";
 
-const ADMIN_ROLES: AppRole[] = ["admin", "qa_lead", "quality_manager"];
+const ADMIN_ROLES: AppRole[] = ["admin"];
 
 export const Route = createFileRoute("/administration")({
   beforeLoad: () => {

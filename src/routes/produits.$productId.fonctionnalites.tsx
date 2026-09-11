@@ -16,7 +16,7 @@ import {
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
 import { products as seedProducts, TEST_TYPES } from "@/lib/dhi-data";
 import { productTabs } from "@/lib/dhi-nav";
-import { canCreate } from "@/lib/role-protection";
+import { canCreateFeature } from "@/lib/role-protection";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/produits/$productId/fonctionnalites")({
@@ -69,7 +69,7 @@ function ProductFeatures() {
       breadcrumb={[t("nav.qualite"), t("nav.produits"), product?.name ?? "", t("nav.product_features")]}
       tabs={productTabs(productId)}
       actions={
-        canCreate() ? (
+        canCreateFeature() ? (
           <Link to="/fonctionnalites/ajouter">
             <Button size="sm">
               <Plus className="size-4" /> {t("pages.features.new_feature")}
