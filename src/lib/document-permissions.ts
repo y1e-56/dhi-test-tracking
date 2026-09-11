@@ -110,9 +110,9 @@ export function canUploadAnyProductDoc(): boolean {
     role === ADMIN ||
     role === QUALITY ||
     role === PO ||
-    PRODUCT_DOC_UPLOAD_ROLES.cdc?.includes(role) ||
-    PRODUCT_DOC_UPLOAD_ROLES.notes_techniques?.includes(role) ||
-    PRODUCT_DOC_UPLOAD_ROLES.architecture?.includes(role)
+    PRODUCT_DOC_UPLOAD_ROLES["cdc"]?.includes(role) === true ||
+    PRODUCT_DOC_UPLOAD_ROLES["notes_techniques"]?.includes(role) === true ||
+    PRODUCT_DOC_UPLOAD_ROLES["architecture"]?.includes(role) === true
   );
 }
 
@@ -121,9 +121,9 @@ export function canUploadAnyProjectDoc(): boolean {
   const role = currentRole();
   if (!role) return false;
   return (
-    PROJECT_DOC_UPLOAD_ROLES.cdc_sprint?.includes(role) ||
-    PROJECT_DOC_UPLOAD_ROLES.spec_features?.includes(role) ||
-    PROJECT_DOC_UPLOAD_ROLES.cas_de_test?.includes(role)
+    PROJECT_DOC_UPLOAD_ROLES["cdc_sprint"]?.includes(role) === true ||
+    PROJECT_DOC_UPLOAD_ROLES["spec_features"]?.includes(role) === true ||
+    PROJECT_DOC_UPLOAD_ROLES["cas_de_test"]?.includes(role) === true
   );
 }
 

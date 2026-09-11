@@ -612,7 +612,7 @@ function CampaignDetail() {
   const failedTests = st.list.filter((t) => t.verdict === "FAIL");
   const campaignFeatures = features.filter((f) => f.productId === campaign.productId);
 
-  const onExport = () => exportPdf(st.list, campaign.name, t);
+  const onExport = () => exportCsv(st.list, campaign.name, t);
   const onTransition = () => transitionCampaign(campaign, updateCampaign, t);
   const onExportTemplate = () => exportTemplateCsv(campaignFeatures, t);
 
