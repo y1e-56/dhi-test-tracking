@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   Boxes,
@@ -11,8 +12,15 @@ import { AppShell } from "@/components/dhi/AppShell";
 import { HealthBadge, KpiCard, Panel, QualityBar, ScoreValue } from "@/components/dhi/indicators";
 import { campaignStats, productScore, useStore } from "@/lib/dhi-store";
 import { CAMPAIGN_STATUS_LABEL, PROJECT_STATUS_LABEL } from "@/lib/dhi-data";
-import { PILOTAGE_TABS } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
+import { api } from "@/lib/api";
+
+type DashboardStats = {
+  products?: number;
+  projects: number;
+  campaigns: number;
+  anomalies: number;
+};
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -38,6 +46,15 @@ function Dashboard() {
   const navigate = useNavigate();
   const { t } = useI18n();
   const { products, projects, campaigns, tests, defects, alerts } = useStore();
+  const [backendStats, setBackendStats] = useState<DashboardStats | null>(null);
+
+  useEffect(() => {
+    if (!localStorage.getItem("token")) return;
+    void api<DashboardStats>("/dashboard/stats")
+      .then(setBackendStats)
+      .catch((error) => console.error("[Dashboard] Impossible de charger les statistiques backend", error));
+  }, []);
+
   const activeProjects = projects.filter((pr) => pr.status === "encours");
 
   const avgScore = products.length
@@ -55,19 +72,18 @@ function Dashboard() {
       title={t("dashboard.executive.title")}
       subtitle={t("dashboard.executive.subtitle")}
       breadcrumb={t("dashboard.executive.breadcrumb")}
-      tabs={PILOTAGE_TABS}
     >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <KpiCard
           label={t("dashboard.executive.products")}
-          value={products.length}
+          value={backendStats?.products ?? products.length}
           icon={<Boxes className="size-4" />}
           hint={t("dashboard.executive.supervised")}
           onClick={() => void navigate({ to: "/produits" })}
         />
         <KpiCard
           label={t("dashboard.executive.projects")}
-          value={projects.length}
+          value={backendStats?.projects ?? projects.length}
           icon={<FolderKanban className="size-4" />}
           hint={t("dashboard.executive.linked")}
           onClick={() => void navigate({ to: "/projets" })}
@@ -90,14 +106,14 @@ function Dashboard() {
         />
         <KpiCard
           label={t("dashboard.executive.active_campaigns")}
-          value={actives}
+          value={backendStats?.campaigns ?? actives}
           tone="info"
           hint={t("dashboard.executive.current_campaigns")}
           onClick={() => void navigate({ to: "/campagnes" })}
         />
         <KpiCard
           label={t("dashboard.executive.open_incidents")}
-          value={incidents}
+          value={backendStats?.anomalies ?? incidents}
           tone={incidents ? "warning" : "success"}
           icon={<TriangleAlert className="size-4" />}
           hint={t("pages.root.gravite_haute")}

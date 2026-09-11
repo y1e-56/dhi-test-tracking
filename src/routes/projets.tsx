@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/table";
 import { PROJECT_STATUS_LABEL, type Project } from "@/lib/dhi-data";
 import { visibleProjects, getUser } from "@/lib/access";
-import { QUALITY_TABS } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
 import { productScore, useStore } from "@/lib/dhi-store";
 
@@ -87,7 +86,6 @@ function ProjectsList() {
       title={t("pages.projects.title")}
       subtitle={t("pages.projects.subtitle")}
       breadcrumb={t("pages.projects.breadcrumb")}
-      tabs={QUALITY_TABS}
       actions={
         <Link to="/projets/ajouter">
           <Button size="sm">

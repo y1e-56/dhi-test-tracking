@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { SYSTEM_TABS } from "@/lib/dhi-nav";
+
 import { useI18n } from "@/lib/i18n";
 import { useStore } from "@/lib/dhi-store";
 
@@ -43,7 +43,6 @@ function AuditPage() {
       title={t("pages.audit.title")}
       subtitle={t("pages.audit.subtitle")}
       breadcrumb={t("pages.audit.breadcrumb")}
-      tabs={SYSTEM_TABS}
     >
       <div className="mb-4 grid gap-3 sm:grid-cols-2">
         <KpiCard

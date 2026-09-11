@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { SEVERITY_LABEL, type Severity } from "@/lib/dhi-data";
-import { SYSTEM_TABS } from "@/lib/dhi-nav";
+
+import { api, mapBackendAnomaly, type BackendAnomaly } from "@/lib/api";
 import { useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 import { useVisibleProducts } from "@/lib/use-scope";
@@ -33,6 +34,7 @@ type DefectForm = {
   severity: Severity;
   priority: Severity;
   productId: string;
+  campaignId: string;
   featureId: string;
   assignee: string;
   developer: string;
@@ -41,7 +43,7 @@ type DefectForm = {
 function CreateDefectPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { products, features, users, addDefect, currentUser } = useStore();
+  const { products, features, users, campaigns, addDefect, currentUser } = useStore();
   const viewableProducts = useVisibleProducts(products);
 
   const universe = users.filter((u) => u.active).map((u) => u.name);
@@ -58,24 +60,25 @@ function CreateDefectPage() {
     severity: "moyenne",
     priority: "moyenne",
     productId: viewableProducts[0]?.id ?? "",
+    campaignId: campaigns[0]?.id ?? "",
     featureId: features[0]?.id ?? "",
     assignee: currentUser?.name && universe.includes(currentUser.name) ? currentUser.name : universe[0] ?? "",
     developer: defaultDeveloper,
   });
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) {
       toast.error(t("pages.anomalies.title_required"));
       return;
     }
-    const id = addDefect({
+    const base = {
       productId: form.productId,
       title: form.title.trim(),
       description: form.description,
       severity: form.severity,
       priority: form.priority,
-      status: "nouvelle",
+      status: "nouvelle" as const,
       featureId: form.featureId,
       version: "4.12",
       reporter: currentUser?.name ?? "Marie Martin",
@@ -83,7 +86,41 @@ function CreateDefectPage() {
       developer: form.developer,
       createdAt: new Date().toISOString().slice(0, 10),
       targetDate: new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10),
-    });
+    };
+
+    const numericFeatureId = Number(form.featureId);
+    const numericCampaignId = Number(form.campaignId);
+    const eligibleForBackend =
+      localStorage.getItem("token") &&
+      Number.isInteger(numericFeatureId) &&
+      numericFeatureId > 0 &&
+      Number.isInteger(numericCampaignId) &&
+      numericCampaignId > 0;
+
+    if (eligibleForBackend) {
+      try {
+        const { anomaly } = await api<{ anomaly: BackendAnomaly }>("/anomalies", {
+          method: "POST",
+          body: JSON.stringify({
+            feature_id: numericFeatureId,
+            campaign_id: numericCampaignId,
+            description: form.title.trim(),
+            correction_due_date: base.targetDate,
+          }),
+        });
+        addDefect(mapBackendAnomaly(anomaly));
+        toast.success(
+          t("pages.anomalies.created_msg").replace("{id}", `ANO-${anomaly.id}`),
+        );
+        navigate({ to: "/anomalies" });
+        return;
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Erreur lors de la création de l'anomalie.");
+        return;
+      }
+    }
+
+    const id = addDefect(base);
     toast.success(t("pages.anomalies.created_msg").replace("{id}", id));
     navigate({ to: "/anomalies" });
   };
@@ -93,10 +130,9 @@ function CreateDefectPage() {
       title={t("pages.anomalies.title")}
       subtitle={t("pages.anomalies.subtitle")}
       breadcrumb={[t("nav.systeme"), t("nav.anomalies"), t("pages.anomalies.breadcrumb_new")]}
-      tabs={SYSTEM_TABS}
     >
       <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
-        <div className="mb-6">
+        <div className="-ml-12 mb-6 sm:-ml-16 xl:-ml-20">
           <Button
             variant="outline"
             size="sm"
@@ -166,6 +202,24 @@ function CreateDefectPage() {
                       {features.map((f) => (
                         <SelectItem key={f.id} value={f.id}>
                           {f.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("common.campagne")}</Label>
+                  <Select
+                    value={form.campaignId}
+                    onValueChange={(v) => setForm({ ...form, campaignId: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {campaigns.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

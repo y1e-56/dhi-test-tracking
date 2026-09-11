@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SCORE_LABELS, SCORE_WEIGHTS, type ScoreBreakdown } from "@/lib/dhi-data";
-import { SYSTEM_TABS } from "@/lib/dhi-nav";
+
 import { useI18n } from "@/lib/i18n";
 import { useStore } from "@/lib/dhi-store";
 
@@ -34,7 +34,6 @@ function ReferentialsPage() {
       title={t("pages.referentials.title")}
       subtitle={t("pages.referentials.subtitle")}
       breadcrumb={t("pages.referentials.breadcrumb")}
-      tabs={SYSTEM_TABS}
     >
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <KpiCard

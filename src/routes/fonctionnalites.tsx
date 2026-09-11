@@ -2,6 +2,7 @@ import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-route
 import {
   FileText,
   Plus,
+  Search,
   CheckSquare,
   Box,
   Pencil,
@@ -39,18 +40,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
   CRITICALITY_LABEL,
   TEST_TYPES,
   REQUIREMENT_STATUS_LABEL,
   type Criticality,
+  type Feature,
   type TestCase,
   type TestType,
   type Verdict,
 } from "@/lib/dhi-data";
 import { canCreate } from "@/lib/role-protection";
-import { QUALITY_TABS } from "@/lib/dhi-nav";
+
 import { useStore } from "@/lib/dhi-store";
 import { useVisibleProductIds } from "@/lib/use-scope";
 import { VERDICT_LABEL } from "@/lib/dhi-data";
@@ -90,10 +93,12 @@ function FeaturesPage() {
 }
 
 function FeaturesList() {
-  const { features, products, requirements, tests, deleteFeature, updateRequirement } = useStore();
+  const { features, products, requirements, tests, productDocuments, deleteFeature, updateRequirement } =
+    useStore();
   const { t } = useI18n();
   const [productFilter, setProductFilter] = useState("all");
   const [critFilter, setCritFilter] = useState("all");
+  const [search, setSearch] = useState("");
 
   const [toDeleteFeature, setToDeleteFeature] = useState<Feature | null>(null);
 
@@ -105,9 +110,19 @@ function FeaturesList() {
     () =>
       features
         .filter((f) => visiblePIds.has(f.productId))
+        .filter((f) => {
+          if (!search.trim()) return true;
+          const query = search.toLowerCase();
+          const product = products.find((p) => p.id === f.productId);
+          return (
+            f.name.toLowerCase().includes(query) ||
+            f.description.toLowerCase().includes(query) ||
+            product?.name.toLowerCase().includes(query)
+          );
+        })
         .filter((f) => productFilter === "all" || f.productId === productFilter)
         .filter((f) => critFilter === "all" || f.criticality === critFilter),
-    [features, productFilter, critFilter, visiblePIds],
+    [features, products, search, productFilter, critFilter, visiblePIds],
   );
 
   const reqsByFeature = useMemo(() => {
@@ -143,7 +158,6 @@ function FeaturesList() {
       title={t("pages.features.title")}
       subtitle={t("pages.features.subtitle")}
       breadcrumb={[t("nav.qualite"), t("nav.fonctionnalites")]}
-      tabs={QUALITY_TABS}
       actions={
         canCreate() ? (
           <Link to="/fonctionnalites/ajouter">
@@ -156,6 +170,15 @@ function FeaturesList() {
     >
       <div className="panel">
         <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("pages.features.search_placeholder")}
+              className="w-64 pl-8"
+            />
+          </div>
           <Select value={productFilter} onValueChange={setProductFilter}>
             <SelectTrigger className="w-52">
               <SelectValue placeholder={t("common.produit")} />
@@ -291,6 +314,15 @@ function FeaturesList() {
                   <TableCell>
                     <div className="flex justify-end gap-1">
                       <Link
+                        to="/fonctionnalites/$featureId/documents"
+                        params={{ featureId: f.id }}
+                        title={t("pages.documents.feature_docs")}
+                      >
+                        <Button size="icon" variant="ghost" className="size-7">
+                          <FileText className="size-4" />
+                        </Button>
+                      </Link>
+                      <Link
                         to="/fonctionnalites/$featureId/modifier"
                         params={{ featureId: f.id }}
                         title={t("pages.features.edit_feature")}
@@ -368,6 +400,20 @@ function FeaturesList() {
                           {f.description || t("pages.features.no_description")} ·{" "}
                           {products.find((p) => p.id === f.productId)?.name ?? "—"}
                         </p>
+                        {f.sourceDocId ? (
+                          <Link
+                            to="/produits/$productId/documents"
+                            params={{ productId: f.productId }}
+                            className="mt-0.5 inline-flex items-center gap-1 truncate text-[11px] text-info/90 hover:text-info"
+                          >
+                            <FileText className="size-3 shrink-0" />
+                            {t("pages.features.based_on").replace(
+                              "{name}",
+                              productDocuments.find((d) => d.id === f.sourceDocId)?.name ??
+                                t("pages.features.source_doc_placeholder")
+                            )}
+                          </Link>
+                        ) : null}
                       </div>
                       <div className="flex shrink-0 items-center gap-4 text-xs">
                         <span className="inline-flex items-center gap-1 text-muted-foreground">

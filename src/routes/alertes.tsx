@@ -1,14 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CheckCheck } from "lucide-react";
+import { CheckCheck, Search } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
 import { KpiCard, Panel, SeverityBadge } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/dhi-store";
 import type { AlertType } from "@/lib/dhi-data";
-import { PILOTAGE_TABS } from "@/lib/dhi-nav";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 
 export const Route = createFileRoute("/alertes")({
@@ -62,10 +62,17 @@ function AlertsPage() {
   const { alerts, markAlertRead, markAllAlertsRead } = useStore();
   const { t } = useI18n();
   const [filter, setFilter] = useState<"all" | "unread" | AlertType>("all");
+  const [search, setSearch] = useState("");
 
-  const rows = alerts.filter((a) =>
-    filter === "all" ? true : filter === "unread" ? !a.read : a.type === filter,
-  );
+  const rows = alerts.filter((a) => {
+    const matchesFilter =
+      filter === "all" ? true : filter === "unread" ? !a.read : a.type === filter;
+    if (!matchesFilter || !search.trim()) return matchesFilter;
+    const query = search.toLowerCase();
+    return [a.title, a.message, a.detail, a.createdAt]
+      .filter(Boolean)
+      .some((value) => value!.toLowerCase().includes(query));
+  });
   const unread = alerts.filter((a) => !a.read).length;
 
   return (
@@ -73,7 +80,6 @@ function AlertsPage() {
       title={t("pages.alerts.title")}
       subtitle={t("pages.alerts.subtitle")}
       breadcrumb={t("pages.alerts.breadcrumb")}
-      tabs={PILOTAGE_TABS}
       actions={
         <Button
           size="sm"
@@ -116,7 +122,16 @@ function AlertsPage() {
       <Panel
         title={t("pages.alerts.flux")}
         actions={
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t("pages.alerts.search_placeholder")}
+                className="h-8 w-52 pl-8"
+              />
+            </div>
             {FILTERS.map((f) => (
               <button
                 key={f.id}

@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { GOLIVE_VERDICT_LABEL, type GoLiveVerdict } from "@/lib/dhi-data";
-import { DECISION_TABS } from "@/lib/dhi-nav";
+
 import { useI18n } from "@/lib/i18n";
 import { campaignStats, useStore } from "@/lib/dhi-store";
 import { cn } from "@/lib/utils";
@@ -135,7 +135,6 @@ function GoLivePage() {
       title={t("pages.go_live.title")}
       subtitle={t("pages.go_live.subtitle")}
       breadcrumb={t("pages.go_live.breadcrumb")}
-      tabs={DECISION_TABS}
     >
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard

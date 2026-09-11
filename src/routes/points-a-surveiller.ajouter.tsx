@@ -14,11 +14,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { WATCH_LEVEL_LABEL, type WatchLevel } from "@/lib/dhi-data";
+import { WATCH_LEVEL_LABEL, type WatchLevel, type WatchPoint } from "@/lib/dhi-data";
 import { useVisibleProductIds } from "@/lib/use-scope";
-import { DECISION_TABS } from "@/lib/dhi-nav";
+
 import { useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
+import { api, mapBackendWatchPoint, type BackendWatchPoint } from "@/lib/api";
 
 export const Route = createFileRoute("/points-a-surveiller/ajouter")({
   head: () => ({
@@ -39,7 +40,7 @@ type WatchPointForm = {
 function CreateWatchPointPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { products, features, users, addWatchPoint } = useStore();
+  const { products, projects, features, users, watchPoints, addWatchPoint, replaceWatchPoints } = useStore();
   const activeMembers = users.filter((u) => u.active).map((u) => u.name);
   const productIds = useVisibleProductIds(products);
   const visibleProducts = products.filter((p) => productIds.has(p.id));
@@ -53,23 +54,43 @@ function CreateWatchPointPage() {
     owner: activeMembers[0] ?? "",
   });
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) {
       toast.error(t("pages.watchpoints.title_required"));
       return;
     }
-    addWatchPoint({
+    const localPoint: Omit<WatchPoint, "id" | "createdAt"> = {
       productId: form.productId,
-      featureId: form.featureId || undefined,
       title: form.title.trim(),
       description: form.description,
       level: form.level,
       status: "ouvert",
       owner: form.owner,
-    });
-    toast.success(t("pages.watchpoints.saved"));
-    navigate({ to: "/points-a-surveiller" });
+      ...(form.featureId ? { featureId: form.featureId } : {}),
+    };
+    const project = projects.find((item) => item.productId === form.productId && /^\d+$/.test(item.id));
+    const featureId = form.featureId && /^\d+$/.test(form.featureId) ? Number(form.featureId) : undefined;
+    if (!localStorage.getItem("token") || !project) {
+      addWatchPoint(localPoint);
+      toast.success(t("pages.watchpoints.saved"));
+      void navigate({ to: "/points-a-surveiller" });
+      return;
+    }
+    try {
+      const owner = users.find((user) => user.name === form.owner);
+      const ownerId = owner ? Number(owner.id) : undefined;
+      const numericOwnerId = ownerId !== undefined && Number.isInteger(ownerId) && ownerId > 0 ? ownerId : undefined;
+      const response = await api<BackendWatchPoint>("/watch-points", {
+        method: "POST",
+        body: JSON.stringify({ project_id: Number(project.id), feature_id: featureId, title: localPoint.title, description: localPoint.description, criticality: ({ critique: "critical", vigilance: "high", info: "low" } as const)[localPoint.level], owner_id: numericOwnerId, status: "open" }),
+      });
+      replaceWatchPoints([...watchPoints, { ...mapBackendWatchPoint(response, localPoint.productId), owner: localPoint.owner, productId: localPoint.productId }]);
+      toast.success(t("pages.watchpoints.saved"));
+      void navigate({ to: "/points-a-surveiller" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("common.erreur"));
+    }
   };
 
   return (
@@ -77,10 +98,9 @@ function CreateWatchPointPage() {
       title={t("pages.watchpoints.title")}
       subtitle={t("pages.watchpoints.subtitle")}
       breadcrumb={t("pages.watchpoints.breadcrumb")}
-      tabs={DECISION_TABS}
     >
       <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
-        <div className="mb-6">
+        <div className="-ml-12 mb-6 sm:-ml-16 xl:-ml-20">
           <Button
             variant="outline"
             size="sm"

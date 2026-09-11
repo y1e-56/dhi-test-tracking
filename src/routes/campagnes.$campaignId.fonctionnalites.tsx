@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Search, X } from "lucide-react";
+import { FileText, Plus, Search, X } from "lucide-react";
 import { AppShell } from "@/components/dhi/AppShell";
 import { CriticalityBadge, QualityBar } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
@@ -121,7 +121,7 @@ function CampaignFeatures() {
     }
     const merged = new Set([...importedIds, ...selected]);
     updateCampaign(campaignId, { featureIds: [...merged] });
-    toast.success(t("pages.campaign_detail.import_fonctionnalites_ok", { n: selected.size }));
+    toast.success(t("pages.campaign_detail.import_fonctionnalites_ok").replace("{n}", String(selected.size)));
     setSelected(new Set());
     setPickerOpen(false);
   };
@@ -169,6 +169,15 @@ function CampaignFeatures() {
                   <TableRow key={f.id}>
                     <FeatureCells feature={f} />
                     <TableCell className="text-right">
+                      <Link
+                        to="/fonctionnalites/$featureId/documents"
+                        params={{ featureId: f.id }}
+                        title={t("pages.documents.feature_docs")}
+                      >
+                        <Button size="icon-sm" variant="ghost">
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                      </Link>
                       <Button variant="ghost" size="icon-sm" onClick={() => remove(f.id)} title={t("pages.campaign_detail.retirer")}>
                         <X className="h-4 w-4" />
                       </Button>
@@ -187,11 +196,22 @@ function CampaignFeatures() {
               {testRows.map((f) => (
                 <TableRow key={f.id}>
                   <FeatureCells feature={f} />
+                  <TableCell className="text-right">
+                    <Link
+                      to="/fonctionnalites/$featureId/documents"
+                      params={{ featureId: f.id }}
+                      title={t("pages.documents.feature_docs")}
+                    >
+                      <Button size="icon-sm" variant="ghost">
+                        <FileText className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </TableCell>
                 </TableRow>
               ))}
               {testRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
                     {t("pages.features.no_features")}
                   </TableCell>
                 </TableRow>

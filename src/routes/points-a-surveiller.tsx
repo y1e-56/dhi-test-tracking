@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/dhi-store";
 import { useVisibleProductIds } from "@/lib/use-scope";
-import { DECISION_TABS } from "@/lib/dhi-nav";
+
 import { useI18n } from "@/lib/i18n";
 import {
   WATCH_LEVEL_LABEL,
@@ -66,7 +66,6 @@ function WatchPointsList() {
       title={t("pages.watchpoints.title")}
       subtitle={t("pages.watchpoints.subtitle")}
       breadcrumb={t("pages.watchpoints.breadcrumb")}
-      tabs={DECISION_TABS}
       actions={
         <Link to="/points-a-surveiller/ajouter">
           <Button size="sm">

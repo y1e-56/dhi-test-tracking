@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { api } from "@/lib/api";
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
 import { getUser, campaignVisibleTo } from "@/lib/access";
 import { CampaignAccessDenied } from "@/components/dhi/AccessDenied";
@@ -118,15 +119,18 @@ function EditTestPage() {
   if (campaign && !campaignVisibleTo(campaign, products, getUser())) {
     return <CampaignAccessDenied subject={campaign.name} />;
   }
+  if (campaign?.status === "terminee") {
+    return <CampaignAccessDenied subject={campaign.name} />;
+  }
   if (!campaign || !test) return null;
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) {
       toast.error(t("pages.campaign_detail.nom_test_obligatoire"));
       return;
     }
-    updateTest(test.id, {
+    const patch = {
       name: form.name.trim(),
       featureId: form.featureId,
       criticality: form.criticality,
@@ -137,8 +141,34 @@ function EditTestPage() {
       expected: splitLines(form.expected),
       observed: form.observed.trim(),
       comment: form.comment.trim(),
-    });
+    };
+    updateTest(test.id, patch);
     toast.success(t("pages.campaign_detail.cas_test_modifier").replace("{id}", test.id));
+    if (/^\d+$/.test(test.id) && localStorage.getItem("token")) {
+      const numericFeatureId = Number(form.featureId);
+      const priorityMap = {
+        critique: "critical",
+        haute: "high",
+        moyenne: "medium",
+        basse: "low",
+      } as const;
+      try {
+        await api(`/test-cases/${test.id}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            name: form.name.trim(),
+            feature_id: Number.isInteger(numericFeatureId) && numericFeatureId > 0 ? numericFeatureId : undefined,
+            steps: splitLines(form.steps).join("\n"),
+            expected_result: splitLines(form.expected).join("\n"),
+            priority: priorityMap[form.criticality],
+            type: form.type,
+          }),
+        });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : t("pages.campaign_detail.cas_test_modifier"));
+        return;
+      }
+    }
     navigate({ to: "/campagnes/$campaignId", params: { campaignId: campaign.id } });
   };
 
@@ -150,7 +180,7 @@ function EditTestPage() {
       tabs={campaignTabs(campaignId)}
     >
       <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
-        <div className="mb-6">
+        <div className="-ml-12 mb-6 sm:-ml-16 xl:-ml-20">
           <Button
             variant="outline"
             size="sm"

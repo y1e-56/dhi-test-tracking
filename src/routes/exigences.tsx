@@ -45,7 +45,7 @@ import { useStore } from "@/lib/dhi-store";
 import { useVisibleProductIds } from "@/lib/use-scope";
 import { type Requirement, type RequirementStatus, type TestCase } from "@/lib/dhi-data";
 import { canCreate } from "@/lib/role-protection";
-import { QUALITY_TABS } from "@/lib/dhi-nav";
+
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 
 const REQUIREMENT_STATUS_T_KEY: Record<RequirementStatus, TranslationKey> = {
@@ -177,7 +177,6 @@ function RequirementsList() {
       title={t("pages.requirements.title")}
       subtitle={t("pages.requirements.subtitle")}
       breadcrumb={t("pages.requirements.breadcrumb")}
-      tabs={QUALITY_TABS}
       actions={
         canCreate() ? (
           <Link to="/exigences/ajouter">

@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/table";
 import { DEFECT_STATUS_LABEL, SEVERITY_LABEL, type Defect, type DefectStatus, type Severity } from "@/lib/dhi-data";
 import { useStore } from "@/lib/dhi-store";
-import { SYSTEM_TABS } from "@/lib/dhi-nav";
+
 import { useI18n } from "@/lib/i18n";
 import { getUser, visibleDefects } from "@/lib/access";
 
@@ -149,7 +149,7 @@ function DefectsPage() {
 }
 
 function DefectsList() {
-  const { defects } = useStore();
+  const { defects, tests, campaigns } = useStore();
   const { t } = useI18n();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
@@ -177,7 +177,6 @@ function DefectsList() {
       title={t("pages.anomalies.title")}
       subtitle={t("pages.anomalies.subtitle")}
       breadcrumb={[t("nav.systeme"), t("nav.anomalies")]}
-      tabs={SYSTEM_TABS}
       actions={
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => exportToCsv(rows, t)}>
@@ -236,6 +235,7 @@ function DefectsList() {
               <TableHead>{t("pages.anomalies.defect_title")}</TableHead>
               <TableHead>{t("pages.anomalies.severity")}</TableHead>
               <TableHead>{t("pages.anomalies.priority")}</TableHead>
+              <TableHead>{t("common.campagne")}</TableHead>
               <TableHead>{t("common.statut")}</TableHead>
               <TableHead>{t("pages.anomalies.assignee")}</TableHead>
               <TableHead>{t("pages.anomalies.created_on")}</TableHead>
@@ -256,6 +256,26 @@ function DefectsList() {
                 <TableCell>
                   <SeverityBadge level={d.priority} />
                 </TableCell>
+                <TableCell className="text-sm">
+                  {(() => {
+                    const test = d.testId ? tests.find((item) => item.id === d.testId) : undefined;
+                    const campaign = test
+                      ? campaigns.find((item) => item.id === test.campaignId)
+                      : undefined;
+                    return campaign ? (
+                      <Link
+                        to="/campagnes/$campaignId"
+                        params={{ campaignId: campaign.id }}
+                        onClick={(event) => event.stopPropagation()}
+                        className="text-primary hover:underline"
+                      >
+                        {campaign.name}
+                      </Link>
+                    ) : (
+                      "—"
+                    );
+                  })()}
+                </TableCell>
                 <TableCell>
                   <DefectStatusBadge status={d.status} />
                 </TableCell>
@@ -265,7 +285,7 @@ function DefectsList() {
             ))}
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
                   {t("pages.anomalies.no_results")}
                 </TableCell>
               </TableRow>

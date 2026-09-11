@@ -9,7 +9,7 @@ import {
   Video,
   XCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
 import { CriticalityBadge, Panel, VerdictBadge } from "@/components/dhi/indicators";
@@ -33,7 +33,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 import { VERDICT_LABEL, type TestCase, type Verdict } from "@/lib/dhi-data";
-import { EXECUTION_TABS } from "@/lib/dhi-nav";
+import { CampaignAccessDenied } from "@/components/dhi/AccessDenied";
+import { api, mapBackendTestCase, type BackendTestExecution, type BackendTestCase } from "@/lib/api";
+
 
 const VERDICTS: Verdict[] = [
   "PASS",
@@ -426,7 +428,18 @@ function ExecutionPage() {
   const { testId } = Route.useParams();
   const { t } = useI18n();
   const { tests, features, campaigns, defects, updateTest, addDefect } = useStore();
-  const test = tests.find((t) => t.id === testId);
+  const localTest = tests.find((t) => t.id === testId);
+  const [backendTest, setBackendTest] = useState<ReturnType<typeof mapBackendTestCase> | null>(null);
+  useEffect(() => {
+    if (!localStorage.getItem("token") || !/^\d+$/.test(testId)) return;
+    void Promise.all([
+      api<BackendTestCase>(`/test-cases/${testId}`),
+      api<BackendTestExecution[]>(`/test-executions/by-test-case/${testId}`),
+    ])
+      .then(([testCase, executions]) => setBackendTest(mapBackendTestCase(testCase, executions[0])))
+      .catch((error) => console.error("[Execution] Impossible de charger le cas backend", error));
+  }, [testId]);
+  const test = backendTest ?? localTest;
   const feature = features.find((f) => f.id === test?.featureId);
   const campaign = campaigns.find((c) => c.id === test?.campaignId);
   const linkedDefects = defects.filter((d) => d.testId === testId);
@@ -434,6 +447,9 @@ function ExecutionPage() {
   const [draft, setDraft] = useState<DraftState | null>(null);
 
   if (!test) return null;
+  if (campaign?.status === "terminee") {
+    return <CampaignAccessDenied subject={campaign.name} />;
+  }
   const current: CurrentState = draft ?? {
     verdict: test.verdict,
     observed: test.observed,
@@ -457,8 +473,34 @@ function ExecutionPage() {
     });
   };
 
-  const save = () => {
+  const save = async () => {
     const now = new Date();
+    if (backendTest && campaign && /^\d+$/.test(campaign.id)) {
+      const result = ({
+        PASS: "passed",
+        PASS_WITH_RESERVATION: "passed",
+        FAIL: "failed",
+        BLOCKED: "blocked",
+        NOT_RUN: "not_run",
+        NOT_APPLICABLE: "skipped",
+      } as const)[current.verdict];
+      try {
+        await api("/test-executions", {
+          method: "POST",
+          body: JSON.stringify({
+            test_case_id: Number(test.id),
+            campaign_id: Number(campaign.id),
+            result,
+            notes: current.comment || undefined,
+            actual_behavior: current.observed || undefined,
+            expected_behavior: test.expected.join("\n") || undefined,
+          }),
+        });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Impossible d'enregistrer l'exécution");
+        return;
+      }
+    }
     updateTest(test.id, {
       verdict: current.verdict,
       observed: current.observed,
@@ -545,7 +587,6 @@ function ExecutionPage() {
         campaign?.name ?? t("pages.execution_detail.breadcrumb"),
         test.id,
       ]}
-      tabs={EXECUTION_TABS}
       actions={
         <Link
           to={campaign ? "/campagnes/$campaignId" : "/campagnes"}

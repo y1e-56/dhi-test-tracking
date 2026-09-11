@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/dhi-store";
 import { NOTIFICATION_TYPE_LABEL, type NotificationType } from "@/lib/dhi-data";
-import { PILOTAGE_TABS } from "@/lib/dhi-nav";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 
 export const Route = createFileRoute("/notifications")({
@@ -70,7 +69,7 @@ function NotificationsPage() {
       title={t("pages.notifications.title")}
       subtitle={t("pages.notifications.subtitle")}
       breadcrumb={t("pages.notifications.breadcrumb")}
-      tabs={PILOTAGE_TABS}
+      
       actions={
         <Button
           size="sm"

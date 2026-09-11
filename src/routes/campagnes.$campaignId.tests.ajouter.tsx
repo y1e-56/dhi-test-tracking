@@ -144,6 +144,9 @@ function AddTestPage() {
   if (campaign && !campaignVisibleTo(campaign, products, getUser())) {
     return <CampaignAccessDenied subject={campaign.name} />;
   }
+  if (campaign?.status === "terminee") {
+    return <CampaignAccessDenied subject={campaign.name} />;
+  }
   if (!campaign) return null;
 
   const submit = (e: React.FormEvent) => {

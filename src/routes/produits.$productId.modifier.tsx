@@ -14,11 +14,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { products as seedProducts } from "@/lib/dhi-data";
-import { QUALITY_TABS } from "@/lib/dhi-nav";
+
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
 import { getUser, productVisibleTo } from "@/lib/access";
 import { ProductAccessDenied } from "@/components/dhi/AccessDenied";
 import { useI18n } from "@/lib/i18n";
+import { api, mapBackendProduct, type BackendProduct } from "@/lib/api";
 
 export const Route = createFileRoute("/produits/$productId/modifier")({
   loader: ({ params }) => {
@@ -37,7 +38,7 @@ function EditProductPage() {
   const { productId } = Route.useParams();
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { products, users, updateProduct } = useStore();
+  const { products, users, updateProduct, replaceProducts } = useStore();
   const activeMembers = users.filter((u) => u.active).map((u) => u.name);
   const product = products.find((p) => p.id === productId);
 
@@ -53,21 +54,31 @@ function EditProductPage() {
   }
   if (!product) return null;
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.owner || !form.qaLead) {
       toast.error(t("pages.products.required"));
       return;
     }
-    updateProduct(product.id, {
-      name: form.name.trim(),
-      description: form.description,
-      owner: form.owner,
-      qaLead: form.qaLead,
-      qaTeam: [form.qaLead],
-    });
-    toast.success(t("pages.products.updated_msg"));
-    navigate({ to: "/produits" });
+    const owner = users.find((user) => user.name === form.owner);
+    const qaLead = users.find((user) => user.name === form.qaLead);
+    if (!localStorage.getItem("token") || !/^\d+$/.test(product.id)) {
+      updateProduct(product.id, { name: form.name.trim(), description: form.description, owner: form.owner, qaLead: form.qaLead, qaTeam: [form.qaLead] });
+      toast.success(t("pages.products.updated_msg"));
+      void navigate({ to: "/produits" });
+      return;
+    }
+    try {
+      const response = await api<{ product: BackendProduct }>(`/products/${product.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ name: form.name.trim(), description: form.description, owner_id: owner ? Number(owner.id) : null, quality_manager_id: qaLead ? Number(qaLead.id) : null }),
+      });
+      replaceProducts(products.map((item) => item.id === product.id ? { ...mapBackendProduct(response.product), owner: form.owner, qaLead: form.qaLead, qaTeam: [form.qaLead] } : item));
+      toast.success(t("pages.products.updated_msg"));
+      void navigate({ to: "/produits" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("common.erreur"));
+    }
   };
 
   return (
@@ -75,10 +86,9 @@ function EditProductPage() {
       title={t("pages.products.title")}
       subtitle={t("pages.products.subtitle")}
       breadcrumb={t("pages.products.breadcrumb")}
-      tabs={QUALITY_TABS}
     >
       <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
-        <div className="mb-6">
+        <div className="-ml-12 mb-6 sm:-ml-16 xl:-ml-20">
           <Button
             variant="outline"
             size="sm"

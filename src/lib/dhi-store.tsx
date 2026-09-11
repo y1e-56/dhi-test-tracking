@@ -35,6 +35,10 @@ import {
   platformUsers as seedUsers,
   products as seedProducts,
   projects as seedProjects,
+  productDocuments as seedProductDocuments,
+  projectDocuments as seedProjectDocuments,
+  campaignDocuments as seedCampaignDocuments,
+  featureDocuments as seedFeatureDocuments,
   referentialRules as seedRules,
   releases as seedReleases,
   requirements as seedRequirements,
@@ -49,14 +53,18 @@ import {
   type AppNotification,
   type AuditEntry,
   type Campaign,
+  type CampaignDocument,
   type Defect,
   type Feature,
+  type FeatureDocument,
   type GoLiveChecklistItem,
   type GoLiveDecision,
   type GoLiveVerdict,
   type PlatformUser,
   type Product,
+  type ProductDocument,
   type Project,
+  type ProjectDocument,
   type ReferentialRule,
   type Release,
   type ReleaseStatus,
@@ -69,6 +77,31 @@ import {
   type WatchPoint,
   type AppRole,
 } from "./dhi-data";
+import {
+  ApiError,
+  api,
+  mapBackendAnomaly,
+  mapBackendCampaign,
+  mapBackendGoLiveDecision,
+  mapBackendProduct,
+  mapBackendProject,
+  mapBackendRequirement,
+  mapBackendUser,
+  mapBackendWatchPoint,
+  getGoLiveChecklist,
+  getGoLiveDecisions,
+  createGoLiveDecision,
+  updateGoLiveChecklistItem,
+  ROLE_TO_BACKEND,
+  type BackendCampaign,
+  type BackendAnomaly,
+  type BackendGoLiveDecision,
+  type BackendRequirement,
+  type BackendWatchPoint,
+  type BackendProduct,
+  type BackendProject,
+  type LoginResponse,
+} from "./api";
 
 /* -------------------------------------------------------------------------- */
 /*  3. HELPERS : Persistance localStorage + Date                               */
@@ -94,6 +127,10 @@ type PersistedSnapshot = {
   audit: AuditEntry[];
   rules: ReferentialRule[];
   users: PlatformUser[];
+  productDocuments: ProductDocument[];
+  projectDocuments: ProjectDocument[];
+  campaignDocuments: CampaignDocument[];
+  featureDocuments: FeatureDocument[];
 };
 
 export type SessionUser = { id: string; name: string; email: string; role: AppRole };
@@ -138,17 +175,14 @@ function saveSnapshot(snap: PersistedSnapshot) {
   }
 }
 
-const DEFAULT_SESSION: SessionUser = {
-  id: "u-8",
-  name: "Karim Ndiaye",
-  email: "karim.ndiaye@dhi.io",
-  role: "admin",
-};
-
 export function loadSession(): SessionUser | null {
   console.log("[DHI] loadSession called, window=", typeof window);
   if (typeof window !== "undefined") {
     try {
+      if (!window.localStorage.getItem("token")) {
+        window.localStorage.removeItem(SESSION_KEY);
+        return null;
+      }
       const raw = window.localStorage.getItem(SESSION_KEY);
       console.log("[DHI] loadSession localStorage raw=", raw ? raw.substring(0, 80) + "..." : "null");
       if (raw) return JSON.parse(raw) as SessionUser;
@@ -156,14 +190,25 @@ export function loadSession(): SessionUser | null {
       /* ignore */
     }
   }
-  console.log("[DHI] loadSession returning DEFAULT_SESSION (admin)");
-  return DEFAULT_SESSION;
+  return null;
 }
 
 function saveSession(user: SessionUser | null) {
   if (typeof window === "undefined") return;
   if (user) window.localStorage.setItem(SESSION_KEY, JSON.stringify(user));
   else window.localStorage.removeItem(SESSION_KEY);
+}
+
+export async function validateSessionBackend(): Promise<boolean> {
+  const session = loadSession();
+  if (!session) return false;
+  try {
+    await api<unknown>("/auth/me");
+    return true;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) return false;
+    return true;
+  }
 }
 
 const defaultSnapshot = (): PersistedSnapshot => ({
@@ -183,6 +228,10 @@ const defaultSnapshot = (): PersistedSnapshot => ({
   audit: seedAudit,
   rules: seedRules,
   users: seedUsers,
+  productDocuments: seedProductDocuments,
+  projectDocuments: seedProjectDocuments,
+  campaignDocuments: seedCampaignDocuments,
+  featureDocuments: seedFeatureDocuments,
 });
 
 /* -------------------------------------------------------------------------- */
@@ -208,16 +257,22 @@ interface Store {
   rules: ReferentialRule[];
   users: PlatformUser[];
   currentUser: SessionUser | null;
+  productDocuments: ProductDocument[];
+  projectDocuments: ProjectDocument[];
+  campaignDocuments: CampaignDocument[];
+  featureDocuments: FeatureDocument[];
 
   /*  2.2  Session / Auth -----------------------------------------------  */
-  login: (email: string, password: string) => { ok: boolean; error?: string; user?: SessionUser };
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string; user?: SessionUser }>;
   logout: () => void;
 
   /*  2.3  Mutations : Produits / Projets / Features --------------------  */
   addProduct: (p: Omit<Product, "id" | "breakdown" | "lastUpdate">) => string;
+  replaceProducts: (products: Product[]) => void;
   updateProduct: (id: string, patch: Partial<Omit<Product, "id" | "breakdown">>) => void;
   deleteProduct: (id: string) => void;
   addProject: (p: Omit<Project, "id">) => string;
+  replaceProjects: (projects: Project[]) => void;
   updateProject: (id: string, patch: Partial<Project>) => void;
   deleteProject: (id: string) => void;
   addFeature: (f: Omit<Feature, "id">) => string;
@@ -231,6 +286,7 @@ interface Store {
 
   /*  2.5  Mutations : Campagnes & Tests --------------------------------  */
   addCampaign: (c: Omit<Campaign, "id">, cloneFrom?: string) => string;
+  replaceCampaigns: (campaigns: Campaign[]) => void;
   updateCampaign: (id: string, patch: Partial<Campaign>) => void;
   deleteCampaign: (id: string) => void;
   addTestCase: (
@@ -248,11 +304,13 @@ interface Store {
   updateDefect: (id: string, patch: Partial<Defect>, auditDetail?: string) => void;
   deleteDefect: (id: string) => void;
   addWatchPoint: (w: Omit<WatchPoint, "id" | "createdAt">) => void;
+  replaceWatchPoints: (watchPoints: WatchPoint[]) => void;
   updateWatchPoint: (id: string, patch: Partial<WatchPoint>) => void;
   deleteWatchPoint: (id: string) => void;
 
   /*  2.7  Mutations : Exigences & Go Live ------------------------------  */
   addRequirement: (r: Omit<Requirement, "id">) => void;
+  replaceRequirements: (requirements: Requirement[]) => void;
   updateRequirement: (id: string, patch: Partial<Requirement>) => void;
   deleteRequirement: (id: string) => void;
   toggleChecklistItem: (releaseId: string, itemId: string) => void;
@@ -269,13 +327,28 @@ interface Store {
   pushAlert: (a: Omit<Alert, "id" | "createdAt" | "read">) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
-  addUser: (u: Omit<PlatformUser, "id">) => string;
-  updateUserRole: (id: string, role: PlatformUser["role"]) => void;
-  toggleUserActive: (id: string) => void;
+  addUser: (u: Omit<PlatformUser, "id">) => Promise<string>;
+  updateUserRole: (id: string, role: PlatformUser["role"]) => Promise<void>;
+  toggleUserActive: (id: string) => Promise<void>;
+  removeUser: (id: string) => Promise<void>;
   updateRule: (id: string, patch: Partial<ReferentialRule>) => void;
   deleteRule: (id: string) => void;
 
-  /*  2.9  Audit & Reset ------------------------------------------------  */
+  /*  2.9  Mutations : Documents ---------------------------------------  */
+  addProductDocument: (d: Omit<ProductDocument, "id">) => string;
+  replaceProductDocuments: (documents: ProductDocument[]) => void;
+  deleteProductDocument: (id: string) => void;
+  addProjectDocument: (d: Omit<ProjectDocument, "id">) => string;
+  replaceProjectDocuments: (documents: ProjectDocument[]) => void;
+  deleteProjectDocument: (id: string) => void;
+  addCampaignDocument: (d: Omit<CampaignDocument, "id">) => string;
+  replaceCampaignDocuments: (documents: CampaignDocument[]) => void;
+  deleteCampaignDocument: (id: string) => void;
+  addFeatureDocument: (d: Omit<FeatureDocument, "id">) => string;
+  replaceFeatureDocuments: (documents: FeatureDocument[]) => void;
+  deleteFeatureDocument: (id: string) => void;
+
+  /*  2.10  Audit & Reset ------------------------------------------------  */
   logAudit: (actor: string, action: string, entity: string, detail: string) => void;
   resetAllData: () => void;
 }
@@ -320,6 +393,18 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
     return Array.from(byId.values());
   });
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(initialSession);
+  const [productDocuments, setProductDocuments] = useState<ProductDocument[]>(
+    initialSnap.productDocuments ?? seedProductDocuments,
+  );
+  const [projectDocuments, setProjectDocuments] = useState<ProjectDocument[]>(
+    initialSnap.projectDocuments ?? seedProjectDocuments,
+  );
+  const [campaignDocuments, setCampaignDocuments] = useState<CampaignDocument[]>(
+    initialSnap.campaignDocuments ?? seedCampaignDocuments,
+  );
+  const [featureDocuments, setFeatureDocuments] = useState<FeatureDocument[]>(
+    initialSnap.featureDocuments ?? seedFeatureDocuments,
+  );
 
   /*  4.2  Effet : persister à chaque changement --------------------------  */
 
@@ -346,6 +431,10 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       audit,
       rules,
       users,
+      productDocuments,
+      projectDocuments,
+      campaignDocuments,
+      featureDocuments,
     };
     saveSnapshot(snap);
   }, [
@@ -365,10 +454,86 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
     audit,
     rules,
     users,
+    productDocuments,
+    projectDocuments,
+    campaignDocuments,
+    featureDocuments,
   ]);
 
   useEffect(() => {
     saveSession(currentUser);
+  }, [currentUser]);
+
+  const loadGoLiveFromBackend = async (releaseList: Release[]) => {
+    try {
+      const [decisionPage, ...checklistPages] = await Promise.all([
+        getGoLiveDecisions(),
+        ...releaseList.map((r) =>
+          getGoLiveChecklist(r.id).then((items) => ({ releaseId: r.id, items })),
+        ),
+      ]);
+      if (decisionPage.data.length) {
+        setGoLiveDecisions(decisionPage.data.map(mapBackendGoLiveDecision));
+      }
+      const overlayByRelease = new Map(checklistPages.map((entry) => [entry.releaseId, entry.items]));
+      if (overlayByRelease.size) {
+        setGoLiveChecklist((prev) => {
+          const next = { ...prev };
+          for (const [releaseId, backendItems] of overlayByRelease) {
+            if (backendItems.length) {
+              const checkedByKey = new Map(backendItems.map((i) => [i.id, i.checked]));
+              const base = next[releaseId] ?? GOLIVE_CHECKLIST_TEMPLATE.map((t) => ({ ...t, checked: false }));
+              next[releaseId] = base.map((item) => ({
+                ...item,
+                checked: checkedByKey.get(item.id) ?? item.checked,
+              }));
+            }
+          }
+          return next;
+        });
+      }
+    } catch (error) {
+      console.error("[DHI] Impossible de charger le domaine Go Live backend", error);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser && loadSession() === null) {
+      setCurrentUser(null);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser || !localStorage.getItem("token")) return;
+    void Promise.all([
+      api<BackendProduct[]>("/products"),
+      api<BackendProject[]>("/projects"),
+      api<BackendCampaign[]>("/campaigns"),
+      api<{ data: BackendAnomaly[] }>("/anomalies?limit=200"),
+      api<{ data: BackendRequirement[] }>("/requirements?limit=200"),
+    ])
+      .then(async ([backendProducts, backendProjects, backendCampaigns, backendAnomalies, backendRequirements]) => {
+        setProducts(backendProducts.map(mapBackendProduct));
+        setProjects(backendProjects.map(mapBackendProject));
+        const projectById = new Map(backendProjects.map((project) => [project.id, project]));
+        setCampaigns(
+          backendCampaigns.map((campaign) => mapBackendCampaign(campaign, projectById.get(campaign.project_id))),
+        );
+        setDefects(backendAnomalies.data.map(mapBackendAnomaly));
+        setRequirements(backendRequirements.data.map(mapBackendRequirement));
+        await Promise.all([
+          (async () => {
+            const watchProjects = backendProjects;
+            const watchPointPages = await Promise.all(
+              watchProjects.filter((project) => !project.is_archived).map((project) => api<{ data: BackendWatchPoint[] }>(`/watch-points?projetId=${project.id}&limit=200`)),
+            );
+            const productByProject = new Map(watchProjects.map((project) => [project.id, project.product_id]));
+            setWatchPoints(watchPointPages.flatMap((page) => page.data.map((point) => mapBackendWatchPoint(point, String(productByProject.get(point.project_id) ?? "")))));
+          })(),
+          loadGoLiveFromBackend(releases),
+        ]);
+      })
+      .catch((error) => console.error("[DHI] Impossible de charger les campagnes backend", error));
   }, [currentUser]);
 
   /*  4.2b  Effet : Scoring CDC dynamique (recalcule à chaque changement)  */
@@ -826,23 +991,34 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       rules,
       users,
       currentUser,
+      productDocuments,
+      projectDocuments,
+      campaignDocuments,
+      featureDocuments,
 
       /* Session / Auth -----------------------------------------------  */
-      login: (email, password) => {
-        const match = users.find(
-          (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.active,
-        );
-        if (!match) return { ok: false, error: "Aucun compte actif avec cet e-mail." };
-        const expected = match.password ?? "demo";
-        if (password !== expected) return { ok: false, error: "Mot de passe invalide." };
-        const user = { id: match.id, name: match.name, email: match.email, role: match.role };
-        setCurrentUser(user);
-        saveSession(user);
-        return { ok: true, user };
+      login: async (email, password) => {
+        try {
+          const result = await api<LoginResponse>("/auth/login", {
+            method: "POST",
+            body: JSON.stringify({ email, password }),
+          });
+          localStorage.setItem("token", result.token);
+          const user = mapBackendUser(result.user) as SessionUser;
+          setCurrentUser(user);
+          saveSession(user);
+          return { ok: true, user };
+        } catch (error) {
+          return {
+            ok: false,
+            error: error instanceof Error ? error.message : "Identifiants invalides.",
+          };
+        }
       },
       logout: () => {
         setCurrentUser(null);
         saveSession(null);
+        localStorage.removeItem("token");
       },
 
       /* Produits / Projets / Features --------------------------------  */
@@ -867,6 +1043,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
         ]);
         return id;
       },
+      replaceProducts: (nextProducts) => setProducts(nextProducts),
       updateProduct: (id, patch) =>
         setProducts((prev) =>
           prev.map((p) => (p.id === id ? { ...p, ...patch, lastUpdate: today() } : p)),
@@ -885,6 +1062,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
         setProjects((prev) => [...prev, { ...p, id }]);
         return id;
       },
+      replaceProjects: (nextProjects) => setProjects(nextProjects),
       updateProject: (id, patch) =>
         setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p))),
       deleteProject: (id) => {
@@ -951,6 +1129,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
         );
         return id;
       },
+      replaceCampaigns: (nextCampaigns) => setCampaigns(nextCampaigns),
       updateCampaign: (id, patch) =>
         setCampaigns((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c))),
       deleteCampaign: (id) => {
@@ -1011,6 +1190,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
         setWatchPoints((prev) => [{ ...w, id, createdAt: today() }, ...prev]);
         pushAudit(asActor(w.owner), "Point à surveiller créé", id, w.title);
       },
+      replaceWatchPoints: (nextWatchPoints) => setWatchPoints(nextWatchPoints),
       updateWatchPoint: (id, patch) =>
         setWatchPoints((prev) => prev.map((w) => (w.id === id ? { ...w, ...patch } : w))),
       deleteDefect: (id) => {
@@ -1025,19 +1205,28 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       /* Exigences & Go Live ------------------------------------------  */
       addRequirement: (r) =>
         setRequirements((prev) => [...prev, { ...r, id: `REQ-${100 + prev.length + 1}` }]),
+      replaceRequirements: (nextRequirements) => setRequirements(nextRequirements),
       updateRequirement: (id, patch) =>
         setRequirements((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r))),
       deleteRequirement: (id) => {
         setRequirements((prev) => prev.filter((r) => r.id !== id));
         pushAudit(asActor("Système"), "Exigence supprimée", id, "—");
       },
-      toggleChecklistItem: (releaseId, itemId) =>
+      toggleChecklistItem: (releaseId, itemId) => {
+        const current = (goLiveChecklist[releaseId] ?? []).find((item) => item.id === itemId);
+        const nextChecked = !(current?.checked ?? false);
         setGoLiveChecklist((prev) => ({
           ...prev,
           [releaseId]: (prev[releaseId] ?? []).map((item) =>
             item.id === itemId ? { ...item, checked: !item.checked } : item,
           ),
-        })),
+        }));
+        if (localStorage.getItem("token")) {
+          updateGoLiveChecklistItem(releaseId, itemId, nextChecked).catch((error) =>
+            console.error("[DHI] Erreur sync checklist Go Live", error),
+          );
+        }
+      },
       addGoLiveDecision: (releaseId, verdict, decider, justification) => {
         const checklist = goLiveChecklist[releaseId] ?? [];
         const totalWeight = checklist.reduce((s, i) => s + i.weight, 0);
@@ -1056,6 +1245,17 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
           },
           ...prev,
         ]);
+        if (localStorage.getItem("token")) {
+          createGoLiveDecision({
+            release_ref: releaseId,
+            verdict,
+            decider,
+            justification,
+            checklist_completion: completion,
+          }).catch((error) =>
+            console.error("[DHI] Erreur enregistrement décision Go Live", error),
+          );
+        }
         pushAudit(
           decider,
           "Décision Go Live",
@@ -1079,23 +1279,120 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
         ),
       markAllNotificationsRead: () =>
         setNotifications((prev) => prev.map((n) => ({ ...n, read: true }))),
-      updateUserRole: (id, role) => {
+      updateUserRole: async (id, role) => {
+        const isBackendUser = /^\d+$/.test(id);
+        if (isBackendUser) {
+          await api<{ user: { id: number | string } }>(
+            `/auth/users/${id}/role`,
+            {
+              method: "PATCH",
+              body: JSON.stringify({ role: ROLE_TO_BACKEND[role] }),
+            },
+          );
+        }
         setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
         pushAudit(asActor("Administrateur"), "Rôle modifié", id, role);
       },
-      addUser: (u) => {
-        const id = `user-${Date.now()}`;
+      toggleUserActive: async (id) => {
+        const target = users.find((u) => u.id === id);
+        if (!target) return;
+        const isBackendUser = /^\d+$/.test(id);
+        if (isBackendUser) {
+          await api<{ id: number | string }>(
+            target.active
+              ? `/auth/users/${id}/soft-delete`
+              : `/auth/users/${id}/restore`,
+            { method: "PATCH" },
+          );
+        }
+        setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, active: !u.active } : u)));
+        pushAudit(
+          asActor("Administrateur"),
+          target.active ? "Compte désactivé" : "Compte réactivé",
+          id,
+          target.name,
+        );
+      },
+      removeUser: async (id) => {
+        const target = users.find((u) => u.id === id);
+        if (!target) return;
+        const isBackendUser = /^\d+$/.test(id);
+        if (isBackendUser) {
+          await api<{ id: number | string }>(`/auth/users/${id}/soft-delete`, {
+            method: "PATCH",
+          });
+        }
+        setUsers((prev) => prev.filter((u) => u.id !== id));
+        pushAudit(asActor("Administrateur"), "Utilisateur supprimé", id, target.name);
+      },
+      addUser: async (u) => {
+        const [first_name, ...rest] = u.name.trim().split(/\s+/);
+        const created = await api<{ user: { id: number | string } }>("/auth/register", {
+          method: "POST",
+          body: JSON.stringify({
+            email: u.email,
+            password: u.password ?? "",
+            first_name: first_name ?? "",
+            last_name: rest.join(" "),
+            role: ROLE_TO_BACKEND[u.role],
+          }),
+        });
+        const id = String(created.user.id);
         setUsers((prev) => [...prev, { id, ...u }]);
         pushAudit(asActor("Administrateur"), "Utilisateur créé", id, u.name);
         return id;
       },
-      toggleUserActive: (id) =>
-        setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, active: !u.active } : u))),
       updateRule: (id, patch) =>
         setRules((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r))),
       deleteRule: (id) => {
         setRules((prev) => prev.filter((r) => r.id !== id));
         pushAudit(asActor("Système"), "Règle supprimée", id, "—");
+      },
+
+      /* Documents ------------------------------------------------------  */
+      addProductDocument: (d) => {
+        const id = `PD-${Date.now()}`;
+        setProductDocuments((prev) => [...prev, { ...d, id }]);
+        pushAudit(asActor(d.uploadedBy), "Document produit ajouté", id, d.name);
+        return id;
+      },
+      replaceProductDocuments: (nextDocuments) => setProductDocuments(nextDocuments),
+      deleteProductDocument: (id) => {
+        setProductDocuments((prev) => prev.filter((d) => d.id !== id));
+        pushAudit(asActor("Système"), "Document produit supprimé", id, "—");
+      },
+      addProjectDocument: (d) => {
+        const id = `PRD-${Date.now()}`;
+        setProjectDocuments((prev) => [...prev, { ...d, id }]);
+        pushAudit(asActor(d.uploadedBy), "Document projet ajouté", id, d.name);
+        return id;
+      },
+      replaceProjectDocuments: (nextDocuments) => setProjectDocuments(nextDocuments),
+      deleteProjectDocument: (id) => {
+        setProjectDocuments((prev) => prev.filter((d) => d.id !== id));
+        pushAudit(asActor("Système"), "Document projet supprimé", id, "—");
+      },
+      addCampaignDocument: (d) => {
+        const id = `CD-${Date.now()}`;
+        setCampaignDocuments((prev) => [...prev, { ...d, id }]);
+        pushAudit(asActor(d.uploadedBy), "Document campagne ajouté", id, d.name);
+        return id;
+      },
+      replaceCampaignDocuments: (nextDocuments) => setCampaignDocuments(nextDocuments),
+      deleteCampaignDocument: (id) => {
+        setCampaignDocuments((prev) => prev.filter((d) => d.id !== id));
+        pushAudit(asActor("Système"), "Document campagne supprimé", id, "—");
+      },
+      addFeatureDocument: (d) => {
+        const id = `FD-${Date.now()}`;
+        setFeatureDocuments((prev) => [...prev, { ...d, id }]);
+        pushAudit(asActor(d.uploadedBy), "Document fonctionnalité ajouté", id, d.name);
+        return id;
+      },
+      replaceFeatureDocuments: (nextDocuments) => setFeatureDocuments(nextDocuments),
+      deleteFeatureDocument: (id) => {
+        setFeatureDocuments((prev) => prev.filter((d) => d.id !== id));
+        pushAudit(asActor("Système"), "Document fonctionnalité supprimé", id, "—");
       },
 
       /* Audit & Reset ------------------------------------------------  */
@@ -1118,6 +1415,10 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
         setAudit(fresh.audit);
         setRules(fresh.rules);
         setUsers(fresh.users);
+        setProductDocuments(fresh.productDocuments);
+        setProjectDocuments(fresh.projectDocuments);
+        setCampaignDocuments(fresh.campaignDocuments);
+        setFeatureDocuments(fresh.featureDocuments);
         saveSnapshot(fresh);
         pushAudit(asActor("Administrateur"), "Reset global", "—", "Données démo réinitialisées");
       },
@@ -1140,6 +1441,10 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
     rules,
     users,
     currentUser,
+    productDocuments,
+    projectDocuments,
+    campaignDocuments,
+    featureDocuments,
   ]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

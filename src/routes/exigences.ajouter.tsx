@@ -18,9 +18,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useStore } from "@/lib/dhi-store";
 import { type Criticality, type RequirementStatus } from "@/lib/dhi-data";
-import { QUALITY_TABS } from "@/lib/dhi-nav";
+
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 import { useVisibleProducts } from "@/lib/use-scope";
+import { api, mapBackendRequirement, type BackendRequirement } from "@/lib/api";
 
 export const Route = createFileRoute("/exigences/ajouter")({
   head: () => ({
@@ -54,7 +55,7 @@ type ReqForm = {
 function CreateRequirementPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { products, features, addRequirement } = useStore();
+  const { products, features, requirements, addRequirement, replaceRequirements } = useStore();
   const viewableProducts = useVisibleProducts(products);
 
   const [form, setForm] = useState<ReqForm>({
@@ -77,22 +78,38 @@ function CreateRequirementPage() {
     }));
   };
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) {
       toast.error(t("pages.requirements.title_required"));
       return;
     }
-    addRequirement({
+    const localRequirement = {
       productId: form.productId,
       title: form.title.trim(),
       description: form.description,
       priority: form.priority,
       status: form.status,
       featureIds: form.featureIds,
-    });
-    toast.success(t("pages.requirements.added"));
-    navigate({ to: "/exigences" });
+    };
+    const featureId = form.featureIds.find((id) => /^\d+$/.test(id));
+    if (!localStorage.getItem("token") || !featureId) {
+      addRequirement(localRequirement);
+      toast.success(t("pages.requirements.added"));
+      void navigate({ to: "/exigences" });
+      return;
+    }
+    try {
+      const response = await api<BackendRequirement>("/requirements", {
+        method: "POST",
+        body: JSON.stringify({ feature_id: Number(featureId), title: localRequirement.title, description: localRequirement.description, status: ({ brouillon: "proposed", validee: "validated", couverte: "approved" } as const)[localRequirement.status] }),
+      });
+      replaceRequirements([...requirements, { ...mapBackendRequirement(response), productId: localRequirement.productId, priority: localRequirement.priority }]);
+      toast.success(t("pages.requirements.added"));
+      void navigate({ to: "/exigences" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("common.erreur"));
+    }
   };
 
   return (
@@ -100,10 +117,9 @@ function CreateRequirementPage() {
       title={t("pages.requirements.title")}
       subtitle={t("pages.requirements.subtitle")}
       breadcrumb={t("pages.requirements.breadcrumb")}
-      tabs={QUALITY_TABS}
     >
       <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
-        <div className="mb-6">
+        <div className="-ml-12 mb-6 sm:-ml-16 xl:-ml-20">
           <Button
             variant="outline"
             size="sm"

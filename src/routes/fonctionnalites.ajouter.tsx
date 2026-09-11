@@ -22,7 +22,7 @@ import {
   type Criticality,
   type TestType,
 } from "@/lib/dhi-data";
-import { QUALITY_TABS } from "@/lib/dhi-nav";
+
 import { useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 
@@ -40,12 +40,13 @@ type FeatureForm = {
   description: string;
   coverage: Set<TestType>;
   requirementIds: string[];
+  sourceDocId: string;
 };
 
 function CreateFeaturePage() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { products, requirements, addFeature, updateRequirement } = useStore();
+  const { products, requirements, productDocuments, addFeature, updateRequirement } = useStore();
 
   const [form, setForm] = useState<FeatureForm>({
     name: "",
@@ -54,9 +55,11 @@ function CreateFeaturePage() {
     description: "",
     coverage: new Set(),
     requirementIds: [],
+    sourceDocId: "",
   });
 
   const productRequirements = requirements.filter((r) => r.productId === form.productId);
+  const productDocs = productDocuments.filter((d) => d.productId === form.productId);
 
   const toggleCoverage = (testType: TestType) => {
     setForm((f) => {
@@ -105,6 +108,7 @@ function CreateFeaturePage() {
       description: form.description,
       criticality: form.criticality,
       coverage,
+      sourceDocId: form.sourceDocId || undefined,
     });
     syncRequirementsBackLinks(fid, form.requirementIds);
     toast.success(t("pages.features.created_msg").replace("{name}", form.name.trim()));
@@ -116,10 +120,9 @@ function CreateFeaturePage() {
       title={t("pages.features.title")}
       subtitle={t("pages.features.subtitle")}
       breadcrumb={[t("nav.qualite"), t("nav.fonctionnalites")]}
-      tabs={QUALITY_TABS}
     >
       <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
-        <div className="mb-6">
+        <div className="-ml-12 mb-6 sm:-ml-16 xl:-ml-20">
           <Button
             variant="outline"
             size="sm"
@@ -164,7 +167,7 @@ function CreateFeaturePage() {
                   <Select
                     value={form.productId}
                     onValueChange={(v) =>
-                      setForm((f) => ({ ...f, productId: v, requirementIds: [] }))
+                      setForm((f) => ({ ...f, productId: v, requirementIds: [], sourceDocId: "" }))
                     }
                   >
                     <SelectTrigger>
@@ -197,6 +200,43 @@ function CreateFeaturePage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="grid gap-1.5">
+                <Label>
+                  {t("pages.features.source_doc")}{" "}
+                  <span className="font-normal text-muted-foreground">
+                    ({t("pages.features.optional")})
+                  </span>
+                </Label>
+                <Select
+                  value={form.sourceDocId}
+                  onValueChange={(v) => setForm((f) => ({ ...f, sourceDocId: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("pages.features.source_doc_placeholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {productDocs.length === 0 && (
+                      <SelectItem value="" disabled>
+                        {t("pages.features.no_doc_for_product")}
+                      </SelectItem>
+                    )}
+                    {productDocs.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {form.sourceDocId && (
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                    {t("pages.features.based_on").replace(
+                      "{name}",
+                      productDocs.find((d) => d.id === form.sourceDocId)?.name ?? ""
+                    )}
+                  </p>
+                )}
               </div>
 
               <div className="grid gap-2">

@@ -19,8 +19,9 @@ import {
   defects as seedDefects,
   type DefectStatus,
 } from "@/lib/dhi-data";
-import { SYSTEM_TABS } from "@/lib/dhi-nav";
+
 import { useI18n } from "@/lib/i18n";
+import { api } from "@/lib/api";
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
 
 export const Route = createFileRoute("/anomalies/$defectId")({
@@ -46,9 +47,13 @@ export const Route = createFileRoute("/anomalies/$defectId")({
 function DefectDetailPage() {
   const { defectId } = Route.useParams();
   const { t } = useI18n();
-  const { defects, features, users, updateDefect, currentUser } = useStore();
+  const { defects, features, users, tests, campaigns, updateDefect, currentUser } = useStore();
   const defect = defects.find((d) => d.id === defectId);
   if (!defect) return null;
+  const linkedTest = defect.testId ? tests.find((test) => test.id === defect.testId) : undefined;
+  const linkedCampaign = linkedTest
+    ? campaigns.find((campaign) => campaign.id === linkedTest.campaignId)
+    : undefined;
   const universe = users.filter((u) => u.active).map((u) => u.name);
   const devs = users.filter((u) => u.active && u.role === "developpeur").map((u) => u.name);
 
@@ -62,9 +67,42 @@ function DefectDetailPage() {
     toast.success(`${defect.id} ${t("pages.anomalies.assigned_to_developer")} ${v}.`);
   };
 
-  const changeStatus = (v: DefectStatus) => {
+  const changeStatus = async (v: DefectStatus) => {
     updateDefect(defect.id, { status: v });
     toast.success(`${t("pages.anomalies.status_updated")} : ${DEFECT_STATUS_LABEL[v]}.`);
+    if (!/^\d+$/.test(defect.id) || !localStorage.getItem("token")) return;
+    try {
+      if (v === "a_retester") {
+        await api(`/anomalies/${defect.id}/signal-resolution`, {
+          method: "PATCH",
+          body: JSON.stringify({ resolution_description: defect.title }),
+        });
+      } else if (v === "fermee") {
+        await api(`/anomalies/${defect.id}/validate`, { method: "PATCH" });
+      } else if (v === "reouverte") {
+        await api(`/anomalies/${defect.id}/reject`, { method: "PATCH" });
+      } else {
+        const backendStatus = {
+          nouvelle: "new",
+          affectee: "in_progress",
+          encorrection: "in_progress",
+          avalider: undefined,
+          a_retester: "resolution_signaled",
+          fermee: "validated",
+          reouverte: "rejected",
+        }[v];
+        if (backendStatus) {
+          await api(`/anomalies/${defect.id}`, {
+            method: "PUT",
+            body: JSON.stringify({ status: backendStatus }),
+          });
+        }
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("pages.anomalies.status_updated"),
+      );
+    }
   };
 
   const forbiddenRoles: string[] = ["developpeur"];
@@ -77,7 +115,6 @@ function DefectDetailPage() {
       title={`${defect.id} : ${defect.title}`}
       subtitle={t("pages.anomalies.subtitle")}
       breadcrumb={[t("nav.systeme"), t("nav.anomalies"), defect.id]}
-      tabs={SYSTEM_TABS}
       actions={
         <Button size="sm" variant="outline" asChild>
           <Link to="/anomalies">
@@ -100,6 +137,18 @@ function DefectDetailPage() {
           {defect.version}
           {defect.testId ? ` · ${t("pages.anomalies.detail_test")} ${defect.testId}` : ""}
         </p>
+        {linkedCampaign ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            {t("common.campagne")} :{" "}
+            <Link
+              to="/campagnes/$campaignId"
+              params={{ campaignId: linkedCampaign.id }}
+              className="font-medium text-primary hover:underline"
+            >
+              {linkedCampaign.name}
+            </Link>
+          </p>
+        ) : null}
         <Separator className="my-4" />
         <p className="text-sm text-muted-foreground">{defect.description}</p>
       </div>

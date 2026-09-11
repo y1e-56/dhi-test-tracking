@@ -42,21 +42,29 @@ import { Route as ProduitsProductIdRouteImport } from './routes/produits.$produc
 import { Route as ProduitsAjouterRouteImport } from './routes/produits.ajouter'
 import { Route as ProjetsProjectIdRouteImport } from './routes/projets.$projectId'
 import { Route as ProjetsAjouterRouteImport } from './routes/projets.ajouter'
+import { Route as CampagnesCampaignIdDocumentsRouteImport } from './routes/campagnes.$campaignId.documents'
 import { Route as CampagnesCampaignIdFonctionnalitesRouteImport } from './routes/campagnes.$campaignId.fonctionnalites'
 import { Route as CampagnesCampaignIdImporterRouteImport } from './routes/campagnes.$campaignId.importer'
 import { Route as CampagnesCampaignIdTestsRouteImport } from './routes/campagnes.$campaignId.tests'
 import { Route as ExigencesRequirementIdModifierRouteImport } from './routes/exigences.$requirementId.modifier'
+import { Route as FonctionnalitesFeatureIdDocumentsRouteImport } from './routes/fonctionnalites.$featureId.documents'
 import { Route as FonctionnalitesFeatureIdModifierRouteImport } from './routes/fonctionnalites.$featureId.modifier'
 import { Route as ProduitsProductIdCampagnesRouteImport } from './routes/produits.$productId.campagnes'
+import { Route as ProduitsProductIdDocumentsRouteImport } from './routes/produits.$productId.documents'
 import { Route as ProduitsProductIdFonctionnalitesRouteImport } from './routes/produits.$productId.fonctionnalites'
 import { Route as ProduitsProductIdModifierRouteImport } from './routes/produits.$productId.modifier'
 import { Route as ProduitsProductIdProjetsRouteImport } from './routes/produits.$productId.projets'
 import { Route as ProduitsProductIdTestsRouteImport } from './routes/produits.$productId.tests'
 import { Route as ProjetsProjectIdCampagnesRouteImport } from './routes/projets.$projectId.campagnes'
+import { Route as ProjetsProjectIdDocumentsRouteImport } from './routes/projets.$projectId.documents'
 import { Route as ProjetsProjectIdFonctionnalitesRouteImport } from './routes/projets.$projectId.fonctionnalites'
 import { Route as ProjetsProjectIdModifierRouteImport } from './routes/projets.$projectId.modifier'
 import { Route as ProjetsProjectIdTestsRouteImport } from './routes/projets.$projectId.tests'
+import { Route as CampagnesCampaignIdDocumentsAjouterRouteImport } from './routes/campagnes.$campaignId.documents.ajouter'
 import { Route as CampagnesCampaignIdTestsAjouterRouteImport } from './routes/campagnes.$campaignId.tests.ajouter'
+import { Route as FonctionnalitesFeatureIdDocumentsAjouterRouteImport } from './routes/fonctionnalites.$featureId.documents.ajouter'
+import { Route as ProduitsProductIdDocumentsAjouterRouteImport } from './routes/produits.$productId.documents.ajouter'
+import { Route as ProjetsProjectIdDocumentsAjouterRouteImport } from './routes/projets.$projectId.documents.ajouter'
 import { Route as CampagnesCampaignIdTestsTestIdModifierRouteImport } from './routes/campagnes.$campaignId.tests.$testId.modifier'
 
 const IndexRoute = IndexRouteImport.update({
@@ -226,6 +234,12 @@ const ProjetsAjouterRoute = ProjetsAjouterRouteImport.update({
   path: '/ajouter',
   getParentRoute: () => ProjetsRoute,
 } as any)
+const CampagnesCampaignIdDocumentsRoute =
+  CampagnesCampaignIdDocumentsRouteImport.update({
+    id: '/documents',
+    path: '/documents',
+    getParentRoute: () => CampagnesCampaignIdRoute,
+  } as any)
 const CampagnesCampaignIdFonctionnalitesRoute =
   CampagnesCampaignIdFonctionnalitesRouteImport.update({
     id: '/fonctionnalites',
@@ -250,6 +264,12 @@ const ExigencesRequirementIdModifierRoute =
     path: '/$requirementId/modifier',
     getParentRoute: () => ExigencesRoute,
   } as any)
+const FonctionnalitesFeatureIdDocumentsRoute =
+  FonctionnalitesFeatureIdDocumentsRouteImport.update({
+    id: '/$featureId/documents',
+    path: '/$featureId/documents',
+    getParentRoute: () => FonctionnalitesRoute,
+  } as any)
 const FonctionnalitesFeatureIdModifierRoute =
   FonctionnalitesFeatureIdModifierRouteImport.update({
     id: '/$featureId/modifier',
@@ -260,6 +280,12 @@ const ProduitsProductIdCampagnesRoute =
   ProduitsProductIdCampagnesRouteImport.update({
     id: '/campagnes',
     path: '/campagnes',
+    getParentRoute: () => ProduitsProductIdRoute,
+  } as any)
+const ProduitsProductIdDocumentsRoute =
+  ProduitsProductIdDocumentsRouteImport.update({
+    id: '/documents',
+    path: '/documents',
     getParentRoute: () => ProduitsProductIdRoute,
   } as any)
 const ProduitsProductIdFonctionnalitesRoute =
@@ -291,6 +317,12 @@ const ProjetsProjectIdCampagnesRoute =
     path: '/campagnes',
     getParentRoute: () => ProjetsProjectIdRoute,
   } as any)
+const ProjetsProjectIdDocumentsRoute =
+  ProjetsProjectIdDocumentsRouteImport.update({
+    id: '/documents',
+    path: '/documents',
+    getParentRoute: () => ProjetsProjectIdRoute,
+  } as any)
 const ProjetsProjectIdFonctionnalitesRoute =
   ProjetsProjectIdFonctionnalitesRouteImport.update({
     id: '/fonctionnalites',
@@ -308,11 +340,35 @@ const ProjetsProjectIdTestsRoute = ProjetsProjectIdTestsRouteImport.update({
   path: '/tests',
   getParentRoute: () => ProjetsProjectIdRoute,
 } as any)
+const CampagnesCampaignIdDocumentsAjouterRoute =
+  CampagnesCampaignIdDocumentsAjouterRouteImport.update({
+    id: '/ajouter',
+    path: '/ajouter',
+    getParentRoute: () => CampagnesCampaignIdDocumentsRoute,
+  } as any)
 const CampagnesCampaignIdTestsAjouterRoute =
   CampagnesCampaignIdTestsAjouterRouteImport.update({
     id: '/ajouter',
     path: '/ajouter',
     getParentRoute: () => CampagnesCampaignIdTestsRoute,
+  } as any)
+const FonctionnalitesFeatureIdDocumentsAjouterRoute =
+  FonctionnalitesFeatureIdDocumentsAjouterRouteImport.update({
+    id: '/ajouter',
+    path: '/ajouter',
+    getParentRoute: () => FonctionnalitesFeatureIdDocumentsRoute,
+  } as any)
+const ProduitsProductIdDocumentsAjouterRoute =
+  ProduitsProductIdDocumentsAjouterRouteImport.update({
+    id: '/ajouter',
+    path: '/ajouter',
+    getParentRoute: () => ProduitsProductIdDocumentsRoute,
+  } as any)
+const ProjetsProjectIdDocumentsAjouterRoute =
+  ProjetsProjectIdDocumentsAjouterRouteImport.update({
+    id: '/ajouter',
+    path: '/ajouter',
+    getParentRoute: () => ProjetsProjectIdDocumentsRoute,
   } as any)
 const CampagnesCampaignIdTestsTestIdModifierRoute =
   CampagnesCampaignIdTestsTestIdModifierRouteImport.update({
@@ -355,21 +411,29 @@ export interface FileRoutesByFullPath {
   '/produits/ajouter': typeof ProduitsAjouterRoute
   '/projets/$projectId': typeof ProjetsProjectIdRouteWithChildren
   '/projets/ajouter': typeof ProjetsAjouterRoute
+  '/campagnes/$campaignId/documents': typeof CampagnesCampaignIdDocumentsRouteWithChildren
   '/campagnes/$campaignId/fonctionnalites': typeof CampagnesCampaignIdFonctionnalitesRoute
   '/campagnes/$campaignId/importer': typeof CampagnesCampaignIdImporterRoute
   '/campagnes/$campaignId/tests': typeof CampagnesCampaignIdTestsRouteWithChildren
   '/exigences/$requirementId/modifier': typeof ExigencesRequirementIdModifierRoute
+  '/fonctionnalites/$featureId/documents': typeof FonctionnalitesFeatureIdDocumentsRouteWithChildren
   '/fonctionnalites/$featureId/modifier': typeof FonctionnalitesFeatureIdModifierRoute
   '/produits/$productId/campagnes': typeof ProduitsProductIdCampagnesRoute
+  '/produits/$productId/documents': typeof ProduitsProductIdDocumentsRouteWithChildren
   '/produits/$productId/fonctionnalites': typeof ProduitsProductIdFonctionnalitesRoute
   '/produits/$productId/modifier': typeof ProduitsProductIdModifierRoute
   '/produits/$productId/projets': typeof ProduitsProductIdProjetsRoute
   '/produits/$productId/tests': typeof ProduitsProductIdTestsRoute
   '/projets/$projectId/campagnes': typeof ProjetsProjectIdCampagnesRoute
+  '/projets/$projectId/documents': typeof ProjetsProjectIdDocumentsRouteWithChildren
   '/projets/$projectId/fonctionnalites': typeof ProjetsProjectIdFonctionnalitesRoute
   '/projets/$projectId/modifier': typeof ProjetsProjectIdModifierRoute
   '/projets/$projectId/tests': typeof ProjetsProjectIdTestsRoute
+  '/campagnes/$campaignId/documents/ajouter': typeof CampagnesCampaignIdDocumentsAjouterRoute
   '/campagnes/$campaignId/tests/ajouter': typeof CampagnesCampaignIdTestsAjouterRoute
+  '/fonctionnalites/$featureId/documents/ajouter': typeof FonctionnalitesFeatureIdDocumentsAjouterRoute
+  '/produits/$productId/documents/ajouter': typeof ProduitsProductIdDocumentsAjouterRoute
+  '/projets/$projectId/documents/ajouter': typeof ProjetsProjectIdDocumentsAjouterRoute
   '/campagnes/$campaignId/tests/$testId/modifier': typeof CampagnesCampaignIdTestsTestIdModifierRoute
 }
 export interface FileRoutesByTo {
@@ -406,21 +470,29 @@ export interface FileRoutesByTo {
   '/produits/ajouter': typeof ProduitsAjouterRoute
   '/projets/$projectId': typeof ProjetsProjectIdRouteWithChildren
   '/projets/ajouter': typeof ProjetsAjouterRoute
+  '/campagnes/$campaignId/documents': typeof CampagnesCampaignIdDocumentsRouteWithChildren
   '/campagnes/$campaignId/fonctionnalites': typeof CampagnesCampaignIdFonctionnalitesRoute
   '/campagnes/$campaignId/importer': typeof CampagnesCampaignIdImporterRoute
   '/campagnes/$campaignId/tests': typeof CampagnesCampaignIdTestsRouteWithChildren
   '/exigences/$requirementId/modifier': typeof ExigencesRequirementIdModifierRoute
+  '/fonctionnalites/$featureId/documents': typeof FonctionnalitesFeatureIdDocumentsRouteWithChildren
   '/fonctionnalites/$featureId/modifier': typeof FonctionnalitesFeatureIdModifierRoute
   '/produits/$productId/campagnes': typeof ProduitsProductIdCampagnesRoute
+  '/produits/$productId/documents': typeof ProduitsProductIdDocumentsRouteWithChildren
   '/produits/$productId/fonctionnalites': typeof ProduitsProductIdFonctionnalitesRoute
   '/produits/$productId/modifier': typeof ProduitsProductIdModifierRoute
   '/produits/$productId/projets': typeof ProduitsProductIdProjetsRoute
   '/produits/$productId/tests': typeof ProduitsProductIdTestsRoute
   '/projets/$projectId/campagnes': typeof ProjetsProjectIdCampagnesRoute
+  '/projets/$projectId/documents': typeof ProjetsProjectIdDocumentsRouteWithChildren
   '/projets/$projectId/fonctionnalites': typeof ProjetsProjectIdFonctionnalitesRoute
   '/projets/$projectId/modifier': typeof ProjetsProjectIdModifierRoute
   '/projets/$projectId/tests': typeof ProjetsProjectIdTestsRoute
+  '/campagnes/$campaignId/documents/ajouter': typeof CampagnesCampaignIdDocumentsAjouterRoute
   '/campagnes/$campaignId/tests/ajouter': typeof CampagnesCampaignIdTestsAjouterRoute
+  '/fonctionnalites/$featureId/documents/ajouter': typeof FonctionnalitesFeatureIdDocumentsAjouterRoute
+  '/produits/$productId/documents/ajouter': typeof ProduitsProductIdDocumentsAjouterRoute
+  '/projets/$projectId/documents/ajouter': typeof ProjetsProjectIdDocumentsAjouterRoute
   '/campagnes/$campaignId/tests/$testId/modifier': typeof CampagnesCampaignIdTestsTestIdModifierRoute
 }
 export interface FileRoutesById {
@@ -458,21 +530,29 @@ export interface FileRoutesById {
   '/produits/ajouter': typeof ProduitsAjouterRoute
   '/projets/$projectId': typeof ProjetsProjectIdRouteWithChildren
   '/projets/ajouter': typeof ProjetsAjouterRoute
+  '/campagnes/$campaignId/documents': typeof CampagnesCampaignIdDocumentsRouteWithChildren
   '/campagnes/$campaignId/fonctionnalites': typeof CampagnesCampaignIdFonctionnalitesRoute
   '/campagnes/$campaignId/importer': typeof CampagnesCampaignIdImporterRoute
   '/campagnes/$campaignId/tests': typeof CampagnesCampaignIdTestsRouteWithChildren
   '/exigences/$requirementId/modifier': typeof ExigencesRequirementIdModifierRoute
+  '/fonctionnalites/$featureId/documents': typeof FonctionnalitesFeatureIdDocumentsRouteWithChildren
   '/fonctionnalites/$featureId/modifier': typeof FonctionnalitesFeatureIdModifierRoute
   '/produits/$productId/campagnes': typeof ProduitsProductIdCampagnesRoute
+  '/produits/$productId/documents': typeof ProduitsProductIdDocumentsRouteWithChildren
   '/produits/$productId/fonctionnalites': typeof ProduitsProductIdFonctionnalitesRoute
   '/produits/$productId/modifier': typeof ProduitsProductIdModifierRoute
   '/produits/$productId/projets': typeof ProduitsProductIdProjetsRoute
   '/produits/$productId/tests': typeof ProduitsProductIdTestsRoute
   '/projets/$projectId/campagnes': typeof ProjetsProjectIdCampagnesRoute
+  '/projets/$projectId/documents': typeof ProjetsProjectIdDocumentsRouteWithChildren
   '/projets/$projectId/fonctionnalites': typeof ProjetsProjectIdFonctionnalitesRoute
   '/projets/$projectId/modifier': typeof ProjetsProjectIdModifierRoute
   '/projets/$projectId/tests': typeof ProjetsProjectIdTestsRoute
+  '/campagnes/$campaignId/documents/ajouter': typeof CampagnesCampaignIdDocumentsAjouterRoute
   '/campagnes/$campaignId/tests/ajouter': typeof CampagnesCampaignIdTestsAjouterRoute
+  '/fonctionnalites/$featureId/documents/ajouter': typeof FonctionnalitesFeatureIdDocumentsAjouterRoute
+  '/produits/$productId/documents/ajouter': typeof ProduitsProductIdDocumentsAjouterRoute
+  '/projets/$projectId/documents/ajouter': typeof ProjetsProjectIdDocumentsAjouterRoute
   '/campagnes/$campaignId/tests/$testId/modifier': typeof CampagnesCampaignIdTestsTestIdModifierRoute
 }
 export interface FileRouteTypes {
@@ -511,21 +591,29 @@ export interface FileRouteTypes {
     | '/produits/ajouter'
     | '/projets/$projectId'
     | '/projets/ajouter'
+    | '/campagnes/$campaignId/documents'
     | '/campagnes/$campaignId/fonctionnalites'
     | '/campagnes/$campaignId/importer'
     | '/campagnes/$campaignId/tests'
     | '/exigences/$requirementId/modifier'
+    | '/fonctionnalites/$featureId/documents'
     | '/fonctionnalites/$featureId/modifier'
     | '/produits/$productId/campagnes'
+    | '/produits/$productId/documents'
     | '/produits/$productId/fonctionnalites'
     | '/produits/$productId/modifier'
     | '/produits/$productId/projets'
     | '/produits/$productId/tests'
     | '/projets/$projectId/campagnes'
+    | '/projets/$projectId/documents'
     | '/projets/$projectId/fonctionnalites'
     | '/projets/$projectId/modifier'
     | '/projets/$projectId/tests'
+    | '/campagnes/$campaignId/documents/ajouter'
     | '/campagnes/$campaignId/tests/ajouter'
+    | '/fonctionnalites/$featureId/documents/ajouter'
+    | '/produits/$productId/documents/ajouter'
+    | '/projets/$projectId/documents/ajouter'
     | '/campagnes/$campaignId/tests/$testId/modifier'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -562,21 +650,29 @@ export interface FileRouteTypes {
     | '/produits/ajouter'
     | '/projets/$projectId'
     | '/projets/ajouter'
+    | '/campagnes/$campaignId/documents'
     | '/campagnes/$campaignId/fonctionnalites'
     | '/campagnes/$campaignId/importer'
     | '/campagnes/$campaignId/tests'
     | '/exigences/$requirementId/modifier'
+    | '/fonctionnalites/$featureId/documents'
     | '/fonctionnalites/$featureId/modifier'
     | '/produits/$productId/campagnes'
+    | '/produits/$productId/documents'
     | '/produits/$productId/fonctionnalites'
     | '/produits/$productId/modifier'
     | '/produits/$productId/projets'
     | '/produits/$productId/tests'
     | '/projets/$projectId/campagnes'
+    | '/projets/$projectId/documents'
     | '/projets/$projectId/fonctionnalites'
     | '/projets/$projectId/modifier'
     | '/projets/$projectId/tests'
+    | '/campagnes/$campaignId/documents/ajouter'
     | '/campagnes/$campaignId/tests/ajouter'
+    | '/fonctionnalites/$featureId/documents/ajouter'
+    | '/produits/$productId/documents/ajouter'
+    | '/projets/$projectId/documents/ajouter'
     | '/campagnes/$campaignId/tests/$testId/modifier'
   id:
     | '__root__'
@@ -613,21 +709,29 @@ export interface FileRouteTypes {
     | '/produits/ajouter'
     | '/projets/$projectId'
     | '/projets/ajouter'
+    | '/campagnes/$campaignId/documents'
     | '/campagnes/$campaignId/fonctionnalites'
     | '/campagnes/$campaignId/importer'
     | '/campagnes/$campaignId/tests'
     | '/exigences/$requirementId/modifier'
+    | '/fonctionnalites/$featureId/documents'
     | '/fonctionnalites/$featureId/modifier'
     | '/produits/$productId/campagnes'
+    | '/produits/$productId/documents'
     | '/produits/$productId/fonctionnalites'
     | '/produits/$productId/modifier'
     | '/produits/$productId/projets'
     | '/produits/$productId/tests'
     | '/projets/$projectId/campagnes'
+    | '/projets/$projectId/documents'
     | '/projets/$projectId/fonctionnalites'
     | '/projets/$projectId/modifier'
     | '/projets/$projectId/tests'
+    | '/campagnes/$campaignId/documents/ajouter'
     | '/campagnes/$campaignId/tests/ajouter'
+    | '/fonctionnalites/$featureId/documents/ajouter'
+    | '/produits/$productId/documents/ajouter'
+    | '/projets/$projectId/documents/ajouter'
     | '/campagnes/$campaignId/tests/$testId/modifier'
   fileRoutesById: FileRoutesById
 }
@@ -888,6 +992,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjetsAjouterRouteImport
       parentRoute: typeof ProjetsRoute
     }
+    '/campagnes/$campaignId/documents': {
+      id: '/campagnes/$campaignId/documents'
+      path: '/documents'
+      fullPath: '/campagnes/$campaignId/documents'
+      preLoaderRoute: typeof CampagnesCampaignIdDocumentsRouteImport
+      parentRoute: typeof CampagnesCampaignIdRoute
+    }
     '/campagnes/$campaignId/fonctionnalites': {
       id: '/campagnes/$campaignId/fonctionnalites'
       path: '/fonctionnalites'
@@ -916,6 +1027,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExigencesRequirementIdModifierRouteImport
       parentRoute: typeof ExigencesRoute
     }
+    '/fonctionnalites/$featureId/documents': {
+      id: '/fonctionnalites/$featureId/documents'
+      path: '/$featureId/documents'
+      fullPath: '/fonctionnalites/$featureId/documents'
+      preLoaderRoute: typeof FonctionnalitesFeatureIdDocumentsRouteImport
+      parentRoute: typeof FonctionnalitesRoute
+    }
     '/fonctionnalites/$featureId/modifier': {
       id: '/fonctionnalites/$featureId/modifier'
       path: '/$featureId/modifier'
@@ -928,6 +1046,13 @@ declare module '@tanstack/react-router' {
       path: '/campagnes'
       fullPath: '/produits/$productId/campagnes'
       preLoaderRoute: typeof ProduitsProductIdCampagnesRouteImport
+      parentRoute: typeof ProduitsProductIdRoute
+    }
+    '/produits/$productId/documents': {
+      id: '/produits/$productId/documents'
+      path: '/documents'
+      fullPath: '/produits/$productId/documents'
+      preLoaderRoute: typeof ProduitsProductIdDocumentsRouteImport
       parentRoute: typeof ProduitsProductIdRoute
     }
     '/produits/$productId/fonctionnalites': {
@@ -965,6 +1090,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjetsProjectIdCampagnesRouteImport
       parentRoute: typeof ProjetsProjectIdRoute
     }
+    '/projets/$projectId/documents': {
+      id: '/projets/$projectId/documents'
+      path: '/documents'
+      fullPath: '/projets/$projectId/documents'
+      preLoaderRoute: typeof ProjetsProjectIdDocumentsRouteImport
+      parentRoute: typeof ProjetsProjectIdRoute
+    }
     '/projets/$projectId/fonctionnalites': {
       id: '/projets/$projectId/fonctionnalites'
       path: '/fonctionnalites'
@@ -986,12 +1118,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjetsProjectIdTestsRouteImport
       parentRoute: typeof ProjetsProjectIdRoute
     }
+    '/campagnes/$campaignId/documents/ajouter': {
+      id: '/campagnes/$campaignId/documents/ajouter'
+      path: '/ajouter'
+      fullPath: '/campagnes/$campaignId/documents/ajouter'
+      preLoaderRoute: typeof CampagnesCampaignIdDocumentsAjouterRouteImport
+      parentRoute: typeof CampagnesCampaignIdDocumentsRoute
+    }
     '/campagnes/$campaignId/tests/ajouter': {
       id: '/campagnes/$campaignId/tests/ajouter'
       path: '/ajouter'
       fullPath: '/campagnes/$campaignId/tests/ajouter'
       preLoaderRoute: typeof CampagnesCampaignIdTestsAjouterRouteImport
       parentRoute: typeof CampagnesCampaignIdTestsRoute
+    }
+    '/fonctionnalites/$featureId/documents/ajouter': {
+      id: '/fonctionnalites/$featureId/documents/ajouter'
+      path: '/ajouter'
+      fullPath: '/fonctionnalites/$featureId/documents/ajouter'
+      preLoaderRoute: typeof FonctionnalitesFeatureIdDocumentsAjouterRouteImport
+      parentRoute: typeof FonctionnalitesFeatureIdDocumentsRoute
+    }
+    '/produits/$productId/documents/ajouter': {
+      id: '/produits/$productId/documents/ajouter'
+      path: '/ajouter'
+      fullPath: '/produits/$productId/documents/ajouter'
+      preLoaderRoute: typeof ProduitsProductIdDocumentsAjouterRouteImport
+      parentRoute: typeof ProduitsProductIdDocumentsRoute
+    }
+    '/projets/$projectId/documents/ajouter': {
+      id: '/projets/$projectId/documents/ajouter'
+      path: '/ajouter'
+      fullPath: '/projets/$projectId/documents/ajouter'
+      preLoaderRoute: typeof ProjetsProjectIdDocumentsAjouterRouteImport
+      parentRoute: typeof ProjetsProjectIdDocumentsRoute
     }
     '/campagnes/$campaignId/tests/$testId/modifier': {
       id: '/campagnes/$campaignId/tests/$testId/modifier'
@@ -1029,6 +1189,21 @@ const AnomaliesRouteWithChildren = AnomaliesRoute._addFileChildren(
   AnomaliesRouteChildren,
 )
 
+interface CampagnesCampaignIdDocumentsRouteChildren {
+  CampagnesCampaignIdDocumentsAjouterRoute: typeof CampagnesCampaignIdDocumentsAjouterRoute
+}
+
+const CampagnesCampaignIdDocumentsRouteChildren: CampagnesCampaignIdDocumentsRouteChildren =
+  {
+    CampagnesCampaignIdDocumentsAjouterRoute:
+      CampagnesCampaignIdDocumentsAjouterRoute,
+  }
+
+const CampagnesCampaignIdDocumentsRouteWithChildren =
+  CampagnesCampaignIdDocumentsRoute._addFileChildren(
+    CampagnesCampaignIdDocumentsRouteChildren,
+  )
+
 interface CampagnesCampaignIdTestsRouteChildren {
   CampagnesCampaignIdTestsAjouterRoute: typeof CampagnesCampaignIdTestsAjouterRoute
   CampagnesCampaignIdTestsTestIdModifierRoute: typeof CampagnesCampaignIdTestsTestIdModifierRoute
@@ -1047,12 +1222,15 @@ const CampagnesCampaignIdTestsRouteWithChildren =
   )
 
 interface CampagnesCampaignIdRouteChildren {
+  CampagnesCampaignIdDocumentsRoute: typeof CampagnesCampaignIdDocumentsRouteWithChildren
   CampagnesCampaignIdFonctionnalitesRoute: typeof CampagnesCampaignIdFonctionnalitesRoute
   CampagnesCampaignIdImporterRoute: typeof CampagnesCampaignIdImporterRoute
   CampagnesCampaignIdTestsRoute: typeof CampagnesCampaignIdTestsRouteWithChildren
 }
 
 const CampagnesCampaignIdRouteChildren: CampagnesCampaignIdRouteChildren = {
+  CampagnesCampaignIdDocumentsRoute:
+    CampagnesCampaignIdDocumentsRouteWithChildren,
   CampagnesCampaignIdFonctionnalitesRoute:
     CampagnesCampaignIdFonctionnalitesRoute,
   CampagnesCampaignIdImporterRoute: CampagnesCampaignIdImporterRoute,
@@ -1090,13 +1268,31 @@ const ExigencesRouteWithChildren = ExigencesRoute._addFileChildren(
   ExigencesRouteChildren,
 )
 
+interface FonctionnalitesFeatureIdDocumentsRouteChildren {
+  FonctionnalitesFeatureIdDocumentsAjouterRoute: typeof FonctionnalitesFeatureIdDocumentsAjouterRoute
+}
+
+const FonctionnalitesFeatureIdDocumentsRouteChildren: FonctionnalitesFeatureIdDocumentsRouteChildren =
+  {
+    FonctionnalitesFeatureIdDocumentsAjouterRoute:
+      FonctionnalitesFeatureIdDocumentsAjouterRoute,
+  }
+
+const FonctionnalitesFeatureIdDocumentsRouteWithChildren =
+  FonctionnalitesFeatureIdDocumentsRoute._addFileChildren(
+    FonctionnalitesFeatureIdDocumentsRouteChildren,
+  )
+
 interface FonctionnalitesRouteChildren {
   FonctionnalitesAjouterRoute: typeof FonctionnalitesAjouterRoute
+  FonctionnalitesFeatureIdDocumentsRoute: typeof FonctionnalitesFeatureIdDocumentsRouteWithChildren
   FonctionnalitesFeatureIdModifierRoute: typeof FonctionnalitesFeatureIdModifierRoute
 }
 
 const FonctionnalitesRouteChildren: FonctionnalitesRouteChildren = {
   FonctionnalitesAjouterRoute: FonctionnalitesAjouterRoute,
+  FonctionnalitesFeatureIdDocumentsRoute:
+    FonctionnalitesFeatureIdDocumentsRouteWithChildren,
   FonctionnalitesFeatureIdModifierRoute: FonctionnalitesFeatureIdModifierRoute,
 }
 
@@ -1115,8 +1311,24 @@ const PointsASurveillerRouteChildren: PointsASurveillerRouteChildren = {
 const PointsASurveillerRouteWithChildren =
   PointsASurveillerRoute._addFileChildren(PointsASurveillerRouteChildren)
 
+interface ProduitsProductIdDocumentsRouteChildren {
+  ProduitsProductIdDocumentsAjouterRoute: typeof ProduitsProductIdDocumentsAjouterRoute
+}
+
+const ProduitsProductIdDocumentsRouteChildren: ProduitsProductIdDocumentsRouteChildren =
+  {
+    ProduitsProductIdDocumentsAjouterRoute:
+      ProduitsProductIdDocumentsAjouterRoute,
+  }
+
+const ProduitsProductIdDocumentsRouteWithChildren =
+  ProduitsProductIdDocumentsRoute._addFileChildren(
+    ProduitsProductIdDocumentsRouteChildren,
+  )
+
 interface ProduitsProductIdRouteChildren {
   ProduitsProductIdCampagnesRoute: typeof ProduitsProductIdCampagnesRoute
+  ProduitsProductIdDocumentsRoute: typeof ProduitsProductIdDocumentsRouteWithChildren
   ProduitsProductIdFonctionnalitesRoute: typeof ProduitsProductIdFonctionnalitesRoute
   ProduitsProductIdModifierRoute: typeof ProduitsProductIdModifierRoute
   ProduitsProductIdProjetsRoute: typeof ProduitsProductIdProjetsRoute
@@ -1125,6 +1337,7 @@ interface ProduitsProductIdRouteChildren {
 
 const ProduitsProductIdRouteChildren: ProduitsProductIdRouteChildren = {
   ProduitsProductIdCampagnesRoute: ProduitsProductIdCampagnesRoute,
+  ProduitsProductIdDocumentsRoute: ProduitsProductIdDocumentsRouteWithChildren,
   ProduitsProductIdFonctionnalitesRoute: ProduitsProductIdFonctionnalitesRoute,
   ProduitsProductIdModifierRoute: ProduitsProductIdModifierRoute,
   ProduitsProductIdProjetsRoute: ProduitsProductIdProjetsRoute,
@@ -1148,8 +1361,24 @@ const ProduitsRouteWithChildren = ProduitsRoute._addFileChildren(
   ProduitsRouteChildren,
 )
 
+interface ProjetsProjectIdDocumentsRouteChildren {
+  ProjetsProjectIdDocumentsAjouterRoute: typeof ProjetsProjectIdDocumentsAjouterRoute
+}
+
+const ProjetsProjectIdDocumentsRouteChildren: ProjetsProjectIdDocumentsRouteChildren =
+  {
+    ProjetsProjectIdDocumentsAjouterRoute:
+      ProjetsProjectIdDocumentsAjouterRoute,
+  }
+
+const ProjetsProjectIdDocumentsRouteWithChildren =
+  ProjetsProjectIdDocumentsRoute._addFileChildren(
+    ProjetsProjectIdDocumentsRouteChildren,
+  )
+
 interface ProjetsProjectIdRouteChildren {
   ProjetsProjectIdCampagnesRoute: typeof ProjetsProjectIdCampagnesRoute
+  ProjetsProjectIdDocumentsRoute: typeof ProjetsProjectIdDocumentsRouteWithChildren
   ProjetsProjectIdFonctionnalitesRoute: typeof ProjetsProjectIdFonctionnalitesRoute
   ProjetsProjectIdModifierRoute: typeof ProjetsProjectIdModifierRoute
   ProjetsProjectIdTestsRoute: typeof ProjetsProjectIdTestsRoute
@@ -1157,6 +1386,7 @@ interface ProjetsProjectIdRouteChildren {
 
 const ProjetsProjectIdRouteChildren: ProjetsProjectIdRouteChildren = {
   ProjetsProjectIdCampagnesRoute: ProjetsProjectIdCampagnesRoute,
+  ProjetsProjectIdDocumentsRoute: ProjetsProjectIdDocumentsRouteWithChildren,
   ProjetsProjectIdFonctionnalitesRoute: ProjetsProjectIdFonctionnalitesRoute,
   ProjetsProjectIdModifierRoute: ProjetsProjectIdModifierRoute,
   ProjetsProjectIdTestsRoute: ProjetsProjectIdTestsRoute,

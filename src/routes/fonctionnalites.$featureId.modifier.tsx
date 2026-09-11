@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileText } from "lucide-react";
 import { AppShell } from "@/components/dhi/AppShell";
 import { CriticalityBadge } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ import {
   type Criticality,
   type TestType,
 } from "@/lib/dhi-data";
-import { QUALITY_TABS } from "@/lib/dhi-nav";
+
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 
@@ -47,13 +47,15 @@ type FeatureForm = {
   description: string;
   coverage: Set<TestType>;
   requirementIds: string[];
+  sourceDocId: string;
 };
 
 function EditFeaturePage() {
   const { featureId } = Route.useParams();
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { products, features, requirements, updateFeature, updateRequirement } = useStore();
+  const { products, features, requirements, productDocuments, updateFeature, updateRequirement } =
+    useStore();
   const feature = features.find((f) => f.id === featureId);
 
   const [form, setForm] = useState<FeatureForm>(() => {
@@ -69,12 +71,14 @@ function EditFeaturePage() {
       description: feature?.description ?? "",
       coverage,
       requirementIds,
+      sourceDocId: feature?.sourceDocId ?? "",
     };
   });
 
   if (!feature) return null;
 
   const productRequirements = requirements.filter((r) => r.productId === form.productId);
+  const productDocs = productDocuments.filter((d) => d.productId === form.productId);
 
   const toggleCoverage = (testType: TestType) => {
     setForm((f) => {
@@ -123,6 +127,7 @@ function EditFeaturePage() {
       description: form.description,
       criticality: form.criticality,
       coverage,
+      sourceDocId: form.sourceDocId || undefined,
     });
     syncRequirementsBackLinks(feature.id, form.requirementIds);
     toast.success(t("pages.features.updated_msg").replace("{name}", form.name.trim()));
@@ -134,10 +139,16 @@ function EditFeaturePage() {
       title={t("pages.features.title")}
       subtitle={t("pages.features.subtitle")}
       breadcrumb={[t("nav.qualite"), t("nav.fonctionnalites")]}
-      tabs={QUALITY_TABS}
+      actions={
+        <Button size="sm" asChild>
+          <Link to="/fonctionnalites/$featureId/documents" params={{ featureId }}>
+            <FileText className="size-4" /> {t("pages.documents.feature_docs")}
+          </Link>
+        </Button>
+      }
     >
       <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
-        <div className="mb-6">
+        <div className="-ml-12 mb-6 sm:-ml-16 xl:-ml-20">
           <Button
             variant="outline"
             size="sm"
@@ -182,7 +193,7 @@ function EditFeaturePage() {
                   <Select
                     value={form.productId}
                     onValueChange={(v) =>
-                      setForm((f) => ({ ...f, productId: v, requirementIds: [] }))
+                      setForm((f) => ({ ...f, productId: v, requirementIds: [], sourceDocId: "" }))
                     }
                   >
                     <SelectTrigger>
@@ -215,6 +226,43 @@ function EditFeaturePage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="grid gap-1.5">
+                <Label>
+                  {t("pages.features.source_doc")}{" "}
+                  <span className="font-normal text-muted-foreground">
+                    ({t("pages.features.optional")})
+                  </span>
+                </Label>
+                <Select
+                  value={form.sourceDocId}
+                  onValueChange={(v) => setForm((f) => ({ ...f, sourceDocId: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("pages.features.source_doc_placeholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {productDocs.length === 0 && (
+                      <SelectItem value="" disabled>
+                        {t("pages.features.no_doc_for_product")}
+                      </SelectItem>
+                    )}
+                    {productDocs.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {form.sourceDocId && (
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                    {t("pages.features.based_on").replace(
+                      "{name}",
+                      productDocs.find((d) => d.id === form.sourceDocId)?.name ?? ""
+                    )}
+                  </p>
+                )}
               </div>
 
               <div className="grid gap-2">

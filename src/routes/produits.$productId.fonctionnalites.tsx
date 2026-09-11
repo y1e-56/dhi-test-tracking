@@ -1,9 +1,10 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
-import { useMemo } from "react";
+import { FileText, Plus, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import { AppShell } from "@/components/dhi/AppShell";
 import { CriticalityBadge, QualityBar } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -44,10 +45,21 @@ function ProductFeatures() {
   const { t } = useI18n();
   const { products, features } = useStore();
   const product = products.find((p) => p.id === productId);
+  const [search, setSearch] = useState("");
 
   const rows = useMemo(
-    () => features.filter((f) => f.productId === productId),
-    [features, productId],
+    () =>
+      features
+        .filter((f) => f.productId === productId)
+        .filter((feature) => {
+          if (!search.trim()) return true;
+          const query = search.toLowerCase();
+          return (
+            feature.name.toLowerCase().includes(query) ||
+            feature.description.toLowerCase().includes(query)
+          );
+        }),
+    [features, productId, search],
   );
 
   return (
@@ -67,6 +79,17 @@ function ProductFeatures() {
       }
     >
       <div className="panel">
+        <div className="border-b border-border px-4 py-3">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("pages.features.search_placeholder")}
+              className="pl-8"
+            />
+          </div>
+        </div>
         <Table>
           <TableHeader>
             <TableRow>
@@ -74,6 +97,7 @@ function ProductFeatures() {
               <TableHead>{t("common.criticite")}</TableHead>
               <TableHead>{t("pages.features.tests_covered")}</TableHead>
               <TableHead className="w-56">{t("pages.features.coverage")}</TableHead>
+              <TableHead className="text-right" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -100,13 +124,24 @@ function ProductFeatures() {
                       <span className="num w-12 text-right text-sm">{pct} %</span>
                     </div>
                   </TableCell>
+                  <TableCell className="text-right">
+                    <Link
+                      to="/fonctionnalites/$featureId/documents"
+                      params={{ featureId: f.id }}
+                      title={t("pages.documents.feature_docs")}
+                    >
+                      <Button size="icon" variant="ghost" className="size-7">
+                        <FileText className="size-4" />
+                      </Button>
+                    </Link>
+                  </TableCell>
                 </TableRow>
               );
             })}
             {rows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={4}
+                  colSpan={5}
                   className="py-8 text-center text-sm text-muted-foreground"
                 >
                   {t("pages.features.no_features")}

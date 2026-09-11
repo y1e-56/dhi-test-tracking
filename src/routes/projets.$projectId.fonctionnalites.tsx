@@ -1,6 +1,8 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { FileText } from "lucide-react";
 import { AppShell } from "@/components/dhi/AppShell";
 import { CriticalityBadge, QualityBar } from "@/components/dhi/indicators";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -57,6 +59,7 @@ function ProjectFeatures() {
               <TableHead>{t("common.criticite")}</TableHead>
               <TableHead>{t("pages.features.tests_covered")}</TableHead>
               <TableHead className="w-56">{t("pages.features.coverage")}</TableHead>
+              <TableHead className="text-right" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -83,12 +86,23 @@ function ProjectFeatures() {
                       <span className="num w-12 text-right text-sm">{pct} %</span>
                     </div>
                   </TableCell>
+                  <TableCell className="text-right">
+                    <Link
+                      to="/fonctionnalites/$featureId/documents"
+                      params={{ featureId: f.id }}
+                      title={t("pages.documents.feature_docs")}
+                    >
+                      <Button size="icon" variant="ghost" className="size-7">
+                        <FileText className="size-4" />
+                      </Button>
+                    </Link>
+                  </TableCell>
                 </TableRow>
               );
             })}
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                   {t("pages.features.no_features")}
                 </TableCell>
               </TableRow>

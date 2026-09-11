@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TEST_TYPES } from "@/lib/dhi-data";
-import { QUALITY_TABS } from "@/lib/dhi-nav";
+
 import { useI18n } from "@/lib/i18n";
 import { useStore } from "@/lib/dhi-store";
 import { useVisibleProductIds } from "@/lib/use-scope";
@@ -68,7 +68,6 @@ function CoveragePage() {
       title={t("pages.couverture.title")}
       subtitle={t("pages.couverture.subtitle")}
       breadcrumb={t("pages.couverture.breadcrumb")}
-      tabs={QUALITY_TABS}
     >
       <Panel
         title={t("pages.couverture.grid_title")}

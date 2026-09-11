@@ -21,10 +21,11 @@ import {
   type Criticality,
   type RequirementStatus,
 } from "@/lib/dhi-data";
-import { QUALITY_TABS } from "@/lib/dhi-nav";
+
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
 import { useVisibleProducts } from "@/lib/use-scope";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
+import { api, type BackendRequirement } from "@/lib/api";
 
 export const Route = createFileRoute("/exigences/$requirementId/modifier")({
   loader: ({ params }) => {
@@ -64,7 +65,7 @@ type ReqForm = {
 function EditRequirementPage() {
   const { requirementId } = Route.useParams();
   const store = useStore();
-  const { products, features, requirements, updateRequirement } = store;
+  const { products, features, requirements, updateRequirement, replaceRequirements } = store;
   const viewableProducts = useVisibleProducts(products);
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -92,22 +93,37 @@ function EditRequirementPage() {
     }));
   };
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) {
       toast.error(t("pages.requirements.title_required"));
       return;
     }
-    updateRequirement(requirement.id, {
+    const patch = {
       productId: form.productId,
       title: form.title.trim(),
       description: form.description,
       priority: form.priority,
       status: form.status,
       featureIds: form.featureIds,
-    });
-    toast.success(t("pages.requirements.updated").replace("{id}", requirement.id));
-    navigate({ to: "/exigences" });
+    };
+    if (!localStorage.getItem("token") || !/^\d+$/.test(requirement.id)) {
+      updateRequirement(requirement.id, patch);
+      toast.success(t("pages.requirements.updated").replace("{id}", requirement.id));
+      void navigate({ to: "/exigences" });
+      return;
+    }
+    try {
+      const response = await api<BackendRequirement>(`/requirements/${requirement.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ title: patch.title, description: patch.description, status: ({ brouillon: "proposed", validee: "validated", couverte: "approved" } as const)[patch.status] }),
+      });
+      replaceRequirements(requirements.map((item) => item.id === requirement.id ? { ...item, ...patch, ...({ id: String(response.id), featureIds: [String(response.feature_id)] }) } : item));
+      toast.success(t("pages.requirements.updated").replace("{id}", requirement.id));
+      void navigate({ to: "/exigences" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("common.erreur"));
+    }
   };
 
   return (
@@ -115,10 +131,9 @@ function EditRequirementPage() {
       title={t("pages.requirements.title")}
       subtitle={t("pages.requirements.subtitle")}
       breadcrumb={t("pages.requirements.breadcrumb")}
-      tabs={QUALITY_TABS}
     >
       <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
-        <div className="mb-6">
+        <div className="-ml-12 mb-6 sm:-ml-16 xl:-ml-20">
           <Button
             variant="outline"
             size="sm"

@@ -109,6 +109,8 @@ export interface Feature {
   description: string;
   criticality: Criticality;
   coverage: Partial<Record<TestType, boolean>>;
+  /** Document source de référence (ex. CDC produit) : "Basé sur <document>". */
+  sourceDocId?: string | undefined;
 }
 
 /*  3.3  Campagnes & Cas de test -------------------------------------------  */
@@ -238,7 +240,103 @@ export interface GoLiveDecision {
   checklistCompletion: number;
 }
 
-/*  3.7  Alertes, Audit & Référentiels ------------------------------------  */
+/*  3.7  Documents --------------------------------------------------------  */
+
+export type ProductDocumentType = "cdc" | "notes_techniques" | "architecture" | (string & {});
+
+export const PRODUCT_DOC_TYPE_LABEL: Record<ProductDocumentType, string> = {
+  cdc: "Cahier des charges",
+  notes_techniques: "Notes techniques",
+  architecture: "Architecture",
+};
+
+export interface ProductDocument {
+  id: string;
+  productId: string;
+  type: ProductDocumentType;
+  name: string;
+  fileName: string;
+  content: string;
+  uploadedBy: string;
+  uploadedAt: string;
+}
+
+export type ProjectDocumentType =
+  | "cdc_sprint"
+  | "spec_features"
+  | "cas_de_test"
+  | "rapport_campagne"
+  | (string & {});
+
+export const PROJECT_DOC_TYPE_LABEL: Record<ProjectDocumentType, string> = {
+  cdc_sprint: "Cahier des charges sprint",
+  spec_features: "Spécifications features",
+  cas_de_test: "Cas de test",
+  rapport_campagne: "Rapport de campagne",
+};
+
+export interface ProjectDocument {
+  id: string;
+  projectId: string;
+  type: ProjectDocumentType;
+  name: string;
+  fileName: string;
+  content: string;
+  uploadedBy: string;
+  uploadedAt: string;
+}
+
+export type CampaignDocumentType =
+  | "scenario_test"
+  | "rapport_execution"
+  | "preuve_test"
+  | "autre"
+  | (string & {});
+
+export const CAMPAIGN_DOC_TYPE_LABEL: Record<CampaignDocumentType, string> = {
+  scenario_test: "Scénario de test",
+  rapport_execution: "Rapport d'exécution",
+  preuve_test: "Preuve de test",
+  autre: "Autre",
+};
+
+export interface CampaignDocument {
+  id: string;
+  campaignId: string;
+  type: CampaignDocumentType;
+  name: string;
+  fileName: string;
+  content: string;
+  uploadedBy: string;
+  uploadedAt: string;
+}
+
+export type FeatureDocumentType =
+  | "specification"
+  | "plan_test"
+  | "preuve_recette"
+  | "autre"
+  | (string & {});
+
+export const FEATURE_DOC_TYPE_LABEL: Record<FeatureDocumentType, string> = {
+  specification: "Spécification",
+  plan_test: "Plan de test",
+  preuve_recette: "Preuve de recette",
+  autre: "Autre",
+};
+
+export interface FeatureDocument {
+  id: string;
+  featureId: string;
+  type: FeatureDocumentType;
+  name: string;
+  fileName: string;
+  content: string;
+  uploadedBy: string;
+  uploadedAt: string;
+}
+
+/*  3.8  Alertes, Audit & Référentiels ------------------------------------  */
 
 export interface Alert {
   id: string;
@@ -560,7 +658,7 @@ export function healthThresholds(rules: { id: string; active: boolean; threshold
     const r = rules.find((x) => x.id === id);
     if (!r || !r.active) return fallback;
     const m = r.threshold.match(/(\d+)/);
-    return m ? parseInt(m[1], 10) : fallback;
+    return m && m[1] ? parseInt(m[1], 10) : fallback;
   };
   return { sain: num("RG-1", 85), surveiller: num("RG-2", 75), risque: num("RG-3", 60) };
 }
@@ -663,6 +761,7 @@ export const features: Feature[] = [
     name: "Authentification",
     description: "Connexion, MFA et gestion de session.",
     criticality: "critique",
+    sourceDocId: "pd-1",
     coverage: {
       fonctionnel: true,
       securite: true,
@@ -1513,4 +1612,134 @@ export const platformUsers: PlatformUser[] = [
   { id: "u-10", name: "Emma Girard", email: "emma.girard@dhi.io", role: "developpeur", active: true, password: "demo" },
   { id: "u-11", name: "Hugo Petit", email: "hugo.petit@dhi.io", role: "developpeur", active: true, password: "demo" },
   { id: "u-12", name: "Nadia Belkacem", email: "nadia.belkacem@dhi.io", role: "chef_testeur", active: true, password: "demo" },
+];
+
+/*  7.14 Documents produits ------------------------------------------------  */
+
+export const productDocuments: ProductDocument[] = [
+  {
+    id: "pd-1",
+    productId: "p-paiement",
+    type: "cdc",
+    name: "CDC Paiement Online v4.12",
+    fileName: "CDC_Paiement_Online_v4.12.pdf",
+    content: "Cahier des charges complet pour la release 4.12 du module Paiement Online. Couvre les新的 méthodes de paiement mobile money, l'optimisation des transactions virement et les exigences PCI-DSS mises à jour.",
+    uploadedBy: "Marie Martin",
+    uploadedAt: "2024-07-15",
+  },
+  {
+    id: "pd-2",
+    productId: "p-paiement",
+    type: "architecture",
+    name: "Architecture technique Paiement",
+    fileName: "Arch_Technique_Paiement.pdf",
+    content: "Diagramme d'architecture microservices : API Gateway → Service Paiement → Adaptateurs (Carte, MobileMoney, Virement). Base PostgreSQL avec réplication, cache Redis, file de messages RabbitMQ.",
+    uploadedBy: "Jean Dupont",
+    uploadedAt: "2024-06-20",
+  },
+  {
+    id: "pd-3",
+    productId: "p-crm",
+    type: "cdc",
+    name: "CDC CRM Clients v2.5",
+    fileName: "CDC_CRM_Clients_v2.5.pdf",
+    content: "Spécifications fonctionnelles pour le refonte de l'interface de gestion du portefeuille client. Nouveau tableau de bord commercial, segmentation automatique et alertes de churn.",
+    uploadedBy: "Sophie Lemaire",
+    uploadedAt: "2024-08-01",
+  },
+  {
+    id: "pd-4",
+    productId: "p-portail",
+    type: "notes_techniques",
+    name: "Notes techniques Portail Agence",
+    fileName: "Notes_Tech_Portail_Agence.md",
+    content: "Guide d'installation et de configuration du portail interne. Prérequis : Java 17, PostgreSQL 15, reverse proxy Nginx. Procédures de déploiement CI/CD via GitLab.",
+    uploadedBy: "Ahmed Bakari",
+    uploadedAt: "2024-05-10",
+  },
+];
+
+/*  7.15 Documents projets ------------------------------------------------  */
+
+export const projectDocuments: ProjectDocument[] = [
+  {
+    id: "prd-1",
+    projectId: "prj-1",
+    type: "cdc_sprint",
+    name: "CDC Sprint 3 — Paiement Mobile Money",
+    fileName: "CDC_Sprint3_MobileMoney.pdf",
+    content: "User stories et critères d'acceptation pour l'intégration Orange Money et Moov Money. Estimation : 34 story points. Objectif : 100% des pays cibles couverts.",
+    uploadedBy: "Ahmed Bakari",
+    uploadedAt: "2024-08-10",
+  },
+  {
+    id: "prd-2",
+    projectId: "prj-1",
+    type: "spec_features",
+    name: "Spécifications features — Module Paiement",
+    fileName: "Spec_Features_Paiement.pdf",
+    content: "Détail des 5 features du sprint : Initiation paiement, Confirmation OTP, historique transactions, remboursement, rapport reconciliation.",
+    uploadedBy: "Marie Martin",
+    uploadedAt: "2024-08-12",
+  },
+  {
+    id: "prd-3",
+    projectId: "prj-2",
+    type: "cas_de_test",
+    name: "Cas de test — Refonte CRM",
+    fileName: "Cas_Test_Refonte_CRM.xlsx",
+    content: "Suite de 42 cas de test pour la refonte de l'interface CRM. Couverture : tableau de bord (12), segmentation (8), alertes churn (10), reporting (12).",
+    uploadedBy: "Pierre Durand",
+    uploadedAt: "2024-08-05",
+  },
+];
+
+/*  7.16 Documents campagnes ----------------------------------------------  */
+
+export const campaignDocuments: CampaignDocument[] = [
+  {
+    id: "cd-1",
+    campaignId: "cmp-1",
+    type: "scenario_test",
+    name: "Scénario de bout en bout — Paiement Mobile",
+    fileName: "Scenario_Paiement_Mobile.pdf",
+    content: "Parcours de test de bout en bout couvrant l'initiation du paiement, la confirmation OTP et la réconciliation des transactions.",
+    uploadedBy: "Nadia Belkacem",
+    uploadedAt: "2024-08-18",
+  },
+  {
+    id: "cd-2",
+    campaignId: "cmp-1",
+    type: "rapport_execution",
+    name: "Rapport d'exécution — Campagne Exploratoire V1",
+    fileName: "Rapport_Exec_Exploratoire_V1.xlsx",
+    content: "Bilan d'exécution : 120 cas exécutés, 108 passés, 8 bloqués, 4 en échec. Taux de couverture : 91 %.",
+    uploadedBy: "Pierre Durand",
+    uploadedAt: "2024-08-20",
+  },
+];
+
+/*  7.17 Documents fonctionnalites ----------------------------------------  */
+
+export const featureDocuments: FeatureDocument[] = [
+  {
+    id: "fd-1",
+    featureId: "feat-1",
+    type: "specification",
+    name: "Spécification — Authentification",
+    fileName: "Spec_Authentification.pdf",
+    content: "Règles métier, maquettes et critères d'acceptation de la fonctionnalité Authentification.",
+    uploadedBy: "Marie Martin",
+    uploadedAt: "2024-07-22",
+  },
+  {
+    id: "fd-2",
+    featureId: "feat-2",
+    type: "plan_test",
+    name: "Plan de test — Gestion des projets",
+    fileName: "Plan_Test_Gestion_Projets.pdf",
+    content: "Stratégie, périmètre et cas de tests planifiés pour la fonctionnalité Gestion des projets.",
+    uploadedBy: "Nadia Belkacem",
+    uploadedAt: "2024-07-28",
+  },
 ];

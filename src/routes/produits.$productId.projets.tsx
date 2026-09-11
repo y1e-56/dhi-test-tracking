@@ -1,4 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import { AppShell } from "@/components/dhi/AppShell";
 import {
   Table,
@@ -13,6 +15,7 @@ import { products as seedProducts, PROJECT_STATUS_LABEL } from "@/lib/dhi-data";
 import { cn } from "@/lib/utils";
 import { productTabs } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/produits/$productId/projets")({
   loader: ({ params }) => {
@@ -38,8 +41,19 @@ function ProductProjects() {
   const { t } = useI18n();
   const { products, projects, campaigns } = useStore();
   const product = products.find((p) => p.id === productId);
+  const [search, setSearch] = useState("");
 
-  const prodProjects = projects.filter((pr) => pr.productId === productId);
+  const prodProjects = useMemo(() => {
+    const productProjects = projects.filter((pr) => pr.productId === productId);
+    if (!search.trim()) return productProjects;
+    const query = search.toLowerCase();
+    return productProjects.filter(
+      (project) =>
+        project.name.toLowerCase().includes(query) ||
+        project.objective.toLowerCase().includes(query) ||
+        project.targetVersion.toLowerCase().includes(query),
+    );
+  }, [projects, productId, search]);
 
   return (
     <AppShell
@@ -49,6 +63,17 @@ function ProductProjects() {
       tabs={productTabs(productId)}
     >
       <div className="panel">
+        <div className="border-b border-border px-4 py-3">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("pages.projects.search_placeholder")}
+              className="pl-8"
+            />
+          </div>
+        </div>
         <Table>
           <TableHeader>
             <TableRow>
@@ -92,7 +117,7 @@ function ProductProjects() {
             {prodProjects.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={3} className="py-8 text-center text-muted-foreground">
-                  {t("pages.product.no_projects")}
+                  {t("pages.product_detail.no_projects")}
                 </TableCell>
               </TableRow>
             ) : null}

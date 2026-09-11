@@ -14,9 +14,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { type ProjectStatus } from "@/lib/dhi-data";
-import { QUALITY_TABS } from "@/lib/dhi-nav";
+
 import { useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
+import { api, mapBackendProject, type BackendProject } from "@/lib/api";
 
 export const Route = createFileRoute("/projets/ajouter")({
   head: () => ({
@@ -41,7 +42,7 @@ type ProjectForm = {
 function CreateProjectPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { products, users, addProject } = useStore();
+  const { products, users, projects, addProject, replaceProjects } = useStore();
   const activeMembers = users.filter((u) => u.active).map((u) => u.name);
 
   const [form, setForm] = useState<ProjectForm>({
@@ -57,13 +58,13 @@ function CreateProjectPage() {
     progress: 0,
   });
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.productId) {
       toast.error(t("pages.projects.required"));
       return;
     }
-    addProject({
+    const localProject = {
       productId: form.productId,
       name: form.name.trim(),
       objective: form.objective,
@@ -74,9 +75,34 @@ function CreateProjectPage() {
       manager: form.manager,
       qaLead: form.qaLead,
       progress: form.progress,
-    });
-    toast.success(`${t("pages.projects.created")} « ${form.name.trim()} »`);
-    navigate({ to: "/projets" });
+    };
+    if (!localStorage.getItem("token")) {
+      addProject(localProject);
+      toast.success(`${t("pages.projects.created")} « ${form.name.trim()} »`);
+      void navigate({ to: "/projets" });
+      return;
+    }
+    try {
+      const lead = users.find((user) => user.name === form.qaLead || user.name === form.manager);
+      const leadId = lead ? Number(lead.id) : NaN;
+      const testLeadIds = Number.isInteger(leadId) && leadId > 0 ? [leadId] : [];
+      const response = await api<{ project: BackendProject }>("/projects", {
+        method: "POST",
+        body: JSON.stringify({
+          name: localProject.name,
+          description: localProject.objective,
+          start_date: localProject.startDate || undefined,
+          end_date: localProject.endDate || undefined,
+          product_id: localProject.productId ? Number(localProject.productId) : null,
+          test_lead_ids: testLeadIds,
+        }),
+      });
+      replaceProjects([...projects, { ...mapBackendProject(response.project), ...localProject, id: String(response.project.id) }]);
+      toast.success(`${t("pages.projects.created")} « ${form.name.trim()} »`);
+      void navigate({ to: "/projets" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("common.erreur"));
+    }
   };
 
   return (
@@ -84,10 +110,9 @@ function CreateProjectPage() {
       title={t("pages.projects.title")}
       subtitle={t("pages.projects.subtitle")}
       breadcrumb={t("pages.projects.breadcrumb")}
-      tabs={QUALITY_TABS}
     >
       <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
-        <div className="mb-6">
+        <div className="-ml-12 mb-6 sm:-ml-16 xl:-ml-20">
           <Button
             variant="outline"
             size="sm"

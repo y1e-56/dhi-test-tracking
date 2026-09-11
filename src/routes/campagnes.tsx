@@ -1,8 +1,10 @@
 import { createFileRoute, Link, useNavigate, Outlet, useMatches } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import { AppShell } from "@/components/dhi/AppShell";
 import { KpiCard, QualityBar, StatusBadge } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -14,7 +16,7 @@ import {
 import { type CampaignStatus } from "@/lib/dhi-data";
 import { canCreate } from "@/lib/role-protection";
 import { visibleCampaigns, getUser } from "@/lib/access";
-import { EXECUTION_TABS } from "@/lib/dhi-nav";
+
 import { useI18n } from "@/lib/i18n";
 import { campaignStats, useStore } from "@/lib/dhi-store";
 
@@ -47,8 +49,20 @@ function CampaignsList() {
   const { t } = useI18n();
   const { campaigns, tests, products, projects } = useStore();
   const navigate = useNavigate();
+  const [search, setSearch] = useState("");
 
-  const viewable = visibleCampaigns(campaigns, products, getUser());
+  const viewable = useMemo(() => {
+    const visible = visibleCampaigns(campaigns, products, getUser());
+    if (!search.trim()) return visible;
+    const query = search.toLowerCase();
+    return visible.filter((campaign) => {
+      const product = products.find((p) => p.id === campaign.productId);
+      const project = projects.find((p) => p.id === campaign.projectId);
+      return [campaign.name, campaign.version, campaign.owner, product?.name, project?.name]
+        .filter(Boolean)
+        .some((value) => value!.toLowerCase().includes(query));
+    });
+  }, [campaigns, products, projects, search]);
 
   const avgExecution = viewable.length
     ? Math.round(
@@ -62,7 +76,6 @@ function CampaignsList() {
       title={t("pages.campaigns.title")}
       subtitle={t("pages.campaigns.subtitle")}
       breadcrumb={t("pages.campaigns.breadcrumb")}
-      tabs={EXECUTION_TABS}
       actions={
         canCreate() ? (
           <Button size="sm" asChild>
@@ -103,9 +116,20 @@ function CampaignsList() {
           <h2 className="text-[13px] font-semibold tracking-tight">
             {t("pages.campaigns.all_campaigns")}
           </h2>
-          <p className="label-eyebrow">
-            {t("pages.campaigns.entries").replace("{count}", String(viewable.length))}
-          </p>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("pages.campaigns.search_placeholder")}
+                className="h-8 w-56 bg-background pl-8"
+              />
+            </div>
+            <p className="label-eyebrow">
+              {t("pages.campaigns.entries").replace("{count}", String(viewable.length))}
+            </p>
+          </div>
         </div>
         <Table>
           <TableHeader>

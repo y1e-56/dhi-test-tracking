@@ -16,10 +16,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { type CampaignStatus } from "@/lib/dhi-data";
-import { EXECUTION_TABS } from "@/lib/dhi-nav";
+
 import { campaignStats, useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 import { useVisibleProducts, useVisibleProjects, useVisibleCampaigns } from "@/lib/use-scope";
+import { api, mapBackendCampaign, type BackendCampaign } from "@/lib/api";
 
 export const Route = createFileRoute("/campagnes/ajouter")({
   head: () => ({
@@ -38,7 +39,7 @@ const CAMPAIGN_TYPES = ["Recette", "Régression", "Sécurité", "Performance", "
 const ENVIRONMENTS = ["RECETTE", "PREPROD", "DEV", "PROD"];
 
 function CreateCampaignPage() {
-  const { campaigns, tests, products, projects, users, addCampaign } = useStore();
+  const { campaigns, tests, products, projects, users, addCampaign, replaceCampaigns } = useStore();
   const navigate = useNavigate();
   const { t } = useI18n();
 
@@ -72,7 +73,7 @@ function CreateCampaignPage() {
 
   const formProjects = viewableProjects.filter((pr) => pr.productId === form.productId);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) {
       toast.error(t("pages.add_campaign.name_required"));
@@ -89,8 +90,7 @@ function CreateCampaignPage() {
       return;
     }
 
-    const id = addCampaign(
-      {
+    const localCampaign = {
         productId: form.productId,
         projectId: form.projectId,
         name: form.name.trim(),
@@ -103,13 +103,37 @@ function CreateCampaignPage() {
         endDate: form.endDate || form.startDate,
         testers: [...form.testers],
         developers: [...form.developers],
-      },
-      form.clone ? form.cloneFrom : undefined,
-    );
-    toast.success(
-      `${t("common.campagne")} « ${form.name.trim()} » ${t("pages.add_campaign.created")}`,
-    );
-    navigate({ to: "/campagnes/$campaignId", params: { campaignId: id } });
+      };
+    if (!localStorage.getItem("token") || !/^\d+$/.test(form.projectId)) {
+      const id = addCampaign(localCampaign, form.clone ? form.cloneFrom : undefined);
+      toast.success(`${t("common.campagne")} « ${form.name.trim()} » ${t("pages.add_campaign.created")}`);
+      void navigate({ to: "/campagnes/$campaignId", params: { campaignId: id } });
+      return;
+    }
+    try {
+      const numericUserId = (id: string | undefined) => {
+        const n = Number(id);
+        return Number.isInteger(n) && n > 0 ? n : undefined;
+      };
+      const toNumericIds = (names: Set<string>) =>
+        users
+          .filter((user) => names.has(user.name))
+          .map((user) => numericUserId(user.id))
+          .filter((n): n is number => n !== undefined);
+      const testers = toNumericIds(form.testers);
+      const developers = toNumericIds(form.developers);
+      const organizationMode = form.type === "Recette" || form.type === "Régression" ? "scenario" : form.type === "Sécurité" || form.type === "Performance" ? "combination" : "exploratory";
+      const response = await api<{ campaign: BackendCampaign }>("/campaigns", {
+        method: "POST",
+        body: JSON.stringify({ project_id: Number(form.projectId), name: localCampaign.name, objective: `Campagne ${form.type} ${form.version}`, organization_mode: organizationMode, start_date: localCampaign.startDate, end_date: localCampaign.endDate, testers, developers }),
+      });
+      const backendCampaign = mapBackendCampaign(response.campaign, projects.find((project) => project.id === form.projectId) ? { id: Number(form.projectId), product_id: Number(form.productId), name: "" } : undefined);
+      replaceCampaigns([...campaigns, { ...backendCampaign, ...localCampaign, id: String(response.campaign.id) }]);
+      toast.success(`${t("common.campagne")} « ${form.name.trim()} » ${t("pages.add_campaign.created")}`);
+      void navigate({ to: "/campagnes/$campaignId", params: { campaignId: String(response.campaign.id) } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("common.erreur"));
+    }
   };
 
   return (
@@ -121,10 +145,9 @@ function CreateCampaignPage() {
         t("nav.campagnes"),
         t("pages.add_campaign.breadcrumb_create"),
       ]}
-      tabs={EXECUTION_TABS}
     >
       <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
-        <div className="mb-6">
+        <div className="-ml-12 mb-6 sm:-ml-16 xl:-ml-20">
           <Button
             variant="outline"
             size="sm"

@@ -12,7 +12,7 @@ import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { DhiStoreProvider } from "@/lib/dhi-store";
+import { DhiStoreProvider, loadSession, validateSessionBackend } from "@/lib/dhi-store";
 import { I18nProvider, useI18n } from "@/lib/i18n";
 
 function NotFoundComponent() {
@@ -78,7 +78,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  beforeLoad: async () => {},
+  beforeLoad: async () => {
+    if (typeof window === "undefined") return undefined;
+    if (!loadSession()) return undefined;
+    const valid = await validateSessionBackend();
+    if (!valid) return { redirect: "/login" } as const;
+    return undefined;
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },

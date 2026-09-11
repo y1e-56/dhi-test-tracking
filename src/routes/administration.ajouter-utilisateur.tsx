@@ -1,7 +1,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { AppShell } from "@/components/dhi/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ROLE_LABEL, type AppRole } from "@/lib/dhi-data";
-import { SYSTEM_TABS } from "@/lib/dhi-nav";
+
 import { useI18n } from "@/lib/i18n";
 import { loadSession, useStore } from "@/lib/dhi-store";
 
@@ -46,8 +46,9 @@ function AddUserPage() {
     password: "",
     confirmPassword: "",
   });
+  const [showPasswords, setShowPasswords] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.name.trim()) {
@@ -80,16 +81,20 @@ function AddUserPage() {
       return;
     }
 
-    addUser({
-      name: formData.name.trim(),
-      email: formData.email.trim(),
-      role: formData.role,
-      active: true,
-      password: formData.password,
-    });
+    try {
+      await addUser({
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        role: formData.role,
+        active: true,
+        password: formData.password,
+      });
 
-    toast.success(t("pages.add_user.success").replace("{name}", formData.name.trim()));
-    navigate({ to: "/administration" });
+      toast.success(t("pages.add_user.success").replace("{name}", formData.name.trim()));
+      navigate({ to: "/administration" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("pages.add_user.error"));
+    }
   };
 
   return (
@@ -97,10 +102,9 @@ function AddUserPage() {
       title={t("pages.add_user.title")}
       subtitle={t("pages.add_user.subtitle")}
       breadcrumb={t("pages.add_user.breadcrumb")}
-      tabs={SYSTEM_TABS}
     >
       <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
-        <div className="mb-6">
+        <div className="-ml-12 mb-6 sm:-ml-16 xl:-ml-20">
           <Button
             variant="outline"
             size="sm"
@@ -193,32 +197,58 @@ function AddUserPage() {
                 <Label htmlFor="password" className="text-sm font-medium">
                   {t("pages.add_user.password")}
                 </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder={t("pages.add_user.password_placeholder")}
-                  autoComplete="new-password"
-                  required
-                  className="h-11"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPasswords ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder={t("pages.add_user.password_placeholder")}
+                    autoComplete="new-password"
+                    required
+                    className="h-11 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords((v) => !v)}
+                    aria-label={
+                      showPasswords ? t("login.cacher_mdp") : t("login.afficher_mdp")
+                    }
+                    title={showPasswords ? t("login.cacher_mdp") : t("login.afficher_mdp")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {showPasswords ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
               </div>
 
               <div className="grid gap-2">
                 <Label htmlFor="confirmPassword" className="text-sm font-medium">
                   {t("pages.add_user.confirm_password")}
                 </Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  placeholder={t("pages.add_user.confirm_password_placeholder")}
-                  autoComplete="new-password"
-                  required
-                  className="h-11"
-                />
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showPasswords ? "text" : "password"}
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    placeholder={t("pages.add_user.confirm_password_placeholder")}
+                    autoComplete="new-password"
+                    required
+                    className="h-11 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords((v) => !v)}
+                    aria-label={
+                      showPasswords ? t("login.cacher_mdp") : t("login.afficher_mdp")
+                    }
+                    title={showPasswords ? t("login.cacher_mdp") : t("login.afficher_mdp")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {showPasswords ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

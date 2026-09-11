@@ -34,7 +34,6 @@ import {
 import { type Product } from "@/lib/dhi-data";
 import { canCreate } from "@/lib/role-protection";
 import { visibleProducts, getUser } from "@/lib/access";
-import { QUALITY_TABS } from "@/lib/dhi-nav";
 import { productScore, useStore, useHealthOf } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 
@@ -104,7 +103,6 @@ function ProductsList() {
       title={t("pages.products.title")}
       subtitle={t("pages.products.subtitle")}
       breadcrumb={t("pages.products.breadcrumb")}
-      tabs={QUALITY_TABS}
       actions={
         canCreate() ? (
           <Link to="/produits/ajouter">

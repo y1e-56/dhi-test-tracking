@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ShieldCheck, AlertCircle, Moon, Sun, Globe } from "lucide-react";
+import { ShieldCheck, AlertCircle, Moon, Sun, Globe, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,32 +29,30 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
-const DEMO_ACCOUNTS: { email: string; name: string; role: string }[] = [
-  { email: "karim.ndiaye@dhi.io", name: "Karim Ndiaye", role: "admin" },
-  { email: "marie.martin@dhi.io", name: "Marie Martin", role: "qa_lead" },
-  { email: "sophie.lemaire@dhi.io", name: "Sophie Lemaire", role: "quality_manager" },
-  { email: "lea.moreau@dhi.io", name: "Léa Moreau", role: "product_owner" },
-  { email: "ahmed.bakari@dhi.io", name: "Ahmed Bakari", role: "chef_projet" },
-  { email: "pierre.durand@dhi.io", name: "Pierre Durand", role: "testeur" },
-  { email: "lucas.bernard@dhi.io", name: "Lucas Bernard", role: "developpeur" },
-  { email: "jean.dupont@dhi.io", name: "Jean Dupont", role: "approver" },
+const DEMO_ACCOUNTS: { email: string; name: string; role: string; password: string }[] = [
+  { email: "admin@test.fr", name: "Admin Principal", role: "admin", password: "Admin@DHI2026" },
+  { email: "chef@test.fr", name: "Chef Projet", role: "chef_testeur", password: "Chef@DHI2026" },
+  { email: "chef2@test.fr", name: "Second Chef", role: "chef_testeur", password: "Chef@DHI2026" },
+  { email: "testeur@test.fr", name: "Testeur Principal", role: "tester", password: "Testeur@DHI2026" },
+  { email: "dev@test.fr", name: "Developpeur Senior", role: "developer", password: "Dev@DHI2026" },
 ];
 
 function LoginPage() {
   const { login, users } = useStore();
   const navigate = useNavigate();
   const { lang, setLang, theme, toggleTheme, languages, t } = useI18n();
-  const [email, setEmail] = useState("marie.martin@dhi.io");
-  const [password, setPassword] = useState("demo");
+  const [email, setEmail] = useState("admin@test.fr");
+  const [password, setPassword] = useState("Admin@DHI2026");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    const r = login(email, password);
+    const r = await login(email, password);
     if (!r.ok) {
       setError(r.error ?? t("common.erreur"));
       setLoading(false);
@@ -70,12 +68,13 @@ function LoginPage() {
   const toggleLanguage = () => {
     const currentIndex = languages.findIndex((l) => l.id === lang);
     const nextIndex = (currentIndex + 1) % languages.length;
-    setLang(languages[nextIndex].id);
+    const next = languages[nextIndex] ?? languages[0];
+    if (next) setLang(next.id);
   };
 
-  const pick = (e: string) => {
-    setEmail(e);
-    setPassword("demo");
+  const pick = (account: (typeof DEMO_ACCOUNTS)[number]) => {
+    setEmail(account.email);
+    setPassword(account.password);
   };
 
   return (
@@ -149,16 +148,29 @@ function LoginPage() {
                 <Label htmlFor="password" className="text-sm font-medium">
                   {t("login.mdp")}
                 </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••"
-                  required
-                  className="h-10"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••"
+                    required
+                    className="h-10 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={
+                      showPassword ? t("login.cacher_mdp") : t("login.afficher_mdp")
+                    }
+                    title={showPassword ? t("login.cacher_mdp") : t("login.afficher_mdp")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
               </div>
 
               <Button className="mt-2 h-10" type="submit" disabled={loading}>
@@ -167,7 +179,7 @@ function LoginPage() {
 
               <p className="pt-2 text-center text-xs text-muted-foreground">
                 {t("login.mdp")} {t("pages.login.demo_password")} :{" "}
-                <span className="font-mono font-medium">demo</span>
+                <span className="font-mono font-medium">Admin@DHI2026</span>
               </p>
             </form>
           </Card>
@@ -187,7 +199,7 @@ function LoginPage() {
                     key={a.email}
                     type="button"
                     disabled={!!disabled}
-                    onClick={() => pick(a.email)}
+                    onClick={() => pick(a)}
                     className={
                       "flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3 text-left text-sm transition-all " +
                       (disabled

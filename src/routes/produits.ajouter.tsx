@@ -13,9 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { QUALITY_TABS } from "@/lib/dhi-nav";
+
 import { useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
+import { api, mapBackendProduct, type BackendProduct } from "@/lib/api";
 
 export const Route = createFileRoute("/produits/ajouter")({
   head: () => ({
@@ -31,7 +32,7 @@ function CreateProductPage() {
   console.log("[DHI] CreateProductPage RENDERED");
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { users, addProduct } = useStore();
+  const { users, products, addProduct, replaceProducts } = useStore();
   const activeMembers = users.filter((u) => u.active).map((u) => u.name);
 
   const [form, setForm] = useState({
@@ -41,23 +42,31 @@ function CreateProductPage() {
     qaLead: "",
   });
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.owner || !form.qaLead) {
       toast.error(t("pages.products.required"));
       return;
     }
-    addProduct({
-      name: form.name.trim(),
-      description: form.description,
-      owner: form.owner,
-      qaLead: form.qaLead,
-      qaTeam: [form.qaLead],
-      versions: ["1.0"],
-      score: 80,
-    });
-    toast.success(t("pages.products.created"));
-    navigate({ to: "/produits" });
+    const owner = users.find((user) => user.name === form.owner);
+    const qaLead = users.find((user) => user.name === form.qaLead);
+    if (!localStorage.getItem("token")) {
+      addProduct({ name: form.name.trim(), description: form.description, owner: form.owner, qaLead: form.qaLead, qaTeam: [form.qaLead], versions: ["1.0"], score: 80 });
+      toast.success(t("pages.products.created"));
+      void navigate({ to: "/produits" });
+      return;
+    }
+    try {
+      const response = await api<{ product: BackendProduct }>("/products", {
+        method: "POST",
+        body: JSON.stringify({ name: form.name.trim(), description: form.description, owner_id: owner ? Number(owner.id) : null, quality_manager_id: qaLead ? Number(qaLead.id) : null }),
+      });
+      replaceProducts([...products, { ...mapBackendProduct(response.product), owner: form.owner, qaLead: form.qaLead, qaTeam: [form.qaLead] }]);
+      toast.success(t("pages.products.created"));
+      void navigate({ to: "/produits" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("common.erreur"));
+    }
   };
 
   return (
@@ -65,10 +74,9 @@ function CreateProductPage() {
       title={t("pages.products.title")}
       subtitle={t("pages.products.subtitle")}
       breadcrumb={t("pages.products.breadcrumb")}
-      tabs={QUALITY_TABS}
     >
       <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
-        <div className="mb-6">
+        <div className="-ml-12 mb-6 sm:-ml-16 xl:-ml-20">
           <Button
             variant="outline"
             size="sm"

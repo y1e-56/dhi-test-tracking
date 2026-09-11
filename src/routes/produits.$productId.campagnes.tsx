@@ -1,8 +1,10 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import { AppShell } from "@/components/dhi/AppShell";
 import { QualityBar, StatusBadge } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -37,8 +39,19 @@ function ProductCampaigns() {
   const { t } = useI18n();
   const { products, projects, campaigns, tests } = useStore();
   const product = products.find((p) => p.id === productId);
+  const [search, setSearch] = useState("");
 
-  const prodCampaigns = campaigns.filter((c) => c.productId === productId);
+  const prodCampaigns = useMemo(() => {
+    const productCampaigns = campaigns.filter((c) => c.productId === productId);
+    if (!search.trim()) return productCampaigns;
+    const query = search.toLowerCase();
+    return productCampaigns.filter((campaign) => {
+      const project = projects.find((candidate) => candidate.id === campaign.projectId);
+      return [campaign.name, campaign.version, campaign.owner, project?.name]
+        .filter(Boolean)
+        .some((value) => value!.toLowerCase().includes(query));
+    });
+  }, [campaigns, productId, projects, search]);
 
   return (
     <AppShell
@@ -57,6 +70,17 @@ function ProductCampaigns() {
       }
     >
       <div className="panel">
+        <div className="border-b border-border px-4 py-3">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("pages.campaigns.search_placeholder")}
+              className="pl-8"
+            />
+          </div>
+        </div>
         <Table>
           <TableHeader>
             <TableRow>

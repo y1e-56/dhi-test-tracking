@@ -82,15 +82,14 @@ function ProductDetail() {
       subtitle={`${t("common.produit")} · ${product.description}`}
       breadcrumb={[t("nav.qualite"), t("nav.produits"), product.name]}
       tabs={productTabs(productId)}
-      actions={
-        <Link
-          to="/produits"
-          className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-        >
-          <ArrowLeft className="size-4" /> {t("pages.product_detail.portfolio")}
-        </Link>
-      }
     >
+      <Link
+        to="/produits"
+        dir="ltr"
+        className="inline-flex flex-row items-center gap-1 text-sm font-medium text-primary hover:underline"
+      >
+        <ArrowLeft className="size-4" /> {t("pages.product_detail.portfolio")}
+      </Link>
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel
           title={t("pages.product_detail.identity_responsibilities")}
@@ -338,7 +337,7 @@ function ProductDetail() {
             <p className="label-eyebrow">{t("nav.product_projects")}</p>
             <p className="num mt-1 text-3xl font-semibold">{prodProjects.length}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {t("pages.product.associated_projects")}
+              {t("pages.product_detail.associated_projects")}
             </p>
           </div>
         </Link>

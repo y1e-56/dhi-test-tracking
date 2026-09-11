@@ -1,6 +1,6 @@
 import { createFileRoute, redirect, Link, Outlet, useMatches } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/dhi/AppShell";
 import { KpiCard } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ROLE_LABEL, type AppRole } from "@/lib/dhi-data";
-import { SYSTEM_TABS } from "@/lib/dhi-nav";
+
 import { useI18n } from "@/lib/i18n";
 import { loadSession, useStore } from "@/lib/dhi-store";
 
@@ -47,7 +47,7 @@ function AdminPage() {
 
 function AdminList() {
   const { t } = useI18n();
-  const { users, updateUserRole, toggleUserActive } = useStore();
+  const { users, updateUserRole, toggleUserActive, removeUser } = useStore();
   const roles = Object.keys(ROLE_LABEL) as AppRole[];
 
   return (
@@ -55,7 +55,6 @@ function AdminList() {
       title={t("pages.administration.title")}
       subtitle={t("pages.administration.subtitle")}
       breadcrumb={["Système", "Administration"]}
-      tabs={SYSTEM_TABS}
       actions={
         <Button size="sm" asChild>
           <Link to="/administration/ajouter-utilisateur">
@@ -102,11 +101,19 @@ function AdminList() {
                 <TableCell>
                   <Select
                     value={u.role}
-                    onValueChange={(v) => {
-                      updateUserRole(u.id, v as AppRole);
-                      toast.success(
-                        t("pages.administration.role_updated").replace("{name}", u.name),
-                      );
+                    onValueChange={async (v) => {
+                      try {
+                        await updateUserRole(u.id, v as AppRole);
+                        toast.success(
+                          t("pages.administration.role_updated").replace("{name}", u.name),
+                        );
+                      } catch (err) {
+                        toast.error(
+                          err instanceof Error
+                            ? err.message
+                            : t("pages.administration.error"),
+                        );
+                      }
                     }}
                   >
                     <SelectTrigger className="h-8 w-52 text-xs">
@@ -125,22 +132,54 @@ function AdminList() {
                   {u.active ? t("common.actif") : t("common.inactif")}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      toggleUserActive(u.id);
-                      toast.success(
-                        u.active
-                          ? t("pages.administration.deactivated").replace("{name}", u.name)
-                          : t("pages.administration.reactivated").replace("{name}", u.name),
-                      );
-                    }}
-                  >
-                    {u.active
-                      ? t("pages.administration.deactivate")
-                      : t("pages.administration.activate")}
-                  </Button>
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          await toggleUserActive(u.id);
+                          toast.success(
+                            u.active
+                              ? t("pages.administration.deactivated").replace("{name}", u.name)
+                              : t("pages.administration.reactivated").replace("{name}", u.name),
+                          );
+                        } catch (err) {
+                          toast.error(
+                            err instanceof Error
+                              ? err.message
+                              : t("pages.administration.error"),
+                          );
+                        }
+                      }}
+                    >
+                      {u.active
+                        ? t("pages.administration.deactivate")
+                        : t("pages.administration.activate")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-danger hover:bg-danger/10"
+                      title={t("pages.administration.delete").replace("{name}", u.name)}
+                      onClick={async () => {
+                        try {
+                          await removeUser(u.id);
+                          toast.success(
+                            t("pages.administration.deleted").replace("{name}", u.name),
+                          );
+                        } catch (err) {
+                          toast.error(
+                            err instanceof Error
+                              ? err.message
+                              : t("pages.administration.error"),
+                          );
+                        }
+                      }}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

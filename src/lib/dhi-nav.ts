@@ -7,36 +7,7 @@ export interface AppShellTab {
   params?: Record<string, string>;
 }
 
-export const PILOTAGE_TABS: AppShellTab[] = [
-  { to: "/", label: "nav.dashboard", exact: true },
-  { to: "/alertes", label: "nav.alertes" },
-  { to: "/notifications", label: "nav.notifications" },
-];
-
-/** Onglets horizontaux — périmètre Qualité (Produit → Projet → Features / exigences / couverture). */
-export const QUALITY_TABS: AppShellTab[] = [
-  { to: "/produits", label: "nav.produits" },
-  { to: "/projets", label: "nav.projets" },
-  { to: "/fonctionnalites", label: "nav.fonctionnalites" },
-  { to: "/exigences", label: "nav.exigences" },
-  { to: "/couverture", label: "nav.couverture" },
-];
-
-export const EXECUTION_TABS: AppShellTab[] = [{ to: "/campagnes", label: "nav.campagnes" }];
-
-export const DECISION_TABS: AppShellTab[] = [
-  { to: "/go-live", label: "nav.go_live" },
-  { to: "/points-a-surveiller", label: "nav.points_surveiller" },
-];
-
-export const SYSTEM_TABS: AppShellTab[] = [
-  { to: "/anomalies", label: "nav.anomalies" },
-  { to: "/referentiels", label: "nav.referentiels" },
-  { to: "/administration", label: "nav.administration" },
-  { to: "/audit", label: "nav.audit" },
-];
-
-/** Onglets horizontaux contextuels d'un produit (Aperçu → Projets → Fonctionnalités → Campagnes). */
+/** Onglets horizontaux contextuels d'un produit (Aperçu → Projets → Fonctionnalités → Campagnes → Documents). */
 export function productTabs(productId: string): AppShellTab[] {
   return [
     {
@@ -56,10 +27,11 @@ export function productTabs(productId: string): AppShellTab[] {
       params: { productId },
     },
     { to: "/produits/$productId/campagnes", label: "nav.product_campaigns", params: { productId } },
+    { to: "/produits/$productId/documents", label: "nav.product_documents", params: { productId } },
   ];
 }
 
-/** Onglets horizontaux contextuels d'un projet (Vue d'ensemble → Fonctionnalités → Campagnes → Cas de test). */
+/** Onglets horizontaux contextuels d'un projet (Vue d'ensemble → Fonctionnalités → Campagnes → Cas de test → Documents). */
 export function projectTabs(projectId: string): AppShellTab[] {
   return [
     {
@@ -79,6 +51,7 @@ export function projectTabs(projectId: string): AppShellTab[] {
       params: { projectId },
     },
     { to: "/projets/$projectId/tests", label: "nav.project_tests", params: { projectId } },
+    { to: "/projets/$projectId/documents", label: "nav.project_documents", params: { projectId } },
   ];
 }
 
@@ -104,6 +77,11 @@ export function campaignTabs(campaignId: string): AppShellTab[] {
     {
       to: "/campagnes/$campaignId/importer",
       label: "nav.campaign_import",
+      params: { campaignId },
+    },
+    {
+      to: "/campagnes/$campaignId/documents",
+      label: "nav.campaign_documents",
       params: { campaignId },
     },
   ];

@@ -65,6 +65,9 @@ function ImportTestsPage() {
   if (campaign && !campaignVisibleTo(campaign, products, getUser())) {
     return <CampaignAccessDenied subject={campaign.name} />;
   }
+  if (campaign?.status === "terminee") {
+    return <CampaignAccessDenied subject={campaign.name} />;
+  }
   if (!campaign) return null;
 
   const handleFilePick = (file: File) => {
@@ -150,7 +153,7 @@ function ImportTestsPage() {
       tabs={campaignTabs(campaignId)}
     >
       <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
-        <div className="mb-6">
+        <div className="-ml-12 mb-6 sm:-ml-16 xl:-ml-20">
           <Button
             variant="outline"
             size="sm"
