@@ -2,12 +2,18 @@ import pool from '../config/database.js';
 
 export async function getGlobalStats(client = null) {
   const c = client || pool;
-  const [projects, campaigns, features, anomalies, users] = await Promise.all([
+  const [projects, campaigns, campaignsActive, features, anomalies, anomaliesOpen, users, products, testCases] = await Promise.all([
     c.query('SELECT COUNT(*)::int as count FROM projects WHERE is_archived = FALSE'),
     c.query('SELECT COUNT(*)::int as count FROM campaigns c INNER JOIN projects p ON p.id = c.project_id AND p.is_archived = FALSE'),
+    c.query(`SELECT COUNT(*)::int as count FROM campaigns c INNER JOIN projects p ON p.id = c.project_id AND p.is_archived = FALSE
+             WHERE c.status IN ('in_progress', 'planning')`),
     c.query('SELECT COUNT(*)::int as count FROM features f INNER JOIN campaigns c ON c.id = f.campaign_id INNER JOIN projects p ON p.id = c.project_id AND p.is_archived = FALSE'),
     c.query('SELECT COUNT(*)::int as count FROM anomalies a INNER JOIN campaigns c ON c.id = a.campaign_id INNER JOIN projects p ON p.id = c.project_id AND p.is_archived = FALSE'),
+    c.query(`SELECT COUNT(*)::int as count FROM anomalies a INNER JOIN campaigns c ON c.id = a.campaign_id INNER JOIN projects p ON p.id = c.project_id AND p.is_archived = FALSE
+             WHERE a.status <> 'validated'`),
     c.query('SELECT COUNT(*)::int as count FROM users'),
+    c.query('SELECT COUNT(*)::int as count FROM products'),
+    c.query('SELECT COUNT(*)::int as count FROM test_cases tc INNER JOIN campaigns c ON c.id = tc.campaign_id INNER JOIN projects p ON p.id = c.project_id AND p.is_archived = FALSE'),
   ]);
 
   const anomaliesByStatus = (await c.query(
@@ -26,9 +32,13 @@ export async function getGlobalStats(client = null) {
   return {
     projects: projects.rows[0].count,
     campaigns: campaigns.rows[0].count,
+    campaignsActive: campaignsActive.rows[0].count,
     features: features.rows[0].count,
     anomalies: anomalies.rows[0].count,
+    anomaliesOpen: anomaliesOpen.rows[0].count,
     users: users.rows[0].count,
+    products: products.rows[0].count,
+    testCases: testCases.rows[0].count,
     anomaliesByStatus,
     recentActivity: recentActivity.rows,
   };

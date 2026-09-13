@@ -859,13 +859,17 @@ export async function deleteReleaseById(productId: number, releaseId: number) {
 /* ── Tableau de bord --------------------------------------------------------- */
 
 export type BackendDashboardStats = {
-  products?: number;
-  projects?: number;
-  campaigns?: number;
-  testCases?: number;
-  anomalies?: number;
-  users?: number;
-  [key: string]: unknown;
+  projects: number;
+  campaigns: number;
+  campaignsActive: number;
+  features: number;
+  anomalies: number;
+  anomaliesOpen: number;
+  users: number;
+  products: number;
+  testCases: number;
+  anomaliesByStatus?: { status: string; count: number }[];
+  recentActivity?: unknown[];
 };
 
 export async function getDashboardStats() {

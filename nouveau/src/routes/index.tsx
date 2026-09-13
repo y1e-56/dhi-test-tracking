@@ -16,10 +16,15 @@ import { useI18n } from "@/lib/i18n";
 import { api } from "@/lib/api";
 
 type DashboardStats = {
-  products?: number;
+  products: number;
   projects: number;
   campaigns: number;
+  campaignsActive: number;
+  features: number;
   anomalies: number;
+  anomaliesOpen: number;
+  users: number;
+  testCases: number;
 };
 
 export const Route = createFileRoute("/")({
@@ -106,15 +111,15 @@ function Dashboard() {
         />
         <KpiCard
           label={t("dashboard.executive.active_campaigns")}
-          value={backendStats?.campaigns ?? actives}
+          value={backendStats?.campaignsActive ?? actives}
           tone="info"
           hint={t("dashboard.executive.current_campaigns")}
           onClick={() => void navigate({ to: "/campagnes" })}
         />
         <KpiCard
           label={t("dashboard.executive.open_incidents")}
-          value={backendStats?.anomalies ?? incidents}
-          tone={incidents ? "warning" : "success"}
+          value={backendStats?.anomaliesOpen ?? incidents}
+          tone={(backendStats?.anomaliesOpen ?? incidents) ? "warning" : "success"}
           icon={<TriangleAlert className="size-4" />}
           hint={t("pages.root.gravite_haute")}
           onClick={() => void navigate({ to: "/anomalies" })}
