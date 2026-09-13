@@ -247,11 +247,32 @@ function saveSession(user: SessionUser | null) {
   else window.localStorage.removeItem(SESSION_KEY);
 }
 
+let currentUserSetter: ((user: SessionUser | null) => void) | null = null;
+
+export function registerSessionSetter(setter: ((user: SessionUser | null) => void) | null) {
+  currentUserSetter = setter;
+}
+
+export function reconcileSessionFromMe(me: BackendUser): void {
+  const session = loadSession();
+  if (!session) return;
+  const freshUser = mapBackendUser(me) as SessionUser;
+  if (
+    session.role !== freshUser.role ||
+    session.name !== freshUser.name ||
+    session.email !== freshUser.email
+  ) {
+    saveSession(freshUser);
+    currentUserSetter?.(freshUser);
+  }
+}
+
 export async function validateSessionBackend(): Promise<boolean> {
   const session = loadSession();
   if (!session) return false;
   try {
-    await api<unknown>("/auth/me");
+    const me = await api<BackendUser>("/auth/me");
+    reconcileSessionFromMe(me);
     return true;
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) return false;
@@ -512,6 +533,11 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
   ]);
 
   useEffect(() => {
+    registerSessionSetter(setCurrentUser);
+    return () => registerSessionSetter(null);
+  }, []);
+
+  useEffect(() => {
     saveSession(currentUser);
   }, [currentUser]);
 
@@ -675,6 +701,13 @@ const featureById = new Map<string, Feature>();
         ),
       );
       if (backendUsers) setUsers(backendUsers);
+
+      try {
+        const me = await api<BackendUser>("/auth/me");
+        reconcileSessionFromMe(me);
+      } catch (error) {
+        console.warn("[DHI] Session non rafraîchie", error);
+      }
 
       try {
         const rules = await listReferentialRules();
