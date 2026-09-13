@@ -32,9 +32,9 @@ export async function findByName(featureId, name, excludeId = null, client = nul
 export async function create(data, campaignId, client = null) {
   const c = client || pool;
   const result = await c.query(
-    `INSERT INTO test_cases (feature_id, campaign_id, name, steps, expected_result, priority)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [data.feature_id, campaignId, data.name, data.steps || null, data.expected_result || null, data.priority || 'medium']
+    `INSERT INTO test_cases (feature_id, campaign_id, name, description, steps, expected_result, priority, type)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+    [data.feature_id, campaignId, data.name, data.description || null, data.steps || null, data.expected_result || null, data.priority || 'medium', data.type || 'fonctionnel']
   );
   return result.rows[0];
 }

@@ -108,6 +108,7 @@ import {
   updateFeatureById,
   deleteFeatureById,
   createTestCase,
+  updateTestCaseById,
   deleteTestCaseById,
   createExecution,
   updateExecutionById,
@@ -1515,6 +1516,21 @@ const featureById = new Map<string, Feature>();
             }
           }
           pushAudit(asActor(patch.tester ?? "Système"), "Verdict enregistré", id, patch.verdict);
+        } else if (test) {
+          const testBackend = backendIdOf(test.id);
+          if (testBackend) {
+            const patchData = {
+              ...(patch.name !== undefined && { name: patch.name }),
+              ...(patch.preconditions !== undefined && { description: patch.preconditions.join(", ") }),
+              ...(patch.expected !== undefined && { expected_result: patch.expected.join(" · ") }),
+              ...(patch.steps !== undefined && { steps: patch.steps }),
+              ...(patch.criticality !== undefined && { priority: toBackendPriority(patch.criticality) }),
+              ...(patch.type !== undefined && { type: patch.type }),
+            };
+            if (Object.keys(patchData).length > 0) {
+              attemptBackend("Mise à jour cas de test", () => updateTestCaseById(testBackend, patchData));
+            }
+          }
         }
       },
       deleteTest: (id) => {

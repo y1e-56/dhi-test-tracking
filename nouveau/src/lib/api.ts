@@ -750,7 +750,7 @@ export async function updateTestCaseById(id: number, patch: { name?: string; des
     description: patch.description,
     expected_result: patch.expected_result,
     priority: patch.priority,
-    test_type: patch.type,
+    type: patch.type,
   };
   if (patch.steps) body["steps"] = patch.steps.join("\n");
   else if (patch.steps_text) body["steps"] = patch.steps_text;
