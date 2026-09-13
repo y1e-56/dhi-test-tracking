@@ -7,9 +7,9 @@ import bus from '../lib/eventBus.js';
 
 const router = Router();
 
-const requireAnomalyReporter = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'tester');
-const requireAnomalyManager = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
-const requireAnomalyAssignee = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'tester', 'developer');
+const requireAnomalyReporter = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'tester');
+const requireAnomalyManager = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
+const requireAnomalyAssignee = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'tester', 'developer');
 
 const createSchema = z.object({
   feature_id: z.number(),

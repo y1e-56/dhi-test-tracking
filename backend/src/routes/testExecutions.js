@@ -5,8 +5,8 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
-const requireExecutionManager = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
-const requireExecutionEditor = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'tester');
+const requireExecutionManager = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
+const requireExecutionEditor = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'tester');
 
 const createSchema = z.object({
   test_case_id: z.number().int().positive(),

@@ -5,8 +5,8 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
-const requireWatchPointManager = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
-const requireWatchPointEditor = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'tester');
+const requireWatchPointManager = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
+const requireWatchPointEditor = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'tester');
 
 const createSchema = z.object({
   project_id: z.number().int().positive(),

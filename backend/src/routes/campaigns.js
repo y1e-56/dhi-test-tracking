@@ -6,7 +6,7 @@ import bus from '../lib/eventBus.js';
 
 const router = Router();
 
-const requireCampaignCreator = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'test_lead');
+const requireCampaignCreator = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'test_lead');
 
 const createSchema = z.object({
   project_id: z.number(),
@@ -197,7 +197,7 @@ router.post('/', authenticate, requireCampaignCreator, async (req, res) => {
  */
 router.put('/:id', authenticate, async (req, res) => {
   const userRole = req.user.role;
-  const allowedRoles = ['admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet'];
+  const allowedRoles = ['chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet'];
 
   if (!allowedRoles.includes(userRole)) {
     return res.status(403).json({ error: 'Vous n\'avez pas la permission de modifier cette campagne' });
@@ -242,12 +242,10 @@ router.delete('/:id', authenticate, async (req, res) => {
 
   console.log('[campaigns] DELETE /:id campaignId=' + campaignId + ' userId=' + userId + ' role=' + userRole);
 
-  // Vérifier les permissions : admin ou chef testeur de la campagne
-  if (userRole !== 'admin') {
-    const campaign = await campaignService.getCampaign(campaignId);
-    if (!campaign.test_leads || !campaign.test_leads.includes(userId)) {
-      return res.status(403).json({ error: 'Vous n\'avez pas la permission de supprimer cette campagne' });
-    }
+  // Vérifier les permissions : chef testeur de la campagne
+  const campaign = await campaignService.getCampaign(campaignId);
+  if (!campaign.test_leads || !campaign.test_leads.includes(userId)) {
+    return res.status(403).json({ error: 'Vous n\'avez pas la permission de supprimer cette campagne' });
   }
 
   await campaignService.deleteCampaign(campaignId);

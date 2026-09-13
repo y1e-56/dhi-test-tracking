@@ -8,8 +8,8 @@ import { generateFeatureDocument } from '../services/featureDocumentService.js';
 
 const router = Router();
 
-const requireTestCaseManager = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'product_owner');
-const requireTestCaseEditor = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'product_owner', 'tester');
+const requireTestCaseManager = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'product_owner');
+const requireTestCaseEditor = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'product_owner', 'tester');
 
 /**
  * @swagger

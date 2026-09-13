@@ -71,6 +71,15 @@ export type AppRole =
   | "approver"
   | "lecteur";
 
+/** Rôles habilités à être désignés Responsable/Chef d'une campagne. */
+export const CAMPAIGN_OWNER_ROLES: AppRole[] = [
+  "chef_projet",
+  "chef_testeur",
+  "quality_manager",
+  "qa_lead",
+  "product_owner",
+];
+
 /*  --------------------------------------------------------------------------  */
 /*  3.  INTERFACES / MODÈLES DES ENTITÉS MÉTIER                                 */
 /*  --------------------------------------------------------------------------  */

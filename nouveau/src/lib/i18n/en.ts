@@ -723,6 +723,7 @@ export const enDict: DictShape = {
       rapport_exporte: "Campaign report exported (CSV).",
       rechercher_cas_test: "Search for a test case…",
       campagne_verrouillee: "Campaign closed",
+      campagne_non_demarree: "Campaign not started",
       campagne_demarree: "Campaign started.",
       campagne_cloturee: "Campaign closed.",
       resume_execution: "Execution summary",

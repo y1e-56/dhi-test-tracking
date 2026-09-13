@@ -44,6 +44,12 @@ function CreateProjectPage() {
   const navigate = useNavigate();
   const { products, users, projects, addProject, replaceProjects } = useStore();
   const activeMembers = users.filter((u) => u.active).map((u) => u.name);
+  const managerOptions = users
+    .filter((u) => u.active && ["chef_projet", "quality_manager", "qa_lead"].includes(u.role))
+    .map((u) => u.name);
+  const qaOptions = users
+    .filter((u) => u.active && ["quality_manager", "qa_lead"].includes(u.role))
+    .map((u) => u.name);
 
   const [form, setForm] = useState<ProjectForm>({
     name: "",
@@ -247,7 +253,7 @@ function CreateProjectPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {activeMembers.map((p) => (
+                      {managerOptions.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>
@@ -265,7 +271,7 @@ function CreateProjectPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {activeMembers.map((p) => (
+                      {qaOptions.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>

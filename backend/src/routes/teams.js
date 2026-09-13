@@ -7,7 +7,7 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
-const requireTeamManager = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
+const requireTeamManager = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
 
 const addMemberSchema = z.object({
   campaign_id: z.number(),

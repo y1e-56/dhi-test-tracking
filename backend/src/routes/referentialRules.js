@@ -4,7 +4,7 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
-const requireQualityAdmin = requireRole('admin', 'quality_manager', 'qa_lead');
+const requireQualityAdmin = requireRole('quality_manager', 'qa_lead');
 
 /**
  * @swagger

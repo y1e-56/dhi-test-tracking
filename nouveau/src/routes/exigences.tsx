@@ -230,7 +230,7 @@ function RequirementsList() {
                     {orphanRequirements.slice(0, 4).map((r) => (
                       <li
                         key={r.id}
-                        className="flex items-center justify-between rounded-md bg-white/70 px-2 py-1.5 text-xs"
+                        className="flex items-center justify-between rounded-md bg-card/70 px-2 py-1.5 text-xs"
                       >
                         <span className="truncate">
                           <span className="num font-semibold mr-2">{r.id}</span>
@@ -273,7 +273,7 @@ function RequirementsList() {
                       return (
                         <li
                           key={f.id}
-                          className="flex items-center justify-between rounded-md bg-white/70 px-2 py-1.5 text-xs"
+                          className="flex items-center justify-between rounded-md bg-card/70 px-2 py-1.5 text-xs"
                         >
                           <span className="truncate">
                             <span className="font-semibold mr-2">{f.name}</span>
@@ -501,7 +501,7 @@ function RequirementsList() {
                 return (
                   <div
                     key={r.id}
-                    className="rounded-md border border-border overflow-hidden bg-white"
+                    className="rounded-md border border-border overflow-hidden bg-card"
                   >
                     <button
                       type="button"
@@ -582,7 +582,7 @@ function RequirementsList() {
                               return (
                                 <div
                                   key={f!.id}
-                                  className="ml-6 rounded-md border border-border/70 overflow-hidden bg-white"
+                                  className="ml-6 rounded-md border border-border/70 overflow-hidden bg-card"
                                 >
                                   <button
                                     type="button"
@@ -641,7 +641,7 @@ function RequirementsList() {
                                               key={t.id}
                                               to="/execution/$testId"
                                               params={{ testId: t.id }}
-                                              className="flex items-center gap-3 rounded-md border border-border/60 bg-white px-3 py-2 text-sm hover:bg-primary/5 hover:border-primary/30 transition-colors"
+                                              className="flex items-center gap-3 rounded-md border border-border/60 bg-card px-3 py-2 text-sm hover:bg-primary/5 hover:border-primary/30 transition-colors"
                                             >
                                               <CheckSquare
                                                 className={cn(

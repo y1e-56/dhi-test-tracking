@@ -58,6 +58,7 @@ import {
 } from "@/components/ui/select";
 import { campaignStats, loadSnapshot, useStore } from "@/lib/dhi-store";
 import { getUser, campaignVisibleTo } from "@/lib/access";
+import { canManageOperational } from "@/lib/role-protection";
 import { CampaignAccessDenied } from "@/components/dhi/AccessDenied";
 import { api } from "@/lib/api";
 import {
@@ -321,7 +322,7 @@ function CampaignTestsTable({
                 </span>
               </TableCell>
               <TableCell className="text-sm">
-                <Select value={tc.tester ?? ""} onValueChange={(v) => reassign(tc.id, v)} disabled={locked}>
+                <Select value={tc.tester ?? ""} onValueChange={(v) => reassign(tc.id, v)} disabled={locked || !canManageOperational()}>
                   <SelectTrigger className="h-8 w-40"><SelectValue placeholder="—" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">{t("pages.campaign_detail.unassigned")}</SelectItem>
@@ -330,10 +331,18 @@ function CampaignTestsTable({
                 </Select>
               </TableCell>
               <TableCell className="text-right">
-                {locked ? <span className="text-xs text-muted-foreground">{t("pages.campaign_detail.campagne_verrouillee")}</span> : <Link to="/execution/$testId" params={{ testId: tc.id }} className="text-xs font-medium text-primary hover:underline">{t("pages.campaign_detail.executer")}</Link>}
+                {locked ? (
+                  <span className="text-xs text-muted-foreground">{t("pages.campaign_detail.campagne_verrouillee")}</span>
+                ) : !canManageOperational() ? (
+                  <span className="text-xs text-muted-foreground">—</span>
+                ) : campaign && campaign.status !== "encours" ? (
+                  <span className="text-xs text-muted-foreground">{t("pages.campaign_detail.campagne_non_demarree")}</span>
+                ) : (
+                  <Link to="/execution/$testId" params={{ testId: tc.id }} className="text-xs font-medium text-primary hover:underline">{t("pages.campaign_detail.executer")}</Link>
+                )}
               </TableCell>
               <TableCell>
-                {!locked ? <div className="flex justify-end gap-1">
+                {!locked && canManageOperational() ? <div className="flex justify-end gap-1">
                   <Link to="/campagnes/$campaignId/tests/$testId/modifier" params={{ campaignId, testId: tc.id }} title={t("pages.campaign_detail.modifier_cas_test")}>
                     <Button size="icon" variant="ghost" className="size-7"><Pencil className="size-4" /></Button>
                   </Link>
@@ -418,16 +427,17 @@ function CampaignActions({
   onExportTemplate: () => void;
 }) {
   const { t } = useI18n();
+  const canManage = canManageOperational();
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {campaign.status !== "terminee" ? (
+      {canManage && campaign.status !== "terminee" ? (
         <Link to="/campagnes/$campaignId/tests/ajouter" params={{ campaignId: campaign.id }}>
           <Button size="sm">
             <Plus className="size-4" /> {t("pages.campaign_detail.ajouter_un_test")}
           </Button>
         </Link>
       ) : null}
-      {campaign.status !== "terminee" ? (
+      {canManage && campaign.status !== "terminee" ? (
         <Link to="/campagnes/$campaignId/importer" params={{ campaignId: campaign.id }}>
           <Button size="sm" variant="outline">
             <Upload className="size-4" /> {t("pages.campaign_detail.importer_csv")}
@@ -439,7 +449,7 @@ function CampaignActions({
           <FileUp className="size-4" /> {t("pages.campaign_detail.modele_csv")}
         </Button>
       ) : null}
-      {campaign.status !== "terminee" ? (
+      {canManage && campaign.status !== "terminee" ? (
         <Button size="sm" variant="outline" onClick={onTransition}>
           <PlayCircle className="size-4" />
           {campaign.status === "encours" ? t("actions.cloturer") : t("actions.demarrer")}
@@ -631,7 +641,7 @@ function CampaignDetail() {
       tabs={campaignTabs(campaignId)}
       actions={
         <>
-          {campaign.status !== "terminee" ? <ManageMembersButton campaign={campaign} /> : null}
+          {canManageOperational() && campaign.status !== "terminee" ? <ManageMembersButton campaign={campaign} /> : null}
           <CampaignActions
             campaign={campaign}
             st={st}

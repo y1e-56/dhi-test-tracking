@@ -5,7 +5,7 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
-const requireVersionManager = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
+const requireVersionManager = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
 
 const createSchema = z.object({
   version_number: z.string().min(1, 'Numéro de version requis'),

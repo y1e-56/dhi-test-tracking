@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { type CampaignStatus } from "@/lib/dhi-data";
+import { type AppRole, type CampaignStatus, CAMPAIGN_OWNER_ROLES } from "@/lib/dhi-data";
 
 import { campaignStats, useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
@@ -298,7 +298,7 @@ function CreateCampaignPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {memberOptions
-                        .filter((o) => o.active)
+                        .filter((o) => o.active && CAMPAIGN_OWNER_ROLES.includes(o.role as AppRole))
                         .map((o) => (
                           <SelectItem key={o.name} value={o.name}>
                             {o.name}

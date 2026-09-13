@@ -34,6 +34,7 @@ import { useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 import { VERDICT_LABEL, type TestCase, type Verdict } from "@/lib/dhi-data";
 import { CampaignAccessDenied } from "@/components/dhi/AccessDenied";
+import { canManageOperational } from "@/lib/role-protection";
 import { api, mapBackendTestCase, type BackendTestExecution, type BackendTestCase } from "@/lib/api";
 
 
@@ -447,7 +448,7 @@ function ExecutionPage() {
   const [draft, setDraft] = useState<DraftState | null>(null);
 
   if (!test) return null;
-  if (campaign?.status === "terminee") {
+  if (campaign && (campaign.status === "terminee" || campaign.status !== "encours" || !canManageOperational())) {
     return <CampaignAccessDenied subject={campaign.name} />;
   }
   const current: CurrentState = draft ?? {

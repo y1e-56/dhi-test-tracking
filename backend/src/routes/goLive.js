@@ -5,7 +5,7 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
-const requireGoLiveApprover = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'approver');
+const requireGoLiveApprover = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'approver');
 
 const decideSchema = z.object({
   release_ref: z.string().min(1, 'Release requise'),

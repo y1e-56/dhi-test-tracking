@@ -235,7 +235,7 @@ function CreateRequirementPage() {
                       {linkedFeatures.map((f) => (
                         <label
                           key={f.id}
-                          className="flex items-start gap-2 rounded-md border border-border bg-white px-2.5 py-2 text-xs cursor-pointer hover:bg-primary/5"
+                          className="flex items-start gap-2 rounded-md border border-border bg-card px-2.5 py-2 text-xs cursor-pointer hover:bg-primary/5"
                         >
                           <Checkbox
                             className="mt-0.5 size-3.5"

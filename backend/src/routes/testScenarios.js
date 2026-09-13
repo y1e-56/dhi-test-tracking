@@ -5,8 +5,8 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
-const requireScenarioManager = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'product_owner');
-const requireScenarioEditor = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'product_owner', 'tester');
+const requireScenarioManager = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'product_owner');
+const requireScenarioEditor = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'product_owner', 'tester');
 
 const createSchema = z.object({
   campaign_id: z.number().int().positive(),

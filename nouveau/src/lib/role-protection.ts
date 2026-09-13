@@ -68,17 +68,20 @@ export function getDefaultDashboardForRole(role: AppRole): string {
  * Rôles autorisés à créer — aligné sur les matrices d'écriture du backend
  * (backend/src/routes : products.js, projects.js, campaigns.js, features.js, requirements.js).
  */
-export const CREATE_PRODUCT_ROLES: AppRole[] = ["admin", "quality_manager", "qa_lead"];
-export const CREATE_PROJECT_ROLES: AppRole[] = ["admin"];
+export const CREATE_PRODUCT_ROLES: AppRole[] = ["quality_manager", "qa_lead"];
+export const CREATE_PROJECT_ROLES: AppRole[] = [
+  "chef_projet",
+  "quality_manager",
+  "qa_lead",
+  "product_owner",
+];
 export const CREATE_CAMPAIGN_ROLES: AppRole[] = [
-  "admin",
   "chef_testeur",
   "quality_manager",
   "qa_lead",
   "chef_projet",
 ];
 export const CREATE_FEATURE_ROLES: AppRole[] = [
-  "admin",
   "quality_manager",
   "qa_lead",
   "chef_projet",
@@ -116,4 +119,14 @@ export function canCreateFeature(): boolean {
 /** L'utilisateur connecté peut-il créer une exigence ? */
 export function canCreateRequirement(): boolean {
   return roleIs(...CREATE_REQUIREMENT_ROLES);
+}
+
+/** Rôles en lecture seule sur l'opérationnel (vue partout, écriture interdite). */
+const OPERATIONAL_READ_ONLY_ROLES: AppRole[] = ["admin", "lecteur"];
+
+/** L'utilisateur connecté peut-il modifier des données opérationnelles ? */
+export function canManageOperational(): boolean {
+  const session = loadSession();
+  if (!session) return false;
+  return !OPERATIONAL_READ_ONLY_ROLES.includes(session.role as AppRole);
 }

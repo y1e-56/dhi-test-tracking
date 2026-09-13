@@ -6,8 +6,8 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
-const requireEvidenceUploader = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'tester', 'developer');
-const requireEvidenceManager = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
+const requireEvidenceUploader = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'tester', 'developer');
+const requireEvidenceManager = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
 
 const upload = multer({ dest: 'uploads/evidence/' });
 

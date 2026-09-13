@@ -8,8 +8,8 @@ import bus from '../lib/eventBus.js';
 
 const router = Router();
 
-const requireTaskManager = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
-const requireTaskAssignee = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'tester', 'developer');
+const requireTaskManager = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
+const requireTaskAssignee = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'tester', 'developer');
 
 const createFeatureSchema = z.object({
   campaign_id: z.number(),

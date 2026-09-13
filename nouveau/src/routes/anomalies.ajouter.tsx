@@ -225,11 +225,13 @@ function CreateDefectPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {campaigns.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
+                      {campaigns
+                        .filter((c) => c.status === "encours")
+                        .map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>

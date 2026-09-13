@@ -14,7 +14,7 @@ export function requireRole(...roles) {
 
 export const requireAdmin = requireRole('admin');
 export const requireChefTesteur = requireRole('admin', 'chef_testeur');
-export const requireQualityAdmin = requireRole('admin', 'quality_manager', 'qa_lead');
+export const requireQualityAdmin = requireRole('quality_manager', 'qa_lead');
 export const requireTester = requireRole('admin', 'chef_testeur', 'tester');
 export const requireDeveloper = requireRole('admin', 'developer');
 export const requireManagerOrAbove = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');

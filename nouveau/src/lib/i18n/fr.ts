@@ -722,6 +722,7 @@ export const frDict = {
       rapport_exporte: "Rapport de campagne exporté (CSV).",
       rechercher_cas_test: "Rechercher un cas de test…",
       campagne_verrouillee: "Campagne clôturée",
+      campagne_non_demarree: "Campagne non démarrée",
       campagne_demarree: "Campagne démarrée.",
       campagne_cloturee: "Campagne clôturée.",
       resume_execution: "Résumé de l'exécution",

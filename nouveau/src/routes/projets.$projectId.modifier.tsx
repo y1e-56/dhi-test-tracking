@@ -54,6 +54,12 @@ function EditProjectPage() {
   const navigate = useNavigate();
   const { products, projects, users, updateProject, replaceProjects } = useStore();
   const activeMembers = users.filter((u) => u.active).map((u) => u.name);
+  const managerOptions = users
+    .filter((u) => u.active && ["chef_projet", "quality_manager", "qa_lead"].includes(u.role))
+    .map((u) => u.name);
+  const qaOptions = users
+    .filter((u) => u.active && ["quality_manager", "qa_lead"].includes(u.role))
+    .map((u) => u.name);
   const viewableProducts = useVisibleProducts(products);
   const project = projects.find((p) => p.id === projectId);
 
@@ -243,7 +249,7 @@ function EditProjectPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {activeMembers.map((p) => (
+                      {managerOptions.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>
@@ -261,7 +267,7 @@ function EditProjectPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {activeMembers.map((p) => (
+                      {qaOptions.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>

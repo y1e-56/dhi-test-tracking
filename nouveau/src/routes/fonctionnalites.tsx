@@ -381,7 +381,7 @@ function FeaturesList() {
                 return (
                   <div
                     key={f.id}
-                    className="rounded-md border border-border overflow-hidden bg-white"
+                    className="rounded-md border border-border overflow-hidden bg-card"
                   >
                     <button
                       type="button"
@@ -455,7 +455,7 @@ function FeaturesList() {
                                 <Link
                                   key={r.id}
                                   to="/exigences"
-                                  className="flex items-center gap-3 rounded-md border border-border/60 bg-white px-3 py-2 text-xs hover:bg-primary/5 hover:border-primary/30 transition-colors"
+                                  className="flex items-center gap-3 rounded-md border border-border/60 bg-card px-3 py-2 text-xs hover:bg-primary/5 hover:border-primary/30 transition-colors"
                                 >
                                   <FileText className="size-3.5 shrink-0 text-primary" />
                                   <span className="num shrink-0 text-xs font-semibold text-muted-foreground">
@@ -493,7 +493,7 @@ function FeaturesList() {
                                   key={t.id}
                                   to="/execution/$testId"
                                   params={{ testId: t.id }}
-                                  className="flex items-center gap-3 rounded-md border border-border/60 bg-white px-3 py-2 text-xs hover:bg-primary/5 hover:border-primary/30 transition-colors"
+                                  className="flex items-center gap-3 rounded-md border border-border/60 bg-card px-3 py-2 text-xs hover:bg-primary/5 hover:border-primary/30 transition-colors"
                                 >
                                   <CheckSquare
                                     className={cn(

@@ -5,7 +5,7 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
-const requireRequirementManager = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'product_owner');
+const requireRequirementManager = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'product_owner');
 
 const createSchema = z.object({
   feature_id: z.number().int().positive(),

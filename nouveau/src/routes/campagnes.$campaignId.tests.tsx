@@ -10,6 +10,7 @@ import { campaigns as seedCampaigns } from "@/lib/dhi-data";
 import { campaignTabs } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
 import { api, mapBackendTestCase, type BackendTestCase, type BackendTestExecution } from "@/lib/api";
+import { canManageOperational } from "@/lib/role-protection";
 import type { TestCase } from "@/lib/dhi-data";
 
 export const Route = createFileRoute("/campagnes/$campaignId/tests")({
@@ -121,6 +122,12 @@ function CampaignTests() {
                   {campaign?.status === "terminee" ? (
                     <span className="text-xs text-muted-foreground">
                       {t("pages.campaign_detail.campagne_verrouillee")}
+                    </span>
+                  ) : !canManageOperational() ? (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  ) : campaign?.status !== "encours" ? (
+                    <span className="text-xs text-muted-foreground">
+                      {t("pages.campaign_detail.campagne_non_demarree")}
                     </span>
                   ) : (
                     <Link
