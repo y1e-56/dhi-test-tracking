@@ -489,6 +489,7 @@ export type BackendFeature = {
   priority?: string | null;
   module?: string | null;
   status?: string | null;
+  coverage?: Record<string, boolean> | null;
 };
 
 export type BackendRelease = {
@@ -874,4 +875,41 @@ export type BackendDashboardStats = {
 
 export async function getDashboardStats() {
   return api<BackendDashboardStats>("/dashboard/stats");
+}
+
+/* ── Référentiels & règles de qualité ---------------------------------------- */
+
+export type BackendReferentialRule = {
+  id: string;
+  domain: string;
+  label: string;
+  threshold: string;
+  active: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export async function listReferentialRules() {
+  return api<BackendReferentialRule[]>("/referential-rules");
+}
+
+export async function updateReferentialRule(
+  id: string,
+  patch: Partial<Omit<BackendReferentialRule, "id" | "created_at" | "updated_at">>,
+) {
+  return api<BackendReferentialRule>(`/referential-rules/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(patch),
+  });
+}
+
+export async function createReferentialRule(data: Omit<BackendReferentialRule, "created_at" | "updated_at">) {
+  return api<BackendReferentialRule>("/referential-rules", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteReferentialRule(id: string) {
+  return api<void>(`/referential-rules/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

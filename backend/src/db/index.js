@@ -16,4 +16,5 @@ export * as requirements from './requirements.js';
 export * as watchPoints from './watchPoints.js';
 export * as goLive from './goLive.js';
 export * as evidence from './evidence.js';
+export * as referentialRules from './referentialRules.js';
 export * as stats from './stats.js';

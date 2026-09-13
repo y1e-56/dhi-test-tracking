@@ -138,7 +138,8 @@ export async function findByName(campaignId, name, excludeId = null, client = nu
 export async function update(id, data, client = null) {
   const c = client || pool;
   const allowedFields = ['name', 'description', 'priority', 'status', 'module',
-    'description_audio_data', 'description_audio_type', 'description_transcription', 'description_duration_seconds'];
+    'description_audio_data', 'description_audio_type', 'description_transcription', 'description_duration_seconds',
+    'coverage'];
   const sets = [];
   const values = [];
   let idx = 1;

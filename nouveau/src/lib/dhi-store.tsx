@@ -131,6 +131,9 @@ import {
   toBackendReleaseStatus,
   toBackendWatchStatus,
   toBackendWatchCriticality,
+  listReferentialRules,
+  updateReferentialRule,
+  deleteReferentialRule,
   ROLE_TO_BACKEND,
   type BackendUser,
   type BackendCampaign,
@@ -143,6 +146,7 @@ import {
   type BackendFeature,
   type BackendTestCase,
   type BackendTestExecution,
+  type BackendReferentialRule,
   type LoginResponse,
 } from "./api";
 
@@ -647,7 +651,7 @@ const featureById = new Map<string, Feature>();
             name: feature.name,
             description: feature.description ?? "",
             criticality: toFrontendCriticality(feature.priority),
-            coverage: {},
+            coverage: (feature.coverage ?? {}) as Partial<Record<TestType, boolean>>,
           });
         }
       }
@@ -670,6 +674,21 @@ const featureById = new Map<string, Feature>();
         ),
       );
       if (backendUsers) setUsers(backendUsers);
+
+      try {
+        const rules = await listReferentialRules();
+        setRules(
+          rules.map((rule: BackendReferentialRule) => ({
+            id: rule.id,
+            domain: rule.domain,
+            label: rule.label,
+            threshold: rule.threshold,
+            active: rule.active,
+          })),
+        );
+      } catch (error) {
+        console.warn("[DHI] Référentiels non chargés", error);
+      }
 
       await loadGoLiveFromBackend(releases);
       setBackendStatus("online");
@@ -1765,11 +1784,25 @@ const featureById = new Map<string, Feature>();
         pushAudit(asActor("Administrateur"), "Utilisateur créé", id, u.name);
         return id;
       },
-      updateRule: (id, patch) =>
-        setRules((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r))),
+      updateRule: (id, patch) => {
+        setRules((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+        if (localStorage.getItem("token")) {
+          const rulePatch = {
+            ...(patch.domain !== undefined && { domain: patch.domain }),
+            ...(patch.label !== undefined && { label: patch.label }),
+            ...(patch.threshold !== undefined && { threshold: patch.threshold }),
+            ...(patch.active !== undefined && { active: patch.active }),
+          };
+          void updateReferentialRule(id, rulePatch)
+            .catch((error) => console.warn("[DHI] Règle non synchronisée", error));
+        }
+      },
       deleteRule: (id) => {
         setRules((prev) => prev.filter((r) => r.id !== id));
         pushAudit(asActor("Système"), "Règle supprimée", id, "—");
+        if (localStorage.getItem("token")) {
+          void deleteReferentialRule(id).catch((error) => console.warn("[DHI] Suppression règle non synchronisée", error));
+        }
       },
 
       /* Documents ------------------------------------------------------  */
