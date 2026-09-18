@@ -1,0 +1,99 @@
+=================================================================
+SUPPORT DE PRÉSENTATION FINALE
+Plateforme de suivi des tests DHI — UCAC-ICAM
+=================================================================
+
+Objectif : présenter en ~10 minutes la plateforme, en s'appuyant sur
+l'application « nouvelle génération » (front TanStack, dossier NEW VERSION),
+avec la démo des 4 derniers points du cahier des charges.
+
+-----------------------------------------------------------------
+1) PLAN DE LA PRÉSENTATION (10 min)
+-----------------------------------------------------------------
+ 1. Contexte (1 min)  : plateforme de suivi des tests pour DHI ;
+                        remplace Excel/e-mail ; QCMS pour les équipes tests.
+ 2. La plateforme (3 min) : visite guidée = produit -> projet -> campagne
+                        -> cas de test -> exécution -> anomalie -> GO/No-Go.
+                        Score qualité /100, alertes, audit.
+ 3. Les 4 derniers points CDC (4 min) : démo ciblée (voir parcours ci-dessous).
+ 4. Techniques + suite (2 min) : stack, architecture des données, limites
+                        connues, suites envisagées.
+
+-----------------------------------------------------------------
+2) PARCOURS DE DÉMO RECOMMANDÉ (avec comptes)
+-----------------------------------------------------------------
+Prérequis serveurs :
+  - Back :  http://localhost:5000  (backend npm run dev)
+  - Front : http://localhost:8080  (NEW VERSION npm run dev)
+  Vérifier http://localhost:5000/api-docs avant de commencer.
+
+ 0. Se connecter : admin@test.fr / Admin@DHI2026  (rôle admin)
+      -> Monter la plateforme : produit Paiement (score), campagne
+         "Sécurité v4.12", ouvrir un cas de test, exécution, preuves.
+ 1. SEPARATION DES RESPONSABILITES (la règle "on ne valide pas son travail")
+      a) Administration -> créer l'utilisateur « Sophie Lemaire »
+         (sophie@test.fr / Sophie@DHI2026, rôle chef testeur).
+      b) Se reconnecter en Sophie Lemaire :
+         * Anomalie -> "Webhook silencieux..." -> passer en "Fermée"
+           -> REFUS (l'auteur ne clôture pas sa propre anomalie).
+         * Campagne "Sécurité v4.12" -> exécuter un test -> verdict PASS
+           -> REFUS (le responsable ne valide pas sa propre campagne).
+         * Go Live Center -> release 4.12.0 -> GO -> REFUS (bandeau orange
+           de séparation ; NO-GO reste possible).
+      c) Revenir en admin -> mêmes actions AUTORISEES (contre-exemple).
+ 2. PILOTAGE DE LA TESTABILITE
+      Décision -> Pilotage de la testabilité : KPIs, cartes par produit,
+      liste des tests avec badges Prêt/Partiel/Insuffisant, imprimer.
+ 3. VERSIONNAGE
+      Tester un cas de test -> Modifier -> changer le contenu -> nouvelle
+      version (v2) dans "Historique des versions" (auteur + date + motif) ;
+      Restaurer la v1 -> confirmé par un toast, nouvelle version tracée.
+ 4. METADONNEES DES PREUVES
+      Campagne -> Documents -> Ajouter un document : champs "Version
+      testée" (4.12) et "Environnement" (PREPROD) ; colonnes dans la liste.
+      Exécution d'un test -> preuve -> auteur · date/heure · environnement.
+
+Finir par : journal d'audit (traçabilité) + score qualité expliqué.
+
+-----------------------------------------------------------------
+3) LES 4 POINTS CDC - CE QU'IL FAUT DIRE
+-----------------------------------------------------------------
+ 1. SEPARATION DES RESPONSABILITES
+    « L'outil applique la règle de gouvernance : personne ne valide son
+    propre travail. Le responsable de campagne ne valide ni le GO, ni le
+    PASS de sa campagne ; l'auteur d'une anomalie ne la clôture pas. Un
+    bandeau et des messages explicites expliquent le refus. »
+ 2. PILOTAGE DE LA TESTABILITE
+    « Une page dédiée chiffre la testabilité par produit : préconditions,
+    étapes, résultats attendus, exécution, automatisation -> score, badge
+    de santé par test, accès direct à l'exécution. »
+ 3. VERSIONNAGE
+    « Chaque modification d'un cas de test réutilisé reste tracée : on
+    sait qui a changé quoi, quand, et on peut restaurer une version —
+    cette restauration est elle-même une nouvelle version guardée. »
+ 4. METADONNADES DES PREUVES
+    « Chaque preuve (document, capture, log) porte auteur, date, version
+    testée et environnement : indispensable pour prouver un résultat. »
+
+-----------------------------------------------------------------
+4) ARGUMENTAIRE TECHNIQUE
+-----------------------------------------------------------------
+ - Front TanStack Start + Router, React 19, Tailwind 4, shadcn/ui.
+ - Backend Node/Express (+ Socket.IO) : auth JWT, preuves, historique ;
+   données métier en mémoire + localStorage pour la démo.
+ - i18n français / anglais. 10 profils, espaces de travail par rôle.
+ - Score qualité /100 recalculé automatiquement, explicable.
+ - Limites / suite : brancher toutes les données métier sur PostgreSQL
+   (routes existent dans le backend), tests e2e Playwright, déploiement.
+
+-----------------------------------------------------------------
+5) PRÉREQUIS / CONTRÔLE AVANT LA SOUTENANCE
+-----------------------------------------------------------------
+ - [ ] Backend : http://localhost:5000/api-docs répond.
+ - [ ] Front : http://localhost:8080 s'ouvre et le login admin passe.
+ - [ ] Utilisateur "Sophie Lemaire" créé (ou recréé) via Administration.
+ - [ ] Guide "Guide test 4 points CDC.txt" suivi au moins une fois.
+ - [ ] Données de démo propres (réinitialiser localStorage si besoin :
+      F12 -> Application -> Stockage local -> http://localhost:8080 ->
+      supprimer les clés "dhi-..." puis recharger).
+=================================================================
