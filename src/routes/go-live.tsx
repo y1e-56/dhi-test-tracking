@@ -22,6 +22,8 @@ import { GOLIVE_VERDICT_LABEL, type GoLiveVerdict } from "@/lib/dhi-data";
 import { useI18n } from "@/lib/i18n";
 import { campaignStats, useStore } from "@/lib/dhi-store";
 import { cn } from "@/lib/utils";
+import { getUser } from "@/lib/access";
+import { checkGoLiveSeparation } from "@/lib/separation-of-duties";
 
 /* ==============================
    2. Helpers / utilitaires
@@ -68,6 +70,7 @@ function GoLivePage() {
   const completion = Math.round((doneWeight / totalWeight) * 100);
 
   const projCampaigns = campaigns.filter((c) => c.projectId === project?.id);
+  const separation = checkGoLiveSeparation(getUser(), release, projCampaigns);
   const failedCritical = tests.filter(
     (t) =>
       projCampaigns.some((c) => c.id === t.campaignId) &&
@@ -121,6 +124,12 @@ function GoLivePage() {
     }
     if (verdict === "GO" && blocked) {
       toast.error(t("pages.go_live.gate_blocked"));
+      return;
+    }
+    if ((verdict === "GO" || verdict === "GO_CONDITIONNEL") && !separation.ok) {
+      toast.error(
+        t("separation.go_live_denied").replace("{subject}", separation.subject),
+      );
       return;
     }
     addGoLiveDecision(releaseId, verdict, decider, justification.trim());
@@ -312,6 +321,14 @@ function GoLivePage() {
                 />
               </div>
             </div>
+            {!separation.ok ? (
+              <div className="mt-3 flex items-start gap-2 rounded-md bg-warning-soft px-3 py-2 text-xs text-warning">
+                <span>
+                  {t("separation.intro")}{" "}
+                  {t("separation.go_live_denied").replace("{subject}", separation.subject)}
+                </span>
+              </div>
+            ) : null}
             <Button className="mt-4" onClick={decide}>
               {t("pages.go_live.record_decision")}
             </Button>

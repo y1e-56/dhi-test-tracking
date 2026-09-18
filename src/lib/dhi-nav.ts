@@ -106,6 +106,7 @@ export const SEARCH_PAGES: { to: string; label: TranslationKey; group: Translati
   { to: "/couverture", label: "nav.couverture", group: "nav.qualite" },
   { to: "/campagnes", label: "nav.campagnes", group: "nav.execution" },
   { to: "/go-live", label: "nav.go_live", group: "nav.decision" },
+  { to: "/pilotage-testabilite", label: "nav.pilotage_testabilite", group: "nav.decision" },
   { to: "/points-a-surveiller", label: "nav.points_surveiller", group: "nav.decision" },
   { to: "/anomalies", label: "nav.anomalies", group: "nav.systeme" },
   { to: "/referentiels", label: "nav.referentiels", group: "nav.systeme" },

@@ -72,7 +72,9 @@ import {
   type ScoreBreakdown,
   type Severity,
   type TestCase,
+  type TestEvidence,
   type TestType,
+  type TestVersion,
   type Verdict,
   type WatchPoint,
   type AppRole,
@@ -115,6 +117,7 @@ type PersistedSnapshot = {
   features: Feature[];
   campaigns: Campaign[];
   tests: TestCase[];
+  testHistory: TestVersion[];
   defects: Defect[];
   projects: Project[];
   releases: Release[];
@@ -232,6 +235,7 @@ const defaultSnapshot = (): PersistedSnapshot => ({
   projectDocuments: seedProjectDocuments,
   campaignDocuments: seedCampaignDocuments,
   featureDocuments: seedFeatureDocuments,
+  testHistory: [],
 });
 
 /* -------------------------------------------------------------------------- */
@@ -244,6 +248,7 @@ interface Store {
   features: Feature[];
   campaigns: Campaign[];
   tests: TestCase[];
+  testHistory: TestVersion[];
   defects: Defect[];
   projects: Project[];
   releases: Release[];
@@ -298,6 +303,8 @@ interface Store {
     ) => string;
   updateTest: (id: string, patch: Partial<TestCase>) => void;
   deleteTest: (id: string) => void;
+  /** Enregistre une version du cas de test dans son historique (versionnage CDC). */
+  recordTestVersion: (id: string, remark?: string) => void;
 
   /*  2.6  Mutations : Anomalies & Watch points -------------------------  */
   addDefect: (d: Omit<Defect, "id">) => string;
@@ -369,6 +376,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
   const [features, setFeatures] = useState<Feature[]>(initialSnap.features);
   const [campaigns, setCampaigns] = useState<Campaign[]>(initialSnap.campaigns);
   const [tests, setTests] = useState<TestCase[]>(initialSnap.tests);
+  const [testHistory, setTestHistory] = useState<TestVersion[]>(initialSnap.testHistory ?? []);
   const [defects, setDefects] = useState<Defect[]>(initialSnap.defects);
   const [projects, setProjects] = useState<Project[]>(initialSnap.projects);
   const [releases, setReleases] = useState<Release[]>(initialSnap.releases);
@@ -419,6 +427,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       features,
       campaigns,
       tests,
+      testHistory,
       defects,
       projects,
       releases,
@@ -442,6 +451,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
     features,
     campaigns,
     tests,
+    testHistory,
     defects,
     projects,
     releases,
@@ -972,12 +982,38 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
 
     const asActor = (fallback: string) => currentUser?.name ?? fallback;
 
+    /* Versionnage des cas de test (historique CDC) --------------------  */
+    const snapshotVersion = (tc: TestCase, revision: number, actor: string, remark: string) =>
+      setTestHistory((prev) => [
+        {
+          id: `TV-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
+          testId: tc.id,
+          revision,
+          changedBy: actor,
+          at: now(),
+          remark,
+          name: tc.name,
+          criticality: tc.criticality,
+          type: tc.type,
+          preconditions: tc.preconditions,
+          steps: tc.steps,
+          expected: tc.expected,
+        },
+        ...prev,
+      ]);
+
+    const nextRevisionFor = (testId: string) =>
+      testHistory.filter((h) => h.testId === testId).reduce((max, h) => Math.max(max, h.revision), 0) + 1;
+
+    const CONTENT_FIELDS = ["name", "criticality", "type", "preconditions", "steps", "expected", "expectedValue"] as const;
+
     return {
       /* États -----------------------------------------------------------  */
       products,
       features,
       campaigns,
       tests,
+      testHistory,
       defects,
       projects,
       releases,
@@ -1104,22 +1140,23 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
         const id = `c-${Date.now()}`;
         setCampaigns((prev) => [...prev, { ...c, id }]);
         if (cloneFrom) {
-          setTests((prev) => {
-            const source = prev.filter((t) => t.campaignId === cloneFrom);
-            const clones = source.map((t, i) => ({
-              ...t,
-              id: `${t.id}-R${i + 1}`,
-              campaignId: id,
-              verdict: "NOT_RUN" as Verdict,
-              observed: "",
-              comment: "",
-              evidence: [],
-              tester: undefined,
-              executedAt: undefined,
-              duration: undefined,
-            }));
-            return [...prev, ...clones];
-          });
+          const source = tests.filter((t) => t.campaignId === cloneFrom);
+          const clones: TestCase[] = source.map((t, i) => ({
+            ...t,
+            id: `${t.id}-R${i + 1}`,
+            campaignId: id,
+            verdict: "NOT_RUN" as Verdict,
+            observed: "",
+            comment: "",
+            evidence: [],
+            tester: undefined,
+            executedAt: undefined,
+            duration: undefined,
+          }));
+          setTests((prev) => [...prev, ...clones]);
+          clones.forEach((tc) =>
+            snapshotVersion(tc, 1, asActor(c.owner), `Cloné depuis ${cloneFrom} (réutilisé)`),
+          );
         }
         pushAudit(
           asActor(c.owner),
@@ -1139,21 +1176,29 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       },
       addTestCase: (t) => {
         const id = `T-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-        setTests((prev) => [
-          ...prev,
-          {
-            ...t,
-            id,
-            verdict: t.verdict ?? ("NOT_RUN" as Verdict),
-            observed: t.observed ?? "",
-            comment: t.comment ?? "",
-            evidence: [],
-          },
-        ]);
+        const created: TestCase = {
+          ...t,
+          id,
+          verdict: t.verdict ?? ("NOT_RUN" as Verdict),
+          observed: t.observed ?? "",
+          comment: t.comment ?? "",
+          evidence: [],
+        };
+        setTests((prev) => [...prev, created]);
+        snapshotVersion(created, 1, asActor(t.tester ?? "Système"), "Création du cas de test");
         pushAudit(asActor(t.tester ?? "Système"), "Cas de test créé", id, t.name);
         return id;
       },
       updateTest: (id, patch) => {
+        const before = tests.find((t) => t.id === id);
+        if (before) {
+          const contentChanged = CONTENT_FIELDS.some(
+            (f) => patch[f] !== undefined && JSON.stringify(patch[f]) !== JSON.stringify(before[f]),
+          );
+          if (contentChanged) {
+            snapshotVersion(before, nextRevisionFor(id), asActor(patch.tester ?? "Système"), "Modification du contenu");
+          }
+        }
         setTests((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
         if (patch.verdict) {
           pushAudit(asActor(patch.tester ?? "Système"), "Verdict enregistré", id, patch.verdict);
@@ -1162,6 +1207,10 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       deleteTest: (id) => {
         setTests((prev) => prev.filter((t) => t.id !== id));
         pushAudit(asActor("Système"), "Cas de test supprimé", id, "—");
+      },
+      recordTestVersion: (id, remark) => {
+        const tc = tests.find((t) => t.id === id);
+        if (tc) snapshotVersion(tc, nextRevisionFor(id), asActor("Système"), remark ?? "Version enregistrée");
       },
 
       /* Anomalies & Watch points -------------------------------------  */
@@ -1403,6 +1452,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
         setFeatures(fresh.features);
         setCampaigns(fresh.campaigns);
         setTests(fresh.tests);
+        setTestHistory(fresh.testHistory);
         setDefects(fresh.defects);
         setProjects(fresh.projects);
         setReleases(fresh.releases);
@@ -1428,6 +1478,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
     features,
     campaigns,
     tests,
+    testHistory,
     defects,
     projects,
     releases,

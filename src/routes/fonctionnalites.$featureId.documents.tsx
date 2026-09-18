@@ -82,6 +82,8 @@ function FeatureDocuments() {
             <TableRow>
               <TableHead>{t("pages.documents.type")}</TableHead>
               <TableHead>{t("pages.documents.name")}</TableHead>
+              <TableHead>{t("evidence_meta.version")}</TableHead>
+              <TableHead>{t("evidence_meta.environment")}</TableHead>
               <TableHead>{t("pages.documents.file")}</TableHead>
               <TableHead>{t("pages.documents.uploaded_by")}</TableHead>
               <TableHead>{t("pages.documents.uploaded_at")}</TableHead>
@@ -104,6 +106,8 @@ function FeatureDocuments() {
                   ) : null}
                 </TableCell>
                 <TableCell className="font-medium">{d.name}</TableCell>
+                <TableCell className="num text-sm">{d.version ?? "—"}</TableCell>
+                <TableCell className="text-sm">{d.environment ?? "—"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{d.fileName}</TableCell>
                 <TableCell className="text-sm">{d.uploadedBy}</TableCell>
                 <TableCell className="num text-sm">{d.uploadedAt}</TableCell>
@@ -126,7 +130,7 @@ function FeatureDocuments() {
             ))}
             {docs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                   {t("pages.documents.empty_feature")}
                 </TableCell>
               </TableRow>

@@ -44,6 +44,8 @@ function AddProductDocument() {
   const [file, setFile] = useState<File | null>(null);
   const [content, setContent] = useState("");
   const [reading, setReading] = useState(false);
+  const [version, setVersion] = useState("");
+  const [docEnvironment, setDocEnvironment] = useState("");
 
   const backTo = `/produits/${productId}/documents`;
 
@@ -81,7 +83,18 @@ function AddProductDocument() {
     }
     if (localStorage.getItem("token") && /^\d+$/.test(productId) && file) {
       try {
-        await uploadEvidence("product", productId, file, JSON.stringify({ name: name.trim(), type: type.trim() }));
+        await uploadEvidence(
+          "product",
+          productId,
+          file,
+          JSON.stringify({
+            name: name.trim(),
+            type: type.trim(),
+            version: version.trim(),
+            environment: docEnvironment.trim(),
+          }),
+          { version: version.trim(), environment: docEnvironment.trim() },
+        );
         toast.success(t("pages.documents.added"));
         void navigate({ to: backTo });
       } catch (error) {
@@ -97,6 +110,8 @@ function AddProductDocument() {
       content,
       uploadedBy: getUser()?.name ?? "—",
       uploadedAt: new Date().toISOString().slice(0, 10),
+      version: version.trim() || undefined,
+      environment: docEnvironment.trim() || undefined,
     });
     toast.success(t("pages.documents.added"));
     void navigate({ to: backTo });
@@ -164,6 +179,34 @@ function AddProductDocument() {
                   className="h-11"
                 />
               </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="d-version" className="text-sm font-medium">
+                    {t("evidence_meta.version")}
+                  </Label>
+                  <Input
+                    id="d-version"
+                    value={version}
+                    onChange={(e) => setVersion(e.target.value)}
+                    placeholder={t("evidence_meta.version_placeholder")}
+                    className="h-11"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="d-environment" className="text-sm font-medium">
+                    {t("evidence_meta.environment")}
+                  </Label>
+                  <Input
+                    id="d-environment"
+                    value={docEnvironment}
+                    onChange={(e) => setDocEnvironment(e.target.value)}
+                    placeholder={t("evidence_meta.environment_placeholder")}
+                    className="h-11"
+                  />
+                </div>
+              </div>
+              <p className="-mt-2 text-xs text-muted-foreground">{t("evidence_meta.hint")}</p>
 
               <div className="grid gap-2">
                 <Label htmlFor="d-file" className="text-sm font-medium">

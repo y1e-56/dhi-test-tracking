@@ -54,6 +54,8 @@ function AddCampaignDocument() {
   const [file, setFile] = useState<File | null>(null);
   const [content, setContent] = useState("");
   const [reading, setReading] = useState(false);
+  const [version, setVersion] = useState(campaign?.version ?? "");
+  const [docEnvironment, setDocEnvironment] = useState(campaign?.environment ?? "");
 
   const backTo = `/campagnes/${campaignId}/documents`;
 
@@ -91,7 +93,18 @@ function AddCampaignDocument() {
     }
     if (localStorage.getItem("token") && /^\d+$/.test(campaignId) && file) {
       try {
-        await uploadEvidence("campaign", campaignId, file, JSON.stringify({ name: name.trim(), type: type.trim() }));
+        await uploadEvidence(
+          "campaign",
+          campaignId,
+          file,
+          JSON.stringify({
+            name: name.trim(),
+            type: type.trim(),
+            version: version.trim(),
+            environment: docEnvironment.trim(),
+          }),
+          { version: version.trim(), environment: docEnvironment.trim() },
+        );
         toast.success(t("pages.documents.added"));
         void navigate({ to: backTo });
       } catch (error) {
@@ -107,6 +120,8 @@ function AddCampaignDocument() {
       content,
       uploadedBy: getUser()?.name ?? "—",
       uploadedAt: new Date().toISOString().slice(0, 10),
+      version: version.trim() || undefined,
+      environment: docEnvironment.trim() || undefined,
     });
     toast.success(t("pages.documents.added"));
     void navigate({ to: backTo });
@@ -175,6 +190,34 @@ function AddCampaignDocument() {
                   className="h-11"
                 />
               </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="d-version" className="text-sm font-medium">
+                    {t("evidence_meta.version")}
+                  </Label>
+                  <Input
+                    id="d-version"
+                    value={version}
+                    onChange={(e) => setVersion(e.target.value)}
+                    placeholder={t("evidence_meta.version_placeholder")}
+                    className="h-11"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="d-environment" className="text-sm font-medium">
+                    {t("evidence_meta.environment")}
+                  </Label>
+                  <Input
+                    id="d-environment"
+                    value={docEnvironment}
+                    onChange={(e) => setDocEnvironment(e.target.value)}
+                    placeholder={t("evidence_meta.environment_placeholder")}
+                    className="h-11"
+                  />
+                </div>
+              </div>
+              <p className="-mt-2 text-xs text-muted-foreground">{t("evidence_meta.hint")}</p>
 
               <div className="grid gap-2">
                 <Label htmlFor="d-file" className="text-sm font-medium">

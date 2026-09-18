@@ -33,6 +33,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 import { VERDICT_LABEL, type TestCase, type Verdict } from "@/lib/dhi-data";
+import { getUser } from "@/lib/access";
+import { checkVerdictSeparation } from "@/lib/separation-of-duties";
 import { CampaignAccessDenied } from "@/components/dhi/AccessDenied";
 import { api, mapBackendTestCase, type BackendTestExecution, type BackendTestCase } from "@/lib/api";
 
@@ -317,8 +319,15 @@ function EvidenceListPanel({
               ) : (
                 <FileText className="size-4 text-muted-foreground" />
               )}
-              <span className="min-w-0 flex-1 truncate font-medium">{e.name}</span>
-              <span className="num text-xs text-muted-foreground">{e.size}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium">
+                  {e.name} <span className="num ml-1 text-xs font-normal text-muted-foreground">{e.size}</span>
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {e.uploadedBy ?? "—"} · {e.uploadedAt ?? "—"}
+                  {e.environment ? ` · ${e.environment}` : ""}
+                </span>
+              </span>
               <button
                 onClick={() => onRemoveEvidence(e.id)}
                 className="text-muted-foreground transition-colors hover:text-danger"
@@ -445,6 +454,9 @@ function ExecutionPage() {
   const linkedDefects = defects.filter((d) => d.testId === testId);
 
   const [draft, setDraft] = useState<DraftState | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const campaignTesters = campaign?.testers ?? [];
+  const [newAssignee, setNewAssignee] = useState<string>(campaignTesters[0] ?? "");
 
   if (!test) return null;
   if (campaign?.status === "terminee") {
@@ -475,6 +487,15 @@ function ExecutionPage() {
 
   const save = async () => {
     const now = new Date();
+    const actor = getUser();
+    const separation = checkVerdictSeparation(actor, campaign, current.verdict);
+    if (!separation.ok) {
+      toast.error(
+        t("separation.verdict_denied")
+          .replace("{subject}", separation.subject),
+      );
+      return;
+    }
     if (backendTest && campaign && /^\d+$/.test(campaign.id)) {
       const result = ({
         PASS: "passed",
@@ -506,7 +527,7 @@ function ExecutionPage() {
       observed: current.observed,
       comment: current.comment,
       measuredValue: current.measuredValue || undefined,
-      tester: "Marie Martin",
+      tester: actor?.name ?? "Marie Martin",
       executedAt: now.toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }),
       duration: test.duration ?? "4 min 10 sec",
     });
@@ -547,8 +568,20 @@ function ExecutionPage() {
       : file.type.startsWith("video/")
         ? ("video" as const)
         : ("log" as const);
+    const actor = getUser();
     updateTest(test.id, {
-      evidence: [...test.evidence, { id: `e-${Date.now()}`, name: file.name, size, kind }],
+      evidence: [
+        ...test.evidence,
+        {
+          id: `e-${Date.now()}`,
+          name: file.name,
+          size,
+          kind,
+          uploadedBy: actor?.name,
+          uploadedAt: new Date().toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }),
+          environment: campaign?.environment,
+        },
+      ],
     });
     toast.success(t("pages.execution_detail.evidence_added").replace("{name}", file.name));
   };
@@ -566,17 +599,13 @@ function ExecutionPage() {
       featureId: test.featureId,
       version: campaign?.version ?? "4.12",
       testId: test.id,
-      reporter: "Marie Martin",
+      reporter: getUser()?.name ?? "Marie Martin",
       assignee,
       createdAt: new Date().toISOString().slice(0, 10),
       targetDate: new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10),
     });
     toast.success(t("pages.execution_detail.defect_created").replace("{id}", id));
   };
-
-  const campaignTesters = campaign?.testers ?? [];
-  const [createOpen, setCreateOpen] = useState(false);
-  const [newAssignee, setNewAssignee] = useState(campaignTesters[0] ?? "");
 
   return (
     <AppShell

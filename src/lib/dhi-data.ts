@@ -133,6 +133,17 @@ export interface Campaign {
   featureIds?: string[] | undefined;
 }
 
+export interface TestEvidence {
+  id: string;
+  name: string;
+  size: string;
+  kind: "image" | "log" | "video";
+  /** Méta-données des preuves (auteur, date, environnement). */
+  uploadedBy?: string | undefined;
+  uploadedAt?: string | undefined;
+  environment?: string | undefined;
+}
+
 export interface TestCase {
   id: string;
   campaignId: string;
@@ -151,7 +162,24 @@ export interface TestCase {
   tester?: string | undefined;
   executedAt?: string | undefined;
   duration?: string | undefined;
-  evidence: { id: string; name: string; size: string; kind: "image" | "log" | "video" }[];
+  evidence: TestEvidence[];
+}
+
+/** Version d'un cas de test (historique : versionnage quand un test réutilisé est modifié). */
+export interface TestVersion {
+  id: string;
+  testId: string;
+  /** Numéro de version incrémental du cas de test (1 = création). */
+  revision: number;
+  changedBy: string;
+  at: string;
+  remark: string;
+  name: string;
+  criticality: Criticality;
+  type: TestType;
+  preconditions: string[];
+  steps: string[];
+  expected: string[];
 }
 
 /*  3.4  Anomalies ---------------------------------------------------------  */
@@ -259,6 +287,9 @@ export interface ProductDocument {
   content: string;
   uploadedBy: string;
   uploadedAt: string;
+  /** Méta-données de la preuve : version cible et environnement. */
+  version?: string | undefined;
+  environment?: string | undefined;
 }
 
 export type ProjectDocumentType =
@@ -284,6 +315,9 @@ export interface ProjectDocument {
   content: string;
   uploadedBy: string;
   uploadedAt: string;
+  /** Méta-données de la preuve : version cible et environnement. */
+  version?: string | undefined;
+  environment?: string | undefined;
 }
 
 export type CampaignDocumentType =
@@ -309,6 +343,9 @@ export interface CampaignDocument {
   content: string;
   uploadedBy: string;
   uploadedAt: string;
+  /** Méta-données de la preuve : version cible et environnement. */
+  version?: string | undefined;
+  environment?: string | undefined;
 }
 
 export type FeatureDocumentType =
@@ -334,6 +371,9 @@ export interface FeatureDocument {
   content: string;
   uploadedBy: string;
   uploadedAt: string;
+  /** Méta-données de la preuve : version cible et environnement. */
+  version?: string | undefined;
+  environment?: string | undefined;
 }
 
 /*  3.8  Alertes, Audit & Référentiels ------------------------------------  */
@@ -556,16 +596,16 @@ export const ROLE_LABEL: Record<AppRole, string> = {
 
 /* Pages accessibles par rôle */
 export const ROLE_PAGES: Record<AppRole, string[]> = {
-  admin: ["/", "/dashboard-admin", "/alertes", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/execution", "/administration", "/administration/ajouter-utilisateur", "/audit"],
-  qa_lead: ["/", "/alertes", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/execution", "/audit"],
-  quality_manager: ["/", "/alertes", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/referentiels", "/execution", "/audit"],
-  product_owner: ["/", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/audit"],
-  chef_projet: ["/", "/dashboard-chef", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/execution", "/audit"],
-  chef_testeur: ["/", "/dashboard-testeur", "/notifications", "/produits", "/projets", "/campagnes", "/campagnes/ajouter", "/go-live", "/points-a-surveiller", "/anomalies", "/execution", "/audit"],
+  admin: ["/", "/dashboard-admin", "/alertes", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/pilotage-testabilite", "/points-a-surveiller", "/anomalies", "/referentiels", "/execution", "/administration", "/administration/ajouter-utilisateur", "/audit"],
+  qa_lead: ["/", "/alertes", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/pilotage-testabilite", "/points-a-surveiller", "/anomalies", "/referentiels", "/execution", "/audit"],
+  quality_manager: ["/", "/alertes", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/pilotage-testabilite", "/points-a-surveiller", "/anomalies", "/referentiels", "/execution", "/audit"],
+  product_owner: ["/", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/pilotage-testabilite", "/audit"],
+  chef_projet: ["/", "/dashboard-chef", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/campagnes/ajouter", "/go-live", "/pilotage-testabilite", "/points-a-surveiller", "/anomalies", "/execution", "/audit"],
+  chef_testeur: ["/", "/dashboard-testeur", "/notifications", "/produits", "/projets", "/campagnes", "/campagnes/ajouter", "/go-live", "/pilotage-testabilite", "/points-a-surveiller", "/anomalies", "/execution", "/audit"],
   testeur: ["/", "/dashboard-testeur", "/notifications", "/campagnes", "/anomalies", "/execution", "/audit"],
   developpeur: ["/", "/dashboard-developpeur", "/notifications", "/anomalies", "/campagnes", "/audit"],
-  approver: ["/", "/notifications", "/go-live", "/points-a-surveiller", "/audit"],
-  lecteur: ["/", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/go-live", "/points-a-surveiller"],
+  approver: ["/", "/notifications", "/go-live", "/pilotage-testabilite", "/points-a-surveiller", "/audit"],
+  lecteur: ["/", "/notifications", "/produits", "/projets", "/fonctionnalites", "/exigences", "/couverture", "/campagnes", "/go-live", "/pilotage-testabilite", "/points-a-surveiller"],
 };
 
 /*  --------------------------------------------------------------------------  */

@@ -14,6 +14,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
 import { getUser, campaignVisibleTo } from "@/lib/access";
@@ -23,6 +29,7 @@ import {
   testCases as seedTests,
   type Criticality,
   type TestType,
+  type TestVersion,
 } from "@/lib/dhi-data";
 import { campaignTabs } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
@@ -92,11 +99,14 @@ function splitLines(s: string): string[] {
 function EditTestPage() {
   const { campaignId, testId } = Route.useParams();
   const store = useStore();
-  const { campaigns, tests, features, products, updateTest } = store;
+  const { campaigns, tests, features, products, updateTest, testHistory } = store;
   const { t } = useI18n();
   const navigate = useNavigate();
   const campaign = campaigns.find((c) => c.id === campaignId);
   const test = tests.find((x) => x.id === testId);
+  const history = testHistory.filter((h) => h.testId === testId);
+  const currentRevision = history.reduce((m, h) => Math.max(m, h.revision), 0);
+  const [restoreTarget, setRestoreTarget] = useState<TestVersion | null>(null);
 
   const campaignFeatures = useMemo(
     () => features.filter((f) => f.productId === campaign?.productId),
@@ -170,6 +180,22 @@ function EditTestPage() {
       }
     }
     navigate({ to: "/campagnes/$campaignId", params: { campaignId: campaign.id } });
+  };
+
+  const restoreVersion = () => {
+    if (!restoreTarget) return;
+    updateTest(test.id, {
+      name: restoreTarget.name,
+      criticality: restoreTarget.criticality,
+      type: restoreTarget.type,
+      preconditions: restoreTarget.preconditions,
+      steps: restoreTarget.steps,
+      expected: restoreTarget.expected,
+    });
+    setRestoreTarget(null);
+    toast.success(
+      t("test_history.restored").replace("{v}", String(restoreTarget.revision)),
+    );
   };
 
   return (
@@ -359,6 +385,70 @@ function EditTestPage() {
           </div>
         </form>
       </div>
+
+      <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20 mt-4">
+        <div className="-ml-12 sm:-ml-16 xl:-ml-20">
+          <h3 className="text-lg font-semibold tracking-tight">{t("test_history.title")}</h3>
+          <p className="text-sm text-muted-foreground">{t("test_history.subtitle")}</p>
+          {currentRevision > 0 ? (
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-info-soft px-2.5 py-1 text-xs font-semibold text-info">
+              {t("test_history.current")} : v{currentRevision}
+            </p>
+          ) : null}
+        </div>
+        {history.length === 0 ? (
+          <p className="mt-4 text-sm text-muted-foreground">{t("test_history.empty")}</p>
+        ) : (
+          <ul className="mt-4 divide-y divide-border">
+            {history.map((h) => (
+              <li key={h.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">
+                    {t("test_history.version")} {h.revision}
+                    {h.revision === currentRevision ? (
+                      <span className="ml-2 rounded bg-success-soft px-1.5 py-0.5 text-xs font-semibold text-success">
+                        {t("test_history.current")}
+                      </span>
+                    ) : null}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {h.date} · {h.changedBy} · {h.remark}
+                  </p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">{h.name}</p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={h.revision === currentRevision}
+                  onClick={() => setRestoreTarget(h)}
+                >
+                  {t("test_history.restore")}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <Dialog open={!!restoreTarget} onOpenChange={(o) => !o && setRestoreTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("test_history.restore")}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {restoreTarget
+              ? t("test_history.restore_confirm").replace("{v}", String(restoreTarget.revision))
+              : ""}
+          </p>
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => setRestoreTarget(null)}>
+              {t("actions.annuler")}
+            </Button>
+            <Button onClick={restoreVersion}>{t("test_history.restore")}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

@@ -25,6 +25,7 @@ import { Route as FonctionnalitesRouteImport } from './routes/fonctionnalites'
 import { Route as GoLiveRouteImport } from './routes/go-live'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as PilotageTestabiliteRouteImport } from './routes/pilotage-testabilite'
 import { Route as PointsASurveillerRouteImport } from './routes/points-a-surveiller'
 import { Route as ProduitsRouteImport } from './routes/produits'
 import { Route as ProjetsRouteImport } from './routes/projets'
@@ -145,6 +146,11 @@ const LoginRoute = LoginRouteImport.update({
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PilotageTestabiliteRoute = PilotageTestabiliteRouteImport.update({
+  id: '/pilotage-testabilite',
+  path: '/pilotage-testabilite',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PointsASurveillerRoute = PointsASurveillerRouteImport.update({
@@ -394,6 +400,7 @@ export interface FileRoutesByFullPath {
   '/go-live': typeof GoLiveRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
+  '/pilotage-testabilite': typeof PilotageTestabiliteRoute
   '/points-a-surveiller': typeof PointsASurveillerRouteWithChildren
   '/produits': typeof ProduitsRouteWithChildren
   '/projets': typeof ProjetsRouteWithChildren
@@ -453,6 +460,7 @@ export interface FileRoutesByTo {
   '/go-live': typeof GoLiveRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
+  '/pilotage-testabilite': typeof PilotageTestabiliteRoute
   '/points-a-surveiller': typeof PointsASurveillerRouteWithChildren
   '/produits': typeof ProduitsRouteWithChildren
   '/projets': typeof ProjetsRouteWithChildren
@@ -513,6 +521,7 @@ export interface FileRoutesById {
   '/go-live': typeof GoLiveRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
+  '/pilotage-testabilite': typeof PilotageTestabiliteRoute
   '/points-a-surveiller': typeof PointsASurveillerRouteWithChildren
   '/produits': typeof ProduitsRouteWithChildren
   '/projets': typeof ProjetsRouteWithChildren
@@ -574,6 +583,7 @@ export interface FileRouteTypes {
     | '/go-live'
     | '/login'
     | '/notifications'
+    | '/pilotage-testabilite'
     | '/points-a-surveiller'
     | '/produits'
     | '/projets'
@@ -633,6 +643,7 @@ export interface FileRouteTypes {
     | '/go-live'
     | '/login'
     | '/notifications'
+    | '/pilotage-testabilite'
     | '/points-a-surveiller'
     | '/produits'
     | '/projets'
@@ -692,6 +703,7 @@ export interface FileRouteTypes {
     | '/go-live'
     | '/login'
     | '/notifications'
+    | '/pilotage-testabilite'
     | '/points-a-surveiller'
     | '/produits'
     | '/projets'
@@ -752,6 +764,7 @@ export interface RootRouteChildren {
   GoLiveRoute: typeof GoLiveRoute
   LoginRoute: typeof LoginRoute
   NotificationsRoute: typeof NotificationsRoute
+  PilotageTestabiliteRoute: typeof PilotageTestabiliteRoute
   PointsASurveillerRoute: typeof PointsASurveillerRouteWithChildren
   ProduitsRoute: typeof ProduitsRouteWithChildren
   ProjetsRoute: typeof ProjetsRouteWithChildren
@@ -871,6 +884,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pilotage-testabilite': {
+      id: '/pilotage-testabilite'
+      path: '/pilotage-testabilite'
+      fullPath: '/pilotage-testabilite'
+      preLoaderRoute: typeof PilotageTestabiliteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/points-a-surveiller': {
@@ -1425,6 +1445,7 @@ const rootRouteChildren: RootRouteChildren = {
   GoLiveRoute: GoLiveRoute,
   LoginRoute: LoginRoute,
   NotificationsRoute: NotificationsRoute,
+  PilotageTestabiliteRoute: PilotageTestabiliteRoute,
   PointsASurveillerRoute: PointsASurveillerRouteWithChildren,
   ProduitsRoute: ProduitsRouteWithChildren,
   ProjetsRoute: ProjetsRouteWithChildren,

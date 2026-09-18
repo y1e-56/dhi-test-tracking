@@ -184,12 +184,15 @@ export async function uploadEvidence(
   entityId: string,
   file: File,
   description: string,
+  meta?: { version?: string; environment?: string },
 ) {
   const token = localStorage.getItem("token");
   const body = new FormData();
   body.append("entity_type", entityType);
   body.append("entity_id", entityId);
   body.append("description", description);
+  if (meta?.version) body.append("version", meta.version);
+  if (meta?.environment) body.append("environment", meta.environment);
   body.append("file", file);
   const response = await fetch(`${API_BASE_URL}/evidence`, {
     method: "POST",
@@ -203,11 +206,18 @@ export async function uploadEvidence(
   return response.json() as Promise<BackendEvidence>;
 }
 
-export function mapBackendEvidence(evidence: BackendEvidence) {
-  let metadata: { name?: string; type?: string } = {};
+type EvidenceMetadata = { name?: string; type?: string; version?: string; environment?: string };
+
+function safeJsonParse<T>(raw: string, fallback: T): T {
   try {
-    metadata = JSON.parse(evidence.description ?? "{}");
-  } catch {}
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+export function mapBackendEvidence(evidence: BackendEvidence) {
+  const metadata = safeJsonParse<EvidenceMetadata>(evidence.description ?? "{}", {});
   return {
     id: String(evidence.id),
     type: metadata.type ?? "document",
@@ -216,6 +226,8 @@ export function mapBackendEvidence(evidence: BackendEvidence) {
     content: "",
     uploadedBy: evidence.uploaded_by_name ?? "—",
     uploadedAt: evidence.created_at.slice(0, 10),
+    version: metadata.version,
+    environment: metadata.environment,
   };
 }
 

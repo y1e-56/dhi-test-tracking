@@ -26,6 +26,7 @@ import {
   Moon,
   Sun,
   Globe,
+  SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -101,6 +102,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: "nav.decision",
     items: [
       { to: "/go-live", label: "nav.go_live", icon: Rocket },
+      { to: "/pilotage-testabilite", label: "nav.pilotage_testabilite", icon: SlidersHorizontal },
       { to: "/points-a-surveiller", label: "nav.points_surveiller", icon: Eye },
     ],
   },

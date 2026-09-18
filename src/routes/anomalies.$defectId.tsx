@@ -23,6 +23,8 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { api } from "@/lib/api";
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
+import { getUser } from "@/lib/access";
+import { checkDefectSeparation } from "@/lib/separation-of-duties";
 
 export const Route = createFileRoute("/anomalies/$defectId")({
   loader: ({ params }) => {
@@ -68,6 +70,13 @@ function DefectDetailPage() {
   };
 
   const changeStatus = async (v: DefectStatus) => {
+    const separation = checkDefectSeparation(getUser(), defect, v);
+    if (!separation.ok) {
+      toast.error(
+        t("separation.defect_denied").replace("{subject}", separation.subject),
+      );
+      return;
+    }
     updateDefect(defect.id, { status: v });
     toast.success(`${t("pages.anomalies.status_updated")} : ${DEFECT_STATUS_LABEL[v]}.`);
     if (!/^\d+$/.test(defect.id) || !localStorage.getItem("token")) return;
