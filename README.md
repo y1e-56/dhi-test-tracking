@@ -8,7 +8,9 @@ Plateforme web de suivi des tests et de la qualité logicielle, développée pou
 
 L'application centralise la gestion des campagnes de tests logiciels, la traçabilité des anomalies et la communication entre les équipes testeurs et développeurs. Elle remplace les pratiques informelles (Excel, e-mail, messagerie) par un outil structuré, sécurisé et doté de notifications en temps réel.
 
-**Quatre rôles utilisateurs :** Administrateur · Chef testeur · Testeur · Développeur
+**Dix profils :** Administrateur · Chef testeur · QA Lead · Quality manager · Product owner · Chef de projet · Testeur · Développeur · Approbateur · Lecteur
+
+> Les **4 derniers points du cahier des charges** sont implémentés dans le front « nouvelle génération » (`NEW VERSION/`) : **séparation des responsabilités**, **pilotage de la testabilité**, **versionnage des cas de test**, **métadonnées des preuves** (voir `README.md` dans `NEW VERSION`).
 
 ---
 
@@ -45,13 +47,16 @@ L'application centralise la gestion des campagnes de tests logiciels, la traçab
 dhi-test-tracking/
 ├── backend/          # API REST Node.js/Express
 │   └── src/
-│       ├── routes/   # 11 fichiers de routes
+│       ├── routes/   # fichiers de routes
 │       ├── services/ # Logique métier + event bus
 │       └── db/       # Accès SQL + migrations versionnées
-├── DHI-LOGICEL/      # Frontend React/Vite
+├── NEW VERSION/      # Front « nouvelle génération » (TanStack) — version présentée
+│   └── src/          # routes/ + lib/ (dhi-data, dhi-store, separation-of-duties…)
+├── nouveau/          # Refonte frontend associée à la branche ryan-back-end
+├── DHI-LOGICEL/      # Frontend historique React/Vite
 │   └── src/
 │       ├── app/
-│       │   ├── pages/      # 11 pages (une par rôle/domaine)
+│       │   ├── pages/      # pages (une par rôle/domaine)
 │       │   ├── components/ # Composants réutilisables
 │       │   ├── contexts/   # État global (auth, data, socket...)
 │       │   └── services/   # Appels API
