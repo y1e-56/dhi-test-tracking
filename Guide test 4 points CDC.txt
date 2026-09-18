@@ -1,0 +1,161 @@
+=================================================================
+GUIDE DE TEST - LES 4 DERNIERS POINTS DU CAHIER DES CHARGES
+Plateforme de suivi des tests DHI (front TanStack, NEW VERSION)
+=================================================================
+
+Ce guide vérifie les 4 fonctionnalités ajoutées en fin de projet :
+  1. Séparation des responsabilités (impossible de valider son propre travail)
+  2. Pilotage de la testabilité (page dédiée)
+  3. Versionnage des cas de test (historique + restauration)
+  4. Métadonnées des preuves (auteur, date, version, environnement)
+
+-----------------------------------------------------------------
+0) PRÉPARATION (à faire UNE SEULE fois)
+-----------------------------------------------------------------
+Vérifier que les 2 serveurs tournent :
+  - Back (port 5000) : ce guide suppose que backend npm run dev est lancé.
+    Vérifier : http://localhost:5000/api-docs  doit afficher une page.
+  - Front (port 8080) : ce guide suppose que NEW VERSION npm run dev est lancé.
+    Ouvrir : http://localhost:8080
+
+Compte d'administration :
+  - Email      : admin@test.fr
+  - Mot de passe : Admin@DHI2026
+
+CRÉER L'UTILISATEUR DE DÉMO "Sophie Lemaire" :
+La règle de séparation se déclenche quand l'utilisateur connecté porte le
+MÊME NOM que le responsable d'une campagne (ex. "Sophie Lemaire").
+ 1. Se connecter avec le compte admin (admin@test.fr / Admin@DHI2026).
+ 2. Menu "Administration" -> "Ajouter un utilisateur".
+ 3. Remplir :
+      Prénom      : Sophie
+      Nom         : Lemaire
+      Email       : sophie@test.fr
+      Mot de passe : Sophie@DHI2026
+      Rôle        : chef testeur
+    Puis enregistrer. (Le nom "Sophie Lemaire" correspond à la campagne
+    "Sécurité v4.12" de la démo.)
+ 4. Se déconnecter.
+
+=================================================================
+1) SÉPARATION DES RESPONSABILITÉS
+=================================================================
+Objectif : une personne ne peut pas valider son propre travail.
+
+Se connecter en "Sophie Lemaire" (sophie@test.fr / Sophie@DHI2026).
+
+A. ANOMALIE - un auteur ne peut pas clôturer son propre incident
+  - Menu "Anomalies & incidents".
+  - Ouvrir l'anomalie titrée "Webhook silencieux après timeout marchand"
+    (créée par Sophie Lemaire ; statut actuel : Affectée).
+  - Changer le statut en "Fermée".
+  - RÉSULTAT ATTENDU : un message d'erreur s'affiche et explique que
+    l'auteur / le développeur de l'anomalie ne peut pas la clôturer
+    (validation de son propre correctif). Le statut ne change PAS.
+  - Contre-exemple (autorisation) : se reconnecter en admin
+    (Admin Principal) sur la même anomalie -> passer en "Fermée" doit
+    fonctionner (l'admin n'est ni l'auteur ni le développeur).
+
+B. EXÉCUTION - un responsable ne peut pas valider les tests de SA campagne
+  - Menu "Campagnes" -> ouvrir la campagne "Sécurité v4.12"
+    (réalisée par "Sophie Lemaire", statut "En cours").
+  - Ouvrir un cas de test -> page "Exécution".
+  - Saisir un résultat puis choisir le verdict "PASS" (réussi).
+  - RÉSULTAT ATTENDU : le bouton "Enregistrer" affiche un message
+    d'erreur : impossible de valider PASS sur sa propre campagne.
+    Essayez aussi "PASS sous réserve" : même blocage.
+  - Contre-exemple : passer le test en "Échec" (KO) -> autorisé, le
+    résultat s'enregistre (l'échec n'est pas une validation).
+
+C. GO / NO-GO - un responsable ne peut pas donner GO sur sa release
+  - Menu "Go Live Center".
+  - Sélectionner la release 4.12.0 (projet du produit Paiement, en test).
+    Rappel : Sophie Lemaire est responsable de la campagne "Sécurité v4.12"
+    de ce projet -> la page affiche un bandeau d'alerte orange indiquant
+    la règle de séparation.
+  - Cliquer sur "Enregistrer GO".
+  - RÉSULTAT ATTENDU : un message d'erreur bloque le GO (et le GO sous
+    réserve). Le NO-GO / Ajourné reste possible (ce n'est pas une
+    validation).
+  - Contre-exemple : se reconnecter en admin -> le bandeau disparaît et
+    le GO est accepté.
+
+=================================================================
+2) PILOTAGE DE LA TESTABILITÉ
+=================================================================
+  - Menu "Décision" -> "Pilotage de la testabilité".
+  - RÉSULTAT ATTENDU :
+    * 4 grandes cartes : score global, tests documentés, tests
+      automatisables, taux d'exécution.
+    * Une section explicative ("Comment est calculé le score ?").
+    * Des cartes PAR PRODUIT avec un badge de score coloré.
+    * Une liste détaillée PAR TEST : chaque ligne montre la criticité,
+      le statut (Prêt / Partiel / Insuffisant) et un lien cliquable vers
+      la page d'exécution de ce test.
+    * Le bouton "Imprimer / PDF" (impression du tableau de bord).
+  - Vérifier que le menu est accessible aussi avec les rôles
+    admin, chef projet, QA lead, quality manager, chef testeur,
+    product owner, approbateur, lecteur (pas avec testeur/développeur).
+
+=================================================================
+3) VERSIONNAGE DES CAS DE TEST (HISTORIQUE + RESTAURATION)
+=================================================================
+  - Menu "Campagnes" -> ouvrir "Sécurité v4.12" -> ouvrir un cas de test.
+  - Cliquer "Modifier le test".
+  - Modifier le contenu (ex. changer le "Résultat attendu" ou une étape),
+    puis "Enregistrer".
+  - RÉSULTAT ATTENDU : en bas de la page, le panneau "Historique des
+    versions" affiche une nouvelle version (v2) avec la date, l'auteur
+    (Sophie Lemaire) et le motif "Modification du contenu". La version
+    v1 ("Création du cas de test") reste visible avec le badge
+    "Version courante" déplacé sur la v2.
+  - Cliquer "Restaurer" sur la version v1, confirmer dans la boîte de
+    dialogue.
+  - RÉSULTAT ATTENDU : un message de confirmation, le contenu du test
+    revient à celui de la v1, ET une nouvelle version (v3) apparaît dans
+    l'historique (la restauration est elle-même tracée).
+  - Vérifier la traçabilité : menu "Audit & historique" -> les actions
+    (modification, restauration) sont enregistrées.
+
+=================================================================
+4) MÉTADONNADES DES PREUVES (document + preuve d'exécution)
+=================================================================
+A. DOCUMENT AVEC VERSION / ENVIRONNEMENT
+  - Menu "Campagnes" -> ouvrir "Sécurité v4.12" -> onglet "Documents".
+  - "Ajouter un document" : les champs "Version testée" (pré-rempli
+    avec 4.12) et "Environnement" (pré-rempli avec PREPROD) sont
+    proposés. Choisir un fichier (PDF, image...) et ajouter.
+  - RÉSULTAT ATTENDU : la ligne du document dans la liste affiche la
+    Version, l'Environnement, et (à l'ouverture du détail) l'auteur et
+    la date d'ajout.
+  - Même vérification possible sur les Documents d'un Produit, d'un
+    Projet et d'une Fonctionnalité (les champs Version/Environnement
+    sont alors libres, pas pré-remplis).
+
+B. PREUVE D'EXÉCUTION (capture / log)
+  - Ouvrir un cas de test de la campagne "Sécurité v4.12" -> page
+    "Exécution".
+  - Dans la zone "Preuves", ajouter une pièce (capture d'écran, log...).
+  - RÉSULTAT ATTENDU : la preuve s'affiche avec son AUTEUR
+    (Sophie Lemaire), sa DATE/HEURE et l'ENVIRONNEMENT (PREPROD).
+
+=================================================================
+RÉINITIALISER LA DÉMO (si besoin de recommencer proprement)
+=================================================================
+  - F12 -> onglet "Application" -> "Stockage local" -> http://localhost:8080.
+  - Supprimer les clés commençant par "dhi-" (données en mémoire),
+    "dhi-session-v1" et "token".
+  - Recharger la page : les données de démonstration sont recréées
+    automatiquement. (Les comptes backend, eux, restent en base.)
+=================================================================
+RÉSULTAT GLOBAL ATTENDU
+=================================================================
+  - Les 3 règles de séparation bloquent la validation de son propre
+    travail, avec messages clairs, et laissent passer les autres rôles.
+  - Le pilotage de la testabilité s'affiche avec scores, badges et liste
+    par test.
+  - Chaque modification / restauration d'un cas de test crée une version
+    tracée, visible dans l'historique.
+  - Chaque preuve ou document porte auteur, date, version et
+    environnement.
+=================================================================

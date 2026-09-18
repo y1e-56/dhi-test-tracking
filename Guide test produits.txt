@@ -1,0 +1,266 @@
+=================================================================
+GUIDE DE TEST - MODULE PRODUITS
+Plateforme de suivi des tests DHI
+Utilisateur vise : personne qui teste sans connaitre l'appli
+Mode : demo (sans backend) - les donnees sont creees automatiquement
+=================================================================
+
+NOTE IMPORTANTE (le 28/08) :
+- Le backend a ete demarre par le binome. Depuis, l'application utilise
+  la VRAIE base de donnees, plus les donnees demo du navigateur.
+- Tout produit cree pendant la periode "backend eteint" n'existait que
+  dans le navigateur (localStorage) : il a disparu de l'affichage.
+- Pour tester : soit couper le backend (mode demo complet),
+  soit recrer les produits dans la vraie base.
+- BUG BACKEND SIGNALE : GET /api/products ne renvoie jamais les produits
+  archives (meme avec include_archived=true). Le filtre "Archives" de la
+  page Produits ne pourra fonctionner que lorsque le backend le corrigera.
+
+1) A QUOI SERT LE MODULE PRODUITS ?
+-----------------------------------
+Un "produit" represente une application ou un logiciel cible des tests
+(ex : "Portail Client", "App Mobile Paiement").
+
+Chaque produit est decoupe en :
+  - VERSIONS      -> les versions du logiciel (v1.0, v2.0...),
+                     avec un statut (Planifiee / En cours / Livree).
+  - ENVIRONNEMENTS -> ou on test le produit (Dev, Recette, Production).
+  - PROJETS       -> les campagnes/projets de test rattaches au produit.
+  - QUALITE       -> une note de sante du produit (score /20, criteres,
+                     anomalies, historique).
+
+Cela sert a regrouper tout le suivi de test PAR logiciel, et a choisir
+la version + l'environnement quand on cree une campagne de test.
+Le role utilise : la page est visible uniquement pour
+ADMIN et CHEF DE TEST.
+
+=================================================================
+2) COMMENCER (avant de tester)
+------------------------------
+1. Ouvrir un terminal et aller dans le dossier du projet:
+     cd DHI-LOGICEL
+2. Lancer l'application:
+     npm run dev
+   Attendre le message "Local: http://localhost:5173/".
+3. Ouvrir un navigateur (Chrome ou Edge) et aller sur:
+     http://localhost:5173
+4. Se connecter avec le compte ADMIN (tout est permis):
+     Email    : admin@test.fr
+     Mot de passe : Admin@DHI2026
+   (Comptes alternatifs disponibles: chef@test.fr / Chef@DHI2026,
+    testeur@test.fr / Testeur@DHI2026 - mais le testeur ne voit PAS
+    la page Produits.)
+
+=================================================================
+3) PARCOURS DE TEST PAS A PAS
+------------------------------
+
+ETAPE 1 - OUVRIR LA PAGE PRODUITS
+   - Dans le menu de gauche, cliquer sur "Portefeuille" (icone colis).
+   - La page liste des produits doit afficher 2 cartes par defaut:
+        * Portail Client   (1 projet, 2 versions, 3 environnements)
+        * App Mobile Paiement (1 projet, 1 version, 2 environnements)
+   - VERIFIER : chaque carte montre un badge "Score" colore
+     (vert = sain, orange = a surveiller, rouge = critique).
+
+ETAPE 2 - RECHERCHER UN PRODUIT
+   - Dans le champ de recherche, taper "portail".
+   - VERIFIER : seule la carte "Portail Client" reste visible.
+   - Effacer la recherche : les 2 cartes reviennent.
+
+ETAPE 3 - CREER UN PRODUIT
+   - Cliquer sur le bouton "+ Nouveau produit" (en haut a droite).
+   - Remplir :
+        Nom      : Application Caisse
+        Description : Logiciel interne de caisse
+   - Cliquer sur "Creer".
+   - VERIFIER : un toast de succes apparait, et la nouvelle carte
+     "Application Caisse" s'affiche en fin de liste.
+   - UNE FOIS CREE : la meme application doit aussi apparaitre dans le
+     menu deroule "Produit" de la page Projets et de la page Campagnes.
+     (verifier apres l'etape 9)
+
+ETAPE 4 - MODIFIER UN PRODUIT
+   - Sur la carte "Application Caisse", cliquer sur l'icone "Modifier"
+     (stylo).
+   - Changer le nom en "Application Caisse Pro" et la description.
+   - Cliquer sur "Enregistrer".
+   - VERIFIER : le toast de succes, le nom de la carte est mis a jour.
+
+ETAPE 5 - OUVRIR LE DETAIL D'UN PRODUIT
+   - Cliquer sur la carte "Portail Client".
+   - VERIFIER que la page de detail affiche (barre du haut):
+        * Le nom du produit
+        * Le bouton "Archiver" et "Supprimer"
+        * Le badge Score qualité (le score s'affiche aussi ici).
+   - La page a plusieurs onglets (en haut): Versions | Environnements |
+     Projets | Score | Critères | Points critiques | Historique.
+     Les onglets d'1 a 4 se testent ci-dessous, chacun sa partie.
+
+ETAPE 5.1 - ONGLET SCORE QUALITE (quoi faire)
+   - Aller dans "Score qualité".
+   - VERIFIER : le gros chiffre du score /100 + l'etat (Sain /
+     A surveiller / A risque / Critique) + 7 barres d'indicateurs
+     (Resultats tests 25%, Couverture 20%, Couverture critiques 20%,
+     Incidents 15%, Non fonctionnel 10%, Testabilite 5%, Controles 5%).
+   - Cliquer sur le bouton "Modifier" (stylo en haut a droite).
+   - Dans la boite de dialogue : baisser "Résultats tests" a 50.
+     VERIFIER : le score affiche en haut du dialogue change en direct
+     et l'etat peut passer a "A surveiller".
+   - Retablir les valeurs et repasser "Resultats tests" a 90.
+     VERIFIER : score ~83, etat "Sain".
+   - Cliquer "Enregistrer".
+   - VERIFIER : le score en haut de la page a change, un toast
+     "Score qualite recalcule" apparait.
+
+ETAPE 5.2 - ONGLET CRITERES DE QUALITE
+   - Aller dans "Critères qualité".
+   - VERIFIER : 7 criteres sont crees automatiquement par defaut
+     (Fonctionnel 30%, Securite 20%, Performance 15%, Fiabilite 15%,
+     Maintenabilite 10%, Documentation 5%, Testabilite 5%) avec 3
+     barres "Total ponderation: 100%".
+   - Cliquer "Nouveau critere".
+   - Remplir : Nom = "Accessibilite", Description = "Conformite WCAG",
+     Ponderation = 10, cocher "Critere bloquant".
+     Cliquer "Creer".
+   - VERIFIER : le critere apparait, le total passe a 110% (le total
+     peut depasser 100, c'est le poids relatif de chaque critere).
+   - Cliquer "Modifier" sur ce critere : changer la ponderation a 5,
+     sauver. Verifier que le badge "+5%" est a jour.
+   - Cliquer "Supprimer" dessus et confirmer : il disparait,
+     total 105% puis on supprime aussi pour revenir a 100%.
+
+ETAPE 5.3 - ONGLET POINTS CRITIQUES
+   - Aller dans "Points critiques".
+   - Cliquer "Nouveau point critique".
+   - Remplir par exemple :
+        Description *     = "Le module virement echoue au-dela de 5000 euros"
+        Contexte          = "Teste sous Chrome, session admin"
+        Criticite         = Critique
+        Statut            = A verifier
+        Consequence       = "Blocage des virements importants des clients"
+        Criteres de validation = "Test sur 3 navigateurs + montant limite"
+        Recommandations   = "Corriger en priorite avant la livraison"
+     Cliquer "Creer".
+   - VERIFIER : la carte s'affiche en premier dans la liste (tri par
+     criticite : Critique d'abord).
+   - Cliquer "Modifier" : passer Statut a "En cours", Criticite a
+     "Haute". Sauver. Verifier le badge et la position.
+   - Cliquer "Supprimer" et confirmer : disparition.
+
+ETAPE 5.4 - ONGLET HISTORIQUE QUALITE
+   - Aller dans "Historique qualité".
+   - AU DEPART (nouveau produit) : la liste est vide.
+   - Pour la remplir : refaire ETAPE 5.1 (enregistrer le score
+     plusieurs fois avec des valeurs differentes, ex. 90 puis 60 puis 75).
+   - VERIFIER : chaque "Enregistrer" ajoute une ligne dans l'historique
+     (Date, Score, Etat). Ligne la plus recente en haut.
+   - VERIFIER : l'état correspond au score (ex. 60 = A surveiller).
+
+ETAPE 6 - CREER UNE VERSION
+   - Dans la section VERSIONS, cliquer sur "Nouvelle version".
+   - Remplir : Version = 1.3, Description = "Ajout paiement mobile",
+     Statut = Planifiee (planned), Date prevue = dans 15 jours.
+   - Cliquer sur "Creer".
+   - VERIFIER : la version 1.3 apparait dans la liste.
+
+ETAPE 7 - LIVRER UNE VERSION (EVOLUTION DE STATUT)
+   - Sur la version 1.3, cliquer sur "Modifier".
+   - Changer le Statut en "Livree" (released). Enregistrer.
+   - VERIFIER (IMPORTANT) : la version 1.3 affiche maintenant
+     "Livree le : <date du jour>" en vert, SANS avoir saisi de date.
+     C'est le comportement automatique attendu.
+
+ETAPE 8 - CREER / GERER UN ENVIRONNEMENT
+   - Dans la section ENVIRONNEMENTS, cliquer sur "Nouvel environnement".
+   - Remplir : Nom = "Demo Caisse", Type = "Recette",
+     Description = "Env de demonstration".
+   - Cliquer sur "Creer".
+   - VERIFIER : le nouvel environnement apparait dans la liste.
+   - Cliquer sur "Modifier" de cet environnement et cocher "Inactif".
+   - VERIFIER : le badge bascule sur "Inactif".
+   - (FACULTATIF) cliquer sur "Supprimer" pour tester la suppression.
+
+ETAPE 9 - LIEN PRODUIT -> PROJET (page Projets)
+   a) Menu "Projets" -> cliquer "Nouveau projet".
+   b) Dans "Produit lie" : VERIFIER que la liste des produits actifs
+      apparait. Choisir "Portail Client".
+   c) Remplir nom/description, choisir un chef de test, creer.
+   d) VERIFIER : dans le detail du projet ou la liste, un lien vers le
+      produit apparait (cliquer dessus -> ouvre le produit lie).
+
+ETAPE 10 - LIEN PRODUIT -> CAMPAGNE (page Campagnes)
+   a) Menu "Campagnes" -> cliquer "Nouvelle campagne".
+   b) Choisir un PROJET (ex. "Refonte Portal Client", lie au produit
+      Portail Client). Le produit du projet est detecte automatiquement.
+   c) VERIFIER : la liste "Version" se remplit automatiquement avec les
+      versions du produit (v1.0, v1.2, v1.3...).
+   d) VERIFIER : la liste "Environnement" se remplit automatiquement
+      (Dev Web, Recette Web, Production).
+   e) Selectionner une version + un environnement, remplir le reste
+      (nom, dates, equipe) et creer.
+   f) VERIFIER : la campagne creee garde bien la version et
+      l'environnement choisis (ouvrir la campagne pour verifier).
+
+ETAPE 11 - ARCHIVER UN PRODUIT
+   - Revenir sur la liste /produits (menu Portefeuille).
+   - Ouvrir "Application Caisse Pro" -> cliquer sur "Archiver".
+   - VERIFIER : le badge de la carte passe a "Archive".
+   - Dans le filtre de liste (Actifs / Archives / Tous), choisir
+     "Archives" : la carte y apparait (en mode demo).
+     NOTE : si le vrai backend tourne, "Archives" peut rester vide
+     tant que le backend ne renvoie pas les produits archives (voir
+     la note en tete du guide).
+   - (FACULTATIF) cliquer sur "Desarchiver" pour la reactiver.
+
+ETAPE 12 - SUPPRIMER UN PRODUIT
+   - Ouvrir un produit non utilise (ex : "Application Caisse Pro").
+   - Cliquer sur "Supprimer" et confirmer dans la boite de dialogue.
+   - VERIFIER : retour automatique sur la liste, la carte n'existe plus.
+
+=================================================================
+4) VERIFICATION FINALE / CONTROLE DE LA SANTE
+----------------------------------------------
+- Naviguer dans la section QUALITE d'un produit (onglets Score,
+  Critères, Points critiques, Historique) :
+    * VERIFIER que le score se recalcule quand on le modifie
+      (ETAPE 5.1) et que l'historique enregistre chaque changement.
+    * VERIFIER qu'on peut creer/modifier/supprimer un critere avec sa
+      ponderation et le flag "bloquant".
+    * VERIFIER qu'on peut creer/modifier/supprimer un point critique
+      (description, criticite, statut, consequence...) et que le tri
+      place les plus critiques d'abord.
+    * VERIFIER que le badge "Score" de la CARTE produit dans la liste
+      (/produits) reflete la meme donnee que le detail.
+- VERIFIER les liaisons produit => projet => campagne :
+    * un projet a un produit lie ;
+    * une campagne creee sur ce projet propose automatiquement les
+      versions et environnements du produit.
+
+=================================================================
+5) ASTUCE POUR RECOMMENCER (REINITIALISER LES DONNEES DEMO)
+------------------------------------------------------------
+Dans le navigateur (page ouverte) :
+   1. F12 (outils developpement) -> onglet "Application" ou "Stockage".
+   2. Trouver "Stockage local" -> http://localhost:5173.
+   3. Supprimer les cles commencant par "dhi_" ET "dhi_demo_"
+      (dhi_demo_produits, dhi_quality_criteres, dhi_quality_scores_local,
+      dhi_quality_watchpoints, dhi_quality_history, dhi_demo_releases,
+      dhi_demo_environnements...).
+   4. Deconnecter / reconnecter : les donnees de demonstration de base
+      sont recreees automatiquement (les criteres/score repartent a zero).
+
+=================================================================
+RESULTAT ATTENDU (si tout fonctionne)
+-------------------------------------
+- Les produits de demo s'affichent avec leur score qualité.
+- Creer / modifier / archiver / supprimer un produit : OK.
+- Creer une version et la passer a "Livree" -> "Livree le" automatique.
+- Creer / modifier / desactiver un environnement : OK.
+- Score qualité : modification possible, recalcule en direct,
+  historique alimente a chaque enregistrement.
+- Critères qualité : CRUD complet + ponderation + critere bloquant.
+- Points critiques : CRUD complet + criticite + statut + tri.
+- Le produit choisi alimente les listes de Projets et de Campagnes
+  (Projet -> Version -> Environnement) automatiquement.
+=================================================================
