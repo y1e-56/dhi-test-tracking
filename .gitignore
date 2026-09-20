@@ -23,3 +23,6 @@ role-matrix-final.mjs
 run-matrix.mjs
 relaunch-backend.ps1
 backend/probe-bus.mjs
+
+# Front « nouvelle génération » : dépôt git séparé (branche nouvelle-version)
+NEW VERSION/
