@@ -447,6 +447,21 @@ export interface PlatformUser {
   password?: string;
 }
 
+export const ROLE_GROUP_DEVELOPPEUR: AppRole[] = ["developpeur"];
+export const ROLE_GROUP_TESTEUR: AppRole[] = ["testeur", "chef_testeur"];
+export const ROLE_GROUP_MANAGER: AppRole[] = ["chef_projet", "qa_lead", "quality_manager", "approver"];
+export const ROLE_GROUP_QA_LEAD: AppRole[] = ["qa_lead", "quality_manager", "testeur"];
+export const ROLE_GROUP_RESPONSABLE: AppRole[] = [
+  "chef_testeur",
+  "chef_projet",
+  "qa_lead",
+  "quality_manager",
+  "testeur",
+];
+
+export const activeUserNamesByRole = (users: PlatformUser[], roles: AppRole[]): string[] =>
+  users.filter((u) => u.active && roles.includes(u.role)).map((u) => u.name);
+
 /*  --------------------------------------------------------------------------  */
 /*  4.  LABELS & TRANSLATIONS (Record<Type, string>)                            */
 /*  --------------------------------------------------------------------------  */

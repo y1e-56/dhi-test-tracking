@@ -13,7 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { projects as seedProjects, type ProjectStatus } from "@/lib/dhi-data";
+import {
+  activeUserNamesByRole,
+  projects as seedProjects,
+  ROLE_GROUP_MANAGER,
+  ROLE_GROUP_QA_LEAD,
+  type ProjectStatus,
+} from "@/lib/dhi-data";
 
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
@@ -53,7 +59,8 @@ function EditProjectPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const { products, projects, users, updateProject, replaceProjects } = useStore();
-  const activeMembers = users.filter((u) => u.active).map((u) => u.name);
+  const managerOptions = activeUserNamesByRole(users, ROLE_GROUP_MANAGER);
+  const qaLeadOptions = activeUserNamesByRole(users, ROLE_GROUP_QA_LEAD);
   const viewableProducts = useVisibleProducts(products);
   const project = projects.find((p) => p.id === projectId);
 
@@ -243,7 +250,7 @@ function EditProjectPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {activeMembers.map((p) => (
+                      {managerOptions.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>
@@ -261,7 +268,7 @@ function EditProjectPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {activeMembers.map((p) => (
+                      {qaLeadOptions.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>

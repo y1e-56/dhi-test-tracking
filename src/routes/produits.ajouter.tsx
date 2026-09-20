@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 
 import { useStore } from "@/lib/dhi-store";
+import { activeUserNamesByRole, ROLE_GROUP_QA_LEAD } from "@/lib/dhi-data";
 import { useI18n } from "@/lib/i18n";
 import { api, mapBackendProduct, type BackendProduct } from "@/lib/api";
 
@@ -33,7 +34,7 @@ function CreateProductPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const { users, products, addProduct, replaceProducts } = useStore();
-  const activeMembers = users.filter((u) => u.active).map((u) => u.name);
+  const qaLeadOptions = activeUserNamesByRole(users, ROLE_GROUP_QA_LEAD);
 
   const [form, setForm] = useState({
     name: "",
@@ -144,7 +145,7 @@ function CreateProductPage() {
                       <SelectValue placeholder={t("pages.go_live.choose")} />
                     </SelectTrigger>
                     <SelectContent>
-                      {activeMembers.map((p) => (
+                      {qaLeadOptions.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>

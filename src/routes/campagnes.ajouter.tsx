@@ -15,7 +15,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { type CampaignStatus } from "@/lib/dhi-data";
+import {
+  activeUserNamesByRole,
+  ROLE_GROUP_RESPONSABLE,
+  type CampaignStatus,
+} from "@/lib/dhi-data";
 
 import { campaignStats, useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
@@ -50,6 +54,7 @@ function CreateCampaignPage() {
   }));
   const testerOptions = memberOptions.filter((o) => o.role === "testeur" || o.role === "chef_testeur");
   const devOptions = memberOptions.filter((o) => o.role === "developpeur");
+  const ownerOptions = activeUserNamesByRole(users, ROLE_GROUP_RESPONSABLE);
 
   const viewableProducts = useVisibleProducts(products);
   const viewableProjects = useVisibleProjects(projects, products);
@@ -297,13 +302,11 @@ function CreateCampaignPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {memberOptions
-                        .filter((o) => o.active)
-                        .map((o) => (
-                          <SelectItem key={o.name} value={o.name}>
-                            {o.name}
-                          </SelectItem>
-                        ))}
+                      {ownerOptions.map((name) => (
+                        <SelectItem key={name} value={name}>
+                          {name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

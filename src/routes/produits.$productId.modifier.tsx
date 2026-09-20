@@ -13,7 +13,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { products as seedProducts } from "@/lib/dhi-data";
+import {
+  activeUserNamesByRole,
+  products as seedProducts,
+  ROLE_GROUP_QA_LEAD,
+} from "@/lib/dhi-data";
 
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
 import { getUser, productVisibleTo } from "@/lib/access";
@@ -39,7 +43,7 @@ function EditProductPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const { products, users, updateProduct, replaceProducts } = useStore();
-  const activeMembers = users.filter((u) => u.active).map((u) => u.name);
+  const qaLeadOptions = activeUserNamesByRole(users, ROLE_GROUP_QA_LEAD);
   const product = products.find((p) => p.id === productId);
 
   const [form, setForm] = useState(() => ({
@@ -156,7 +160,7 @@ function EditProductPage() {
                       <SelectValue placeholder={t("pages.go_live.choose")} />
                     </SelectTrigger>
                     <SelectContent>
-                      {activeMembers.map((p) => (
+                      {qaLeadOptions.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>
