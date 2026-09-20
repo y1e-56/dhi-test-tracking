@@ -1,0 +1,115 @@
+=========================================================
+NOTE POUR MOI (mots simples)
+Ce que le collabo a envoyé et ce que je dois vérifier
+=========================================================
+
+1) D'ABORD, CE QUE JE SAIS
+--------------------------
+- Le collabo (y1e-56) a poussé son travail sur la branche "nouvelle-version".
+- Je l'ai récupéré dans le dossier NEW VERSION (le "front", c'est l'écran
+  que je vois dans le navigateur).
+- Le "back" est dans le dossier backend (le programme qui gère les données,
+  les fichiers, les comptes).
+- Les 2 programmes tournent déjà sur mon ordinateur :
+    * Front (l'écran) :  http://localhost:3000
+    * Back (le cerveau) : http://localhost:5000
+  (le back faisait déjà tourner depuis avant, et le front vient de redémarrer
+   sur le bon port).
+
+ATTENTION : le front doit tourner sur un port que le back accepte : le port
+3000 ou le port 8080 (ils sont autorisés). Si un jour l'écran dit
+"connexion impossible" / erreur, c'est probablement qu'il tourne sur un
+autre port. Commandes possibles :
+    npm run dev -- --port 3000 --strictPort
+ou
+    npm run dev -- --port 8080 --strictPort
+(à lancer dans le dossier NEW VERSION)
+
+2) CE QUE LE COLLABO A AJOUTÉ (en clair)
+----------------------------------------
+A. Des DOCUMENTS que je peux attacher :
+   - Chaque Produit, Projet, Campagne et Fonctionnalité a maintenant un
+     onglet "Documents".
+   - Je peux y téléverser un fichier (un PDF, une capture, un doc...) et
+     le supprimer. Ça sert à ranger les pièces par endroit (ex: cahier des
+     charges d'une campagne, maquette d'une fonctionnalité...).
+
+B. Les CAS DE TEST améliorés :
+   - Quand j'enregistre un résultat de test, je peux maintenant noter le
+     "résultat obtenu" et laisser un COMMENTAIRE (ex: "l'écran bloque quand
+     on clique ici").
+   - Il y a aussi des boutons pour IMPORT / EXPORT en CSV (fichier Excel),
+     pour envoyer mes tests ou les récupérer d'un fichier.
+
+C. Les RÔLES et autorisations :
+   - Chaque personne voit seulement ce qui la concerne, selon son rôle :
+       * admin          : voit tout + "Administration" (créer des comptes)
+       * chef testeur   : gère les campagnes, donne les décisions Go/No-Go
+       * testeur        : déroule les tests, note les résultats
+       * développeur    : voit les anomalies à corriger
+   - Si je me connecte avec un rôle qui n'a pas le droit d'ouvrir une page,
+     je tombe sur un écran "Accès refusé" (c'est normal, pas une panne).
+   - Le Go / No-Go (feu vert / feu rouge) ne peut être décidé QUE par les
+     approbateurs (créateur ou chef), plus par n'importe qui.
+
+3) COMMENT JE VÉRIFIE (étape par étape)
+---------------------------------------
+Étape 0 : Ouvrir l'écran
+   - Va dans le navigateur sur :  http://localhost:3000
+   - Connecte-toi avec un compte de test (voir la liste en bas).
+
+Étape 1 : Vérifier les DOCUMENTS
+   - Clique sur un Produit (menu Produits) -> onglet "Documents".
+   - Clique "Ajouter un document", choisis un fichier, valide.
+   - Le fichier doit apparaître dans la liste. Peux-tu le re-télécharger ?
+     OUI = ça marche.
+   - Fais pareil sur un Projet, une Campagne, une Fonctionnalité.
+
+Étape 2 : Vérifier les CAS DE TEST
+   - Ouvre une Campagne -> onglet "Tests".
+   - Ouvre un test -> note le "résultat obtenu" (ex: "PASS" / "En échec")
+     + un commentaire.
+   - Essaie Export CSV : le fichier doit se télécharger.
+   - Essaie Import CSV (si tu as un fichier) : les tests doivent s'ajouter.
+
+Étape 3 : Vérifier les RÔLES
+   - Reconnecte-toi avec le compte ADMIN : seul lui doit voir le menu
+     "Administration" (page des comptes).
+   - Connecte-toi avec chef@test.fr : il doit pouvoir faire un Go / No-Go
+     sur sa campagne.
+   - Connecte-toi avec testeur@test.fr : il ne doit PAS voir "Administration",
+     et ne doit pas pouvoir décider du Go/No-Go.
+   - Connecte-toi avec dev@test.fr : il doit voir ses anomalies à corriger.
+
+4) LES COMPTES DE TEST (déjà en base)
+-------------------------------------
+   Rôle          Email               Mot de passe
+   admin         admin@test.fr       Admin@DHI2026
+   chef testeur  chef@test.fr        Chef@DHI2026
+   chef testeur  chef2@test.fr       Chef@DHI2026
+   testeur       testeur@test.fr     Testeur@DHI2026
+   développeur   dev@test.fr         Dev@DHI2026
+
+(Pour réinsérer ces comptes si besoin : dans backend > npm run seed,
+ mais ça EFFACE les données existantes.)
+
+5) POUR DÉMARRER PLUS TARD (quand je redémarre l'ordinateur)
+------------------------------------------------------------
+   Back :   dans le dossier backend  ->  npm run dev        (port 5000)
+   Front :  dans NEW VERSION         ->  npm run dev -- --port 3000 --strictPort
+   (ou le port 8080 :  npm run dev -- --port 8080 --strictPort)
+   Puis je vérifie que le back répond :
+            http://localhost:5000/api-docs  -> doit afficher une page
+   Et l'écran : http://localhost:3000  (ou http://localhost:8080)
+
+6) POUR M'EN SOUVENIR (info importante)
+---------------------------------------
+- Le back accepte le front s'il est sur le port 3000 ou 8080 (réglage CORS,
+  modifié localement pour accepter 8080 aussi). Sinon, erreur "non autorisée
+  par CORS" -> relancer le front sur un de ces 2 ports.
+- Le collabo travaille sur la même branche "nouvelle-version" : avant de
+  commencer, faire "git pull" dans NEW VERSION pour récupérer ses dernières
+  modifs, et pareil pour backend dans le dossier racine.
+- Rien de tout ça ne TOUCHE les fichiers existants : on a seulement ajouté
+  des documents, des champs de commentaire et des règles d'accès.
+=========================================================

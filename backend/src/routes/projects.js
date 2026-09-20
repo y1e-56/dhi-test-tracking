@@ -110,7 +110,8 @@ router.get('/:id', authenticate, async (req, res) => {
 });
 
 const requireAdmin = (req, res, next) => {
-  if (!['chef_projet', 'quality_manager', 'qa_lead', 'product_owner'].includes(req.user.role)) {
+  // admin = super-utilisateur : toujours autorisé (aligné sur le super-rôle front).
+  if (!['admin', 'chef_projet', 'quality_manager', 'qa_lead', 'product_owner'].includes(req.user.role)) {
     return res.status(403).json({ error: 'Réservé aux chefs de projet et responsables qualité' });
   }
   next();

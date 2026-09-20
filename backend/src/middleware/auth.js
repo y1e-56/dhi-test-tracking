@@ -5,7 +5,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 
 export function requireRole(...roles) {
   return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) {
+    // admin = super-utilisateur : toujours autorisé, sur tous les endpoints (aligné
+    // sur canAccessAll() du front, qui lui accorde toutes les pages et toutes les actions).
+    if (!req.user || (req.user.role !== 'admin' && !roles.includes(req.user.role))) {
       return res.status(403).json({ message: 'Accès non autorisé pour votre rôle' });
     }
     next();
@@ -13,11 +15,11 @@ export function requireRole(...roles) {
 }
 
 export const requireAdmin = requireRole('admin');
-export const requireChefTesteur = requireRole('admin', 'chef_testeur');
+export const requireChefTesteur = requireRole('chef_testeur');
 export const requireQualityAdmin = requireRole('quality_manager', 'qa_lead');
-export const requireTester = requireRole('admin', 'chef_testeur', 'tester');
-export const requireDeveloper = requireRole('admin', 'developer');
-export const requireManagerOrAbove = requireRole('admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
+export const requireTester = requireRole('chef_testeur', 'tester');
+export const requireDeveloper = requireRole('developer');
+export const requireManagerOrAbove = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
 
 export async function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;

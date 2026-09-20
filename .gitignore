@@ -2,3 +2,24 @@ node_modules/
 dist/
 .env
 .claude/
+
+# Logs et sorties de debug
+*.log
+*.log.err
+dev_out.txt
+dev_err.txt
+back-ok.log
+
+# Jetons temporaires (secrets)
+new-admin-token.txt
+tmp-admin-token.txt
+
+# Scripts de vérification ponctuels (hors livrable)
+admin-check.mjs
+admin-guard-check.mjs
+admin-mini-check.mjs
+admin-mutation-check.mjs
+role-matrix-final.mjs
+run-matrix.mjs
+relaunch-backend.ps1
+backend/probe-bus.mjs

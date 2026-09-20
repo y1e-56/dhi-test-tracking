@@ -197,7 +197,7 @@ router.post('/', authenticate, requireCampaignCreator, async (req, res) => {
  */
 router.put('/:id', authenticate, async (req, res) => {
   const userRole = req.user.role;
-  const allowedRoles = ['chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet'];
+  const allowedRoles = ['admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet'];
 
   if (!allowedRoles.includes(userRole)) {
     return res.status(403).json({ error: 'Vous n\'avez pas la permission de modifier cette campagne' });
