@@ -92,7 +92,11 @@ function AddFeatureDocument() {
       toast.error(t("pages.documents.fill_required"));
       return;
     }
-    if (localStorage.getItem("token") && /^\d+$/.test(featureId) && file) {
+    if (localStorage.getItem("token") && /^\d+$/.test(featureId)) {
+      if (!file) {
+        toast.error(t("pages.documents.fill_required"));
+        return;
+      }
       try {
         await uploadEvidence(
           "feature",

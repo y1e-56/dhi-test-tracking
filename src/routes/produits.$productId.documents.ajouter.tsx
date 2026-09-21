@@ -81,7 +81,11 @@ function AddProductDocument() {
       toast.error(t("pages.documents.fill_required"));
       return;
     }
-    if (localStorage.getItem("token") && /^\d+$/.test(productId) && file) {
+    if (localStorage.getItem("token") && /^\d+$/.test(productId)) {
+      if (!file) {
+        toast.error(t("pages.documents.fill_required"));
+        return;
+      }
       try {
         await uploadEvidence(
           "product",

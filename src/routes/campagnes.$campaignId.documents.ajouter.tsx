@@ -91,7 +91,11 @@ function AddCampaignDocument() {
       toast.error(t("pages.documents.fill_required"));
       return;
     }
-    if (localStorage.getItem("token") && /^\d+$/.test(campaignId) && file) {
+    if (localStorage.getItem("token") && /^\d+$/.test(campaignId)) {
+      if (!file) {
+        toast.error(t("pages.documents.fill_required"));
+        return;
+      }
       try {
         await uploadEvidence(
           "campaign",

@@ -81,7 +81,11 @@ function AddProjectDocument() {
       toast.error(t("pages.documents.fill_required"));
       return;
     }
-    if (localStorage.getItem("token") && /^\d+$/.test(projectId) && file) {
+    if (localStorage.getItem("token") && /^\d+$/.test(projectId)) {
+      if (!file) {
+        toast.error(t("pages.documents.fill_required"));
+        return;
+      }
       try {
         await uploadEvidence(
           "project",
