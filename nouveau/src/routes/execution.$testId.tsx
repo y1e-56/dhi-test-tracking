@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
 import { CriticalityBadge, Panel, VerdictBadge } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -32,7 +33,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
-import { VERDICT_LABEL, type TestCase, type Verdict } from "@/lib/dhi-data";
+import { VERDICT_LABEL, SEVERITY_LABEL, type TestCase, type Verdict, type Severity } from "@/lib/dhi-data";
 import { CampaignAccessDenied } from "@/components/dhi/AccessDenied";
 import { canManageOperational } from "@/lib/role-protection";
 import { api, mapBackendTestCase, type BackendTestExecution, type BackendTestCase } from "@/lib/api";
@@ -428,7 +429,7 @@ function TraceabilityPanel({
 function ExecutionPage() {
   const { testId } = Route.useParams();
   const { t } = useI18n();
-  const { tests, features, campaigns, defects, updateTest, addDefect } = useStore();
+  const { tests, features, campaigns, defects, users, currentUser, updateTest, addDefect } = useStore();
   const localTest = tests.find((t) => t.id === testId);
   const [backendTest, setBackendTest] = useState<ReturnType<typeof mapBackendTestCase> | null>(null);
   useEffect(() => {
@@ -554,31 +555,77 @@ function ExecutionPage() {
     toast.success(t("pages.execution_detail.evidence_added").replace("{name}", file.name));
   };
 
-  const createDefect = (assignee: string) => {
-    const id = addDefect({
-      productId: campaign?.productId ?? "p-paiement",
-      campaignId: campaign?.id ?? "c-recette-412",
+  const campaignTesters = campaign?.testers ?? [];
+  const [createOpen, setCreateOpen] = useState(false);
+  const [draftAnomaly, setDraftAnomaly] = useState<{
+    title: string;
+    description: string;
+    severity: Severity;
+    priority: Severity;
+    assignee: string;
+    developer: string;
+  }>({
+    title: "",
+    description: "",
+    severity: "moyenne",
+    priority: "moyenne",
+    assignee: "",
+    developer: "",
+  });
+
+  const sevOfCriticality = (c?: TestCase["criticality"]): Severity =>
+    c === "critique" || c === "haute" ? "haute" : c === "basse" ? "basse" : "moyenne";
+
+  const devs = users.filter((u) => u.active && u.role === "developpeur");
+  const assigneeOptions =
+    campaignTesters.length > 0
+      ? campaignTesters
+      : users.filter((u) => u.active).map((u) => u.name);
+
+  const openCreateDialog = () => {
+    const severity = sevOfCriticality(test.criticality);
+    setDraftAnomaly({
       title: t("pages.execution_detail.defect_title_prefix")
         .replace("{id}", test.id)
         .replace("{name}", test.name),
-      description: current.observed || t("pages.execution_detail.defect_created_from"),
-      severity: test.criticality === "critique" ? "haute" : "moyenne",
-      priority: test.criticality === "critique" ? "haute" : "moyenne",
+      description: current.observed || "",
+      severity,
+      priority: severity,
+      assignee:
+        currentUser?.name && assigneeOptions.includes(currentUser.name)
+          ? currentUser.name
+          : (assigneeOptions[0] ?? ""),
+      developer: devs[0]?.name ?? "",
+    });
+    setCreateOpen(true);
+  };
+
+  const submitAnomaly = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!draftAnomaly.title.trim()) {
+      toast.error(t("pages.anomalies.title_required"));
+      return;
+    }
+    const id = addDefect({
+      productId: campaign?.productId ?? "",
+      campaignId: campaign?.id ?? "",
+      title: draftAnomaly.title.trim(),
+      description: draftAnomaly.description,
+      severity: draftAnomaly.severity,
+      priority: draftAnomaly.priority,
       status: "nouvelle",
       featureId: test.featureId,
       version: campaign?.version ?? "4.12",
       testId: test.id,
-      reporter: "Marie Martin",
-      assignee,
+      reporter: currentUser?.name ?? "Marie Martin",
+      assignee: draftAnomaly.assignee,
+      developer: draftAnomaly.developer,
       createdAt: new Date().toISOString().slice(0, 10),
       targetDate: new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10),
     });
+    setCreateOpen(false);
     toast.success(t("pages.execution_detail.defect_created").replace("{id}", id));
   };
-
-  const campaignTesters = campaign?.testers ?? [];
-  const [createOpen, setCreateOpen] = useState(false);
-  const [newAssignee, setNewAssignee] = useState(campaignTesters[0] ?? "");
 
   return (
     <AppShell
@@ -637,54 +684,124 @@ function ExecutionPage() {
           />
           <DefectsListPanel
             defects={linkedDefects}
-            onCreateDefect={() => setCreateOpen(true)}
+            onCreateDefect={openCreateDialog}
           />
           <TraceabilityPanel test={test} onRestart={restart} onSave={save} />
         </div>
       </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{t("pages.execution_detail.creer_anomalie")}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4">
-            <p className="text-sm text-muted-foreground">
-              {t("pages.execution_detail.defect_assign_hint")}
-            </p>
+          <form onSubmit={submitAnomaly} className="grid gap-4">
             <div className="space-y-2">
-              <Label>{t("pages.execution_detail.defect_assignee")}</Label>
-              <Select value={newAssignee} onValueChange={setNewAssignee}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {campaignTesters.length > 0 ? (
-                    campaignTesters.map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {p}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="">{t("pages.execution_detail.awaiting_assign")}</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+              <Label>{t("pages.anomalies.defect_title")}</Label>
+              <Input
+                value={draftAnomaly.title}
+                placeholder={t("pages.anomalies.title_placeholder")}
+                onChange={(e) => setDraftAnomaly((d) => ({ ...d, title: e.target.value }))}
+              />
             </div>
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <Button variant="outline" onClick={() => setCreateOpen(false)}>
+            <div className="space-y-2">
+              <Label>{t("pages.execution_detail.comportement_observe")}</Label>
+              <Textarea
+                rows={3}
+                value={draftAnomaly.description}
+                onChange={(e) => setDraftAnomaly((d) => ({ ...d, description: e.target.value }))}
+                placeholder={t("common.description")}
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t("pages.anomalies.severity")}</Label>
+                <Select
+                  value={draftAnomaly.severity}
+                  onValueChange={(v) => setDraftAnomaly((d) => ({ ...d, severity: v as Severity }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(SEVERITY_LABEL) as Severity[]).map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {SEVERITY_LABEL[s]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t("pages.anomalies.priority")}</Label>
+                <Select
+                  value={draftAnomaly.priority}
+                  onValueChange={(v) => setDraftAnomaly((d) => ({ ...d, priority: v as Severity }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(SEVERITY_LABEL) as Severity[]).map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {SEVERITY_LABEL[s]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t("pages.anomalies.assignee")}</Label>
+                <Select
+                  value={draftAnomaly.assignee}
+                  onValueChange={(v) => setDraftAnomaly((d) => ({ ...d, assignee: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {assigneeOptions.length > 0 ? (
+                      assigneeOptions.map((p) => (
+                        <SelectItem key={p} value={p}>
+                          {p}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="">{t("pages.execution_detail.awaiting_assign")}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t("pages.anomalies.developer")}</Label>
+                <Select
+                  value={draftAnomaly.developer}
+                  onValueChange={(v) => setDraftAnomaly((d) => ({ ...d, developer: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {devs.length > 0 ? (
+                      devs.map((p) => (
+                        <SelectItem key={p.id} value={p.name}>
+                          {p.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="">{t("pages.execution_detail.awaiting_assign")}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
                 {t("actions.annuler")}
               </Button>
-              <Button
-                onClick={() => {
-                  createDefect(newAssignee);
-                  setCreateOpen(false);
-                }}
-              >
-                {t("pages.execution_detail.creer_anomalie")}
-              </Button>
+              <Button type="submit">{t("pages.anomalies.create_anomaly")}</Button>
             </div>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
     </AppShell>

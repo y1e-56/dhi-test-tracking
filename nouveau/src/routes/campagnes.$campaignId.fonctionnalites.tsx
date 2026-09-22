@@ -26,6 +26,7 @@ import {
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
 import { campaigns as seedCampaigns, TEST_TYPES } from "@/lib/dhi-data";
 import { campaignTabs } from "@/lib/dhi-nav";
+import { canManageOperational } from "@/lib/role-protection";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/campagnes/$campaignId/fonctionnalites")({
@@ -144,10 +145,12 @@ function CampaignFeatures() {
         <section className="panel">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold">{t("pages.campaign_detail.fonctionnalites_importees")}</h3>
-            <Button size="sm" variant="outline" onClick={() => setPickerOpen(true)}>
-              <Plus className="mr-1.5 h-4 w-4" />
-              {t("pages.campaign_detail.importer_fonctionnalites")}
-            </Button>
+            {canManageOperational() ? (
+              <Button size="sm" variant="outline" onClick={() => setPickerOpen(true)}>
+                <Plus className="mr-1.5 h-4 w-4" />
+                {t("pages.campaign_detail.importer_fonctionnalites")}
+              </Button>
+            ) : null}
           </div>
           {importedRows.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
@@ -178,9 +181,11 @@ function CampaignFeatures() {
                           <FileText className="h-4 w-4" />
                         </Button>
                       </Link>
-                      <Button variant="ghost" size="icon-sm" onClick={() => remove(f.id)} title={t("pages.campaign_detail.retirer")}>
-                        <X className="h-4 w-4" />
-                      </Button>
+                      {canManageOperational() ? (
+                        <Button variant="ghost" size="icon-sm" onClick={() => remove(f.id)} title={t("pages.campaign_detail.retirer")}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -251,20 +256,24 @@ function CampaignFeatures() {
               {selected.size} {t("pages.add_campaign.selectionnes_compteur")} · {filteredFeatures.length} / {productFeatures.length}
             </span>
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setSelected(new Set(filteredFeatures.map((f) => f.id)))}
-                className="font-medium text-primary hover:underline"
-              >
-                {t("pages.add_campaign.tout_selectionner")}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelected(new Set())}
-                className="font-medium text-destructive hover:underline"
-              >
-                {t("pages.add_campaign.tout_effacer")}
-              </button>
+              {filteredFeatures.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setSelected(new Set(filteredFeatures.map((f) => f.id)))}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {t("pages.add_campaign.tout_selectionner")}
+                </button>
+              ) : null}
+              {selected.size > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setSelected(new Set())}
+                  className="font-medium text-destructive hover:underline"
+                >
+                  {t("pages.add_campaign.tout_effacer")}
+                </button>
+              ) : null}
             </div>
           </div>
           <div className="max-h-72 space-y-1.5 overflow-y-auto">

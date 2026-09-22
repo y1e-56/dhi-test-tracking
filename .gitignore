@@ -26,3 +26,6 @@ backend/probe-bus.mjs
 
 # Front « nouvelle génération » : dépôt git séparé (branche nouvelle-version)
 NEW VERSION/
+
+# Dossier git imbriqué (copie de projet) — ne jamais embarquer
+dhi-test-tracking/

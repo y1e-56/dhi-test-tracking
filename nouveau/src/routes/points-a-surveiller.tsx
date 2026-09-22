@@ -16,6 +16,7 @@ import { useStore } from "@/lib/dhi-store";
 import { useVisibleProductIds } from "@/lib/use-scope";
 
 import { useI18n } from "@/lib/i18n";
+import { canManageOperational } from "@/lib/role-protection";
 import {
   WATCH_LEVEL_LABEL,
   WATCH_STATUS_LABEL,
@@ -67,11 +68,13 @@ function WatchPointsList() {
       subtitle={t("pages.watchpoints.subtitle")}
       breadcrumb={t("pages.watchpoints.breadcrumb")}
       actions={
-        <Link to="/points-a-surveiller/ajouter">
-          <Button size="sm">
-            <Plus className="size-4" /> {t("pages.watchpoints.new_point")}
-          </Button>
-        </Link>
+        canManageOperational() ? (
+          <Link to="/points-a-surveiller/ajouter">
+            <Button size="sm">
+              <Plus className="size-4" /> {t("pages.watchpoints.new_point")}
+            </Button>
+          </Link>
+        ) : undefined
       }
     >
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -147,28 +150,32 @@ function WatchPointsList() {
                           {" · "}
                           {w.owner}
                         </p>
-                        <Select
-                          value={w.status}
-                          onValueChange={(v) => {
-                            updateWatchPoint(w.id, { status: v as WatchStatus });
-                            toast.success(
-                              t("pages.watchpoints.status_changed")
-                                .replace("{title}", w.title)
-                                .replace("{status}", WATCH_STATUS_LABEL[v as WatchStatus]),
-                            );
-                          }}
-                        >
-                          <SelectTrigger className="h-7 w-28 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {COLUMNS.map((s) => (
-                              <SelectItem key={s} value={s}>
-                                {WATCH_STATUS_LABEL[s]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {canManageOperational() ? (
+                          <Select
+                            value={w.status}
+                            onValueChange={(v) => {
+                              updateWatchPoint(w.id, { status: v as WatchStatus });
+                              toast.success(
+                                t("pages.watchpoints.status_changed")
+                                  .replace("{title}", w.title)
+                                  .replace("{status}", WATCH_STATUS_LABEL[v as WatchStatus]),
+                              );
+                            }}
+                          >
+                            <SelectTrigger className="h-7 w-28 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {COLUMNS.map((s) => (
+                                <SelectItem key={s} value={s}>
+                                  {WATCH_STATUS_LABEL[s]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="label-eyebrow">{WATCH_STATUS_LABEL[w.status]}</span>
+                        )}
                       </div>
                     </li>
                   ))}

@@ -16,6 +16,7 @@ import { SCORE_LABELS, SCORE_WEIGHTS, type ScoreBreakdown } from "@/lib/dhi-data
 
 import { useI18n } from "@/lib/i18n";
 import { useStore } from "@/lib/dhi-store";
+import { canManageReferentials } from "@/lib/role-protection";
 
 export const Route = createFileRoute("/referentiels")({
   head: () => ({
@@ -97,34 +98,48 @@ function ReferentialsPage() {
                 <TableCell className="text-sm">{r.label}</TableCell>
                 <TableCell className="text-sm">
                   {["RG-1", "RG-2", "RG-3"].includes(r.id) ? (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        defaultValue={r.threshold}
-                        className="h-8 w-32 text-sm"
-                        onBlur={(e) => {
-                          const v = e.target.value.trim();
-                          if (v && v !== r.threshold) {
-                            updateRule(r.id, { threshold: v });
-                            toast.success(`${r.id} seuil mis à jour : ${v}`);
-                          }
-                        }}
-                      />
-                      <span className="text-[11px] text-muted-foreground">{t("pages.referentials.editable")}</span>
-                    </div>
+                    canManageReferentials() ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          defaultValue={r.threshold}
+                          className="h-8 w-32 text-sm"
+                          onBlur={(e) => {
+                            const v = e.target.value.trim();
+                            if (v && v !== r.threshold) {
+                              updateRule(r.id, { threshold: v });
+                              toast.success(`${r.id} seuil mis à jour : ${v}`);
+                            }
+                          }}
+                        />
+                        <span className="text-[11px] text-muted-foreground">{t("pages.referentials.editable")}</span>
+                      </div>
+                    ) : (
+                      <span className="num text-sm">{r.threshold}</span>
+                    )
                   ) : (
                     <span className="num text-sm">{r.threshold}</span>
                   )}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Switch
-                    checked={r.active}
-                    onCheckedChange={(v) => {
-                      updateRule(r.id, { active: v });
-                      toast.success(
-                        `${r.id} ${v ? t("pages.referentials.enabled") : t("pages.referentials.disabled")}.`,
-                      );
-                    }}
-                  />
+                  {canManageReferentials() ? (
+                    <Switch
+                      checked={r.active}
+                      onCheckedChange={(v) => {
+                        updateRule(r.id, { active: v });
+                        toast.success(
+                          `${r.id} ${v ? t("pages.referentials.enabled") : t("pages.referentials.disabled")}.`,
+                        );
+                      }}
+                    />
+                  ) : (
+                    <span
+                      className={
+                        r.active ? "label-eyebrow text-success" : "label-eyebrow text-muted-foreground"
+                      }
+                    >
+                      {r.active ? t("pages.referentials.enabled") : t("pages.referentials.disabled")}
+                    </span>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

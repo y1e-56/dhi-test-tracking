@@ -1,23 +1,24 @@
 services:
-  - type: static
+  # ── Frontend (TanStack Start SSR → serveur Node) ──────────────────────────
+  - type: web
     name: dhi-test-tracking-app
-    env: static
+    env: node
     region: frankfurt
-    rootDir: DHI-LOGICEL
-    buildCommand: npm run build
-    staticPublishPath: ./dist
+    plan: free
     autoDeploy: false
     pullRequestPreviewsEnabled: false
+    rootDir: nouveau
+    buildCommand: npm install && NITRO_PRESET=node-server npm run build
+    startCommand: node .output/server/index.mjs
+    healthCheckPath: /
     envVars:
+      # URL de l'API (inlinée au build) — doit matcher le nom du service API ci-dessous
       - key: VITE_API_URL
         value: https://dhi-test-tracking-api.onrender.com/api
-      - key: VITE_SENTRY_DSN
-        sync: false
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+      - key: PORT
+        value: "10000"
 
+  # ── Backend (Express + Socket.IO) ─────────────────────────────────────────
   - type: web
     name: dhi-test-tracking-api
     env: node

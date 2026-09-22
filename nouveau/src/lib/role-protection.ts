@@ -130,3 +130,11 @@ export function canManageOperational(): boolean {
   if (!session) return false;
   return !OPERATIONAL_READ_ONLY_ROLES.includes(session.role as AppRole);
 }
+
+/** Rôles autorisés à paramétrer les référentiels / règles métier (seuls à avoir la page). */
+export const MANAGE_REFERENTIALS_ROLES: AppRole[] = ["admin", "quality_manager", "qa_lead"];
+
+/** L'utilisateur connecté peut-il modifier les seuils et l'activation des règles ? */
+export function canManageReferentials(): boolean {
+  return roleIs(...MANAGE_REFERENTIALS_ROLES);
+}

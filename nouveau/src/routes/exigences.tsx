@@ -236,14 +236,16 @@ function RequirementsList() {
                           <span className="num font-semibold mr-2">{r.id}</span>
                           <span className="truncate">{r.title}</span>
                         </span>
-                        <Link
-                          to="/exigences/$requirementId/modifier"
-                          params={{ requirementId: r.id }}
-                        >
-                          <Button size="icon" variant="ghost" className="size-6 shrink-0 ml-2">
-                            <Pencil className="size-3.5" />
-                          </Button>
-                        </Link>
+                        {canCreateRequirement() ? (
+                          <Link
+                            to="/exigences/$requirementId/modifier"
+                            params={{ requirementId: r.id }}
+                          >
+                            <Button size="icon" variant="ghost" className="size-6 shrink-0 ml-2">
+                              <Pencil className="size-3.5" />
+                            </Button>
+                          </Link>
+                        ) : null}
                       </li>
                     ))}
                     {orphanRequirements.length > 4 ? (
@@ -415,47 +417,55 @@ function RequirementsList() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Select
-                      value={r.status}
-                      onValueChange={(v) => {
-                        updateRequirement(r.id, { status: v as RequirementStatus });
-                        toast.success(
-                          `${r.id} : ${t(REQUIREMENT_STATUS_T_KEY[v as RequirementStatus])}.`,
-                        );
-                      }}
-                    >
-                      <SelectTrigger className="h-7 w-36 text-xs">
-                        <StatusPill status={r.status} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(Object.keys(REQUIREMENT_STATUS_T_KEY) as RequirementStatus[]).map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {t(REQUIREMENT_STATUS_T_KEY[s])}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {canCreateRequirement() ? (
+                      <Select
+                        value={r.status}
+                        onValueChange={(v) => {
+                          updateRequirement(r.id, { status: v as RequirementStatus });
+                          toast.success(
+                            `${r.id} : ${t(REQUIREMENT_STATUS_T_KEY[v as RequirementStatus])}.`,
+                          );
+                        }}
+                      >
+                        <SelectTrigger className="h-7 w-36 text-xs">
+                          <StatusPill status={r.status} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(REQUIREMENT_STATUS_T_KEY) as RequirementStatus[]).map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {t(REQUIREMENT_STATUS_T_KEY[s])}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <StatusPill status={r.status} />
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
-                      <Link
-                        to="/exigences/$requirementId/modifier"
-                        params={{ requirementId: r.id }}
-                        title={t("pages.requirements.edit_requirement")}
-                      >
-                        <Button size="icon" variant="ghost" className="size-7">
-                          <Pencil className="size-4" />
-                        </Button>
-                      </Link>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-7 text-danger hover:bg-danger/10 hover:text-danger"
-                        onClick={() => setToDeleteReq(r)}
-                        title={t("pages.requirements.delete_requirement")}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
+                      {canCreateRequirement() ? (
+                        <>
+                          <Link
+                            to="/exigences/$requirementId/modifier"
+                            params={{ requirementId: r.id }}
+                            title={t("pages.requirements.edit_requirement")}
+                          >
+                            <Button size="icon" variant="ghost" className="size-7">
+                              <Pencil className="size-4" />
+                            </Button>
+                          </Link>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-7 text-danger hover:bg-danger/10 hover:text-danger"
+                            onClick={() => setToDeleteReq(r)}
+                            title={t("pages.requirements.delete_requirement")}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </>
+                      ) : null}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -556,15 +566,17 @@ function RequirementsList() {
                         {linkedFeatures.length === 0 ? (
                           <div className="py-6 text-center text-sm text-muted-foreground border border-dashed border-border rounded-md">
                             {t("pages.requirements.aucune_feature_liee")}
-                            <Link
-                              to="/exigences/$requirementId/modifier"
-                              params={{ requirementId: r.id }}
-                            >
-                              <Button size="sm" variant="outline" className="ml-3">
-                                <Pencil className="size-3.5 mr-1" />{" "}
-                                {t("actions.lier_fonctionnalites")}
-                              </Button>
-                            </Link>
+                            {canCreateRequirement() ? (
+                              <Link
+                                to="/exigences/$requirementId/modifier"
+                                params={{ requirementId: r.id }}
+                              >
+                                <Button size="sm" variant="outline" className="ml-3">
+                                  <Pencil className="size-3.5 mr-1" />{" "}
+                                  {t("actions.lier_fonctionnalites")}
+                                </Button>
+                              </Link>
+                            ) : null}
                           </div>
                         ) : (
                           <div className="space-y-2">

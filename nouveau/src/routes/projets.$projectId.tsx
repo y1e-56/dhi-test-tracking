@@ -46,6 +46,7 @@ import { projectTabs } from "@/lib/dhi-nav";
 import { campaignStats, loadSnapshot, productScore, useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 import { getUser, projectVisibleTo } from "@/lib/access";
+import { canCreateProject } from "@/lib/role-protection";
 import { ProjectAccessDenied } from "@/components/dhi/AccessDenied";
 
 export const Route = createFileRoute("/projets/$projectId")({
@@ -223,10 +224,9 @@ function ProjectDetail() {
         <Panel
           title={t("pages.project_detail.releases_title")}
           actions={
-            <NewReleaseDialog
-              projectId={project.id}
-              addRelease={addRelease}
-            />
+            canCreateProject() ? (
+              <NewReleaseDialog projectId={project.id} addRelease={addRelease} />
+            ) : undefined
           }
         >
           {projReleases.length === 0 ? (
@@ -246,35 +246,37 @@ function ProjectDetail() {
               ))}
             </ul>
           )}
-          <div className="mt-4 border-t border-border pt-4">
-            <Label className="text-sm font-medium">{t("pages.releases.link_existing")}</Label>
-            <div className="mt-2 flex items-center gap-2">
-              <Select value={selRel} onValueChange={setSelRel}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder={t("pages.releases.select_release_placeholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {linkableReleases.map((r) => {
-                    const owner = projects.find((p) => p.id === r.projectId)?.name;
-                    return (
-                      <SelectItem key={r.id} value={r.id}>
-                        {r.version} · {RELEASE_STATUS_LABEL[r.status]}
-                        {owner ? ` (${owner})` : ""}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-              <Button type="button" onClick={linkRelease} disabled={linkableReleases.length === 0}>
-                {t("pages.releases.link")}
-              </Button>
+          {canCreateProject() ? (
+            <div className="mt-4 border-t border-border pt-4">
+              <Label className="text-sm font-medium">{t("pages.releases.link_existing")}</Label>
+              <div className="mt-2 flex items-center gap-2">
+                <Select value={selRel} onValueChange={setSelRel}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder={t("pages.releases.select_release_placeholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {linkableReleases.map((r) => {
+                      const owner = projects.find((p) => p.id === r.projectId)?.name;
+                      return (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.version} · {RELEASE_STATUS_LABEL[r.status]}
+                          {owner ? ` (${owner})` : ""}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <Button type="button" onClick={linkRelease} disabled={linkableReleases.length === 0}>
+                  {t("pages.releases.link")}
+                </Button>
+              </div>
+              {linkableReleases.length === 0 ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {t("pages.releases.no_linkable")}
+                </p>
+              ) : null}
             </div>
-            {linkableReleases.length === 0 ? (
-              <p className="mt-2 text-xs text-muted-foreground">
-                {t("pages.releases.no_linkable")}
-              </p>
-            ) : null}
-          </div>
+          ) : null}
         </Panel>
         <Panel title={t("pages.project_detail.indicators_title")}>
           <ul className="space-y-2 text-sm">

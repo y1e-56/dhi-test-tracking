@@ -81,16 +81,18 @@ function AlertsPage() {
       subtitle={t("pages.alerts.subtitle")}
       breadcrumb={t("pages.alerts.breadcrumb")}
       actions={
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            markAllAlertsRead();
-            toast.success(t("pages.alerts.all_read"));
-          }}
-        >
-          <CheckCheck className="size-4" /> {t("pages.alerts.mark_all_read")}
-        </Button>
+        unread > 0 ? (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              markAllAlertsRead();
+              toast.success(t("pages.alerts.all_read"));
+            }}
+          >
+            <CheckCheck className="size-4" /> {t("pages.alerts.mark_all_read")}
+          </Button>
+        ) : null
       }
     >
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

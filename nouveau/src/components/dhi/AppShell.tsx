@@ -215,13 +215,15 @@ function NotificationBell() {
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>{t("pages.notifications.title")}</span>
-          <button
-            type="button"
-            onClick={markAllNotificationsRead}
-            className="text-xs font-normal text-muted-foreground hover:text-foreground"
-          >
-            {t("pages.notifications.mark_all_read")}
-          </button>
+          {unread > 0 ? (
+            <button
+              type="button"
+              onClick={markAllNotificationsRead}
+              className="text-xs font-normal text-muted-foreground hover:text-foreground"
+            >
+              {t("pages.notifications.mark_all_read")}
+            </button>
+          ) : null}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {mine.length === 0 ? (

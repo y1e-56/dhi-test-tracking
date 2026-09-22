@@ -174,24 +174,28 @@ function ProjectsList() {
                   <TableCell className="text-sm">{pr.manager}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Link
-                        to="/projets/$projectId/modifier"
-                        params={{ projectId: pr.id }}
-                        aria-label={`${t("actions.modifier")} ${pr.name}`}
-                      >
-                        <Button size="icon" variant="ghost" className="size-7">
-                          <Pencil className="size-3.5" />
-                        </Button>
-                      </Link>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-7 text-danger hover:text-danger"
-                        onClick={() => setToDelete(pr)}
-                        aria-label={`${t("actions.supprimer")} ${pr.name}`}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
+                      {canCreateProject() ? (
+                        <>
+                          <Link
+                            to="/projets/$projectId/modifier"
+                            params={{ projectId: pr.id }}
+                            aria-label={`${t("actions.modifier")} ${pr.name}`}
+                          >
+                            <Button size="icon" variant="ghost" className="size-7">
+                              <Pencil className="size-3.5" />
+                            </Button>
+                          </Link>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-7 text-danger hover:text-danger"
+                            onClick={() => setToDelete(pr)}
+                            aria-label={`${t("actions.supprimer")} ${pr.name}`}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </>
+                      ) : null}
                     </div>
                   </TableCell>
                 </TableRow>

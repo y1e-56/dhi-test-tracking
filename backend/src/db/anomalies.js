@@ -64,6 +64,8 @@ export async function list(filters = {}, client = null) {
     INNER JOIN projects proj ON proj.id = camp.project_id
     LEFT JOIN users reporter ON reporter.id = a.reported_by
     LEFT JOIN users assignee ON assignee.id = a.assigned_to
+    LEFT JOIN users resolver ON resolver.id = a.resolved_by
+    LEFT JOIN users validator ON validator.id = a.validated_by
   `;
 
   const select = `
@@ -76,7 +78,11 @@ export async function list(filters = {}, client = null) {
     reporter.first_name AS reporter_first_name,
     reporter.last_name AS reporter_last_name,
     assignee.first_name AS assignee_first_name,
-    assignee.last_name AS assignee_last_name
+    assignee.last_name AS assignee_last_name,
+    resolver.first_name AS resolver_first_name,
+    resolver.last_name AS resolver_last_name,
+    validator.first_name AS validator_first_name,
+    validator.last_name AS validator_last_name
   `;
 
   const countQuery = `SELECT COUNT(*) FROM anomalies a ${joins} ${where}`;
@@ -98,16 +104,22 @@ export async function findById(id, client = null) {
             camp.project_id,
             proj.name AS project_name,
             proj.product_id,
-            reporter.first_name AS reporter_first_name,
-            reporter.last_name AS reporter_last_name,
-            assignee.first_name AS assignee_first_name,
-            assignee.last_name AS assignee_last_name
+      reporter.first_name AS reporter_first_name,
+      reporter.last_name AS reporter_last_name,
+      assignee.first_name AS assignee_first_name,
+      assignee.last_name AS assignee_last_name,
+      resolver.first_name AS resolver_first_name,
+      resolver.last_name AS resolver_last_name,
+      validator.first_name AS validator_first_name,
+      validator.last_name AS validator_last_name
      FROM anomalies a
      LEFT JOIN features feat ON feat.id = a.feature_id
      LEFT JOIN campaigns camp ON camp.id = a.campaign_id
      LEFT JOIN projects proj ON proj.id = camp.project_id
      LEFT JOIN users reporter ON reporter.id = a.reported_by
      LEFT JOIN users assignee ON assignee.id = a.assigned_to
+     LEFT JOIN users resolver ON resolver.id = a.resolved_by
+     LEFT JOIN users validator ON validator.id = a.validated_by
      WHERE a.id = $1`,
     [id]
   );
@@ -129,7 +141,8 @@ export async function create(data, client = null) {
 export async function update(id, data, client = null) {
   const c = client || pool;
   const allowedFields = ['description', 'assigned_to', 'status', 'resolution_description', 'test_case_id', 'correction_due_date',
-    'description_audio_data', 'description_audio_type', 'description_transcription', 'description_duration_seconds'];
+    'description_audio_data', 'description_audio_type', 'description_transcription', 'description_duration_seconds',
+    'resolved_by', 'validated_by'];
   const sets = [];
   const values = [];
   let idx = 1;

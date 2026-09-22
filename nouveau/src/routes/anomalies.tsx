@@ -2,7 +2,7 @@
 // 1. Imports
 // ============================================================
 import { createFileRoute, Link, useNavigate, Outlet, useMatches } from "@tanstack/react-router";
-import { Download, Plus, Search } from "lucide-react";
+import { Download, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
@@ -179,14 +179,11 @@ function DefectsList() {
       breadcrumb={[t("nav.systeme"), t("nav.anomalies")]}
       actions={
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => exportToCsv(rows, t)}>
-            <Download className="size-4" /> {t("actions.exporter")}
-          </Button>
-          <Link to="/anomalies/ajouter">
-            <Button size="sm">
-              <Plus className="size-4" /> {t("pages.anomalies.new_anomaly")}
+          {rows.length > 0 ? (
+            <Button size="sm" variant="outline" onClick={() => exportToCsv(rows, t)}>
+              <Download className="size-4" /> {t("actions.exporter")}
             </Button>
-          </Link>
+          ) : null}
         </div>
       }
     >

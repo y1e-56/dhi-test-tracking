@@ -1,4 +1,5 @@
 import { AppError } from '../middleware/errorHandler.js';
+import { assertCanRecordVerdict } from './separationGuard.js';
 import bus from '../lib/eventBus.js';
 import * as db from '../db/index.js';
 
@@ -32,7 +33,19 @@ export async function createExecution(data) {
   return exec;
 }
 
-export async function updateExecution(id, data) {
+export async function updateExecution(id, data, userId = null) {
+  const existing = await db.testExecutions.findById(id);
+  if (!existing) throw new AppError('Exécution non trouvée', 404);
+
+  // Séparation des responsabilités : le verdict d'une exécution déjà
+  // renseignée ne peut être modifié ou confirmé que par un autre membre que
+  // celui qui l'a exécutée (un revolver de verdict doit se prononcer).
+  assertCanRecordVerdict({
+    executedBy: existing.executed_by,
+    actorId: userId,
+    currentResult: existing.result,
+  });
+
   const updated = await db.testExecutions.update(id, data);
   if (!updated) throw new AppError('Exécution non trouvée', 404);
   bus.emit('test_execution:updated', updated);

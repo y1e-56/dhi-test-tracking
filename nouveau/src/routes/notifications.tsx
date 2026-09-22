@@ -71,16 +71,18 @@ function NotificationsPage() {
       breadcrumb={t("pages.notifications.breadcrumb")}
       
       actions={
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            markAllNotificationsRead();
-            toast.success(t("pages.notifications.all_read"));
-          }}
-        >
-          <CheckCheck className="size-4" /> {t("pages.notifications.mark_all_read")}
-        </Button>
+        unread > 0 ? (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              markAllNotificationsRead();
+              toast.success(t("pages.notifications.all_read"));
+            }}
+          >
+            <CheckCheck className="size-4" /> {t("pages.notifications.mark_all_read")}
+          </Button>
+        ) : null
       }
     >
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

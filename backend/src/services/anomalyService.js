@@ -1,5 +1,6 @@
 import { withTransaction } from '../config/database.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { assertCanJudgeAnomaly } from './separationGuard.js';
 import bus from '../lib/eventBus.js';
 import * as db from '../db/index.js';
 
@@ -80,22 +81,38 @@ export async function createAnomaly(data) {
 
 export async function updateAnomaly(id, data, userId = null) {
   try {
+    const existing = await db.anomalies.findById(id);
+    if (!existing) throw new AppError('Anomalie non trouvée', 404);
+
     if (data.correction_due_date !== undefined) {
-      const existing = await db.anomalies.findById(id);
-      if (existing) {
-        const featureDueDate = await getFeatureDueDate(existing.feature_id);
-        validateCorrectionDueDate(data.correction_due_date, featureDueDate);
+      const featureDueDate = await getFeatureDueDate(existing.feature_id);
+      validateCorrectionDueDate(data.correction_due_date, featureDueDate);
+    }
+
+    // Séparation des responsabilités : une résolution ne peut être validée ou
+    // rejetée que par un autre membre que celui qui l'a signalée.
+    if (data.status === 'validated' || data.status === 'rejected') {
+      assertCanJudgeAnomaly({
+        resolvedBy: existing.resolved_by,
+        actorId: userId,
+        status: data.status,
+      });
+      if (existing.status !== 'resolution_signaled') {
+        throw new AppError(`Impossible de ${data.status === 'validated' ? 'valider' : 'rejeter'} une anomalie sans résolution signalée`, 400);
       }
     }
 
     // Une résolution peut être signalée directement (prise en charge implicite)
     if (data.status === 'resolution_signaled') {
-      const existing = await db.anomalies.findById(id);
-      if (!existing) throw new AppError('Anomalie non trouvée', 404);
       if (existing.status !== 'in_progress' && existing.status !== 'new') {
         throw new AppError('Impossible de signaler la résolution dans le statut actuel', 400);
       }
     }
+
+    // Horodatage et traçabilité de la séparation des responsabilités
+    if (data.status === 'resolution_signaled') data.resolved_by = userId;
+    if (data.status === 'validated') data.validated_by = userId;
+    if (data.status === 'rejected') data.validated_by = null;
 
     const updated = await db.anomalies.update(id, data);
     if (!updated) throw new AppError('Anomalie non trouvée', 404);

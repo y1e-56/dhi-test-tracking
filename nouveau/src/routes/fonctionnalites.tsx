@@ -322,24 +322,28 @@ function FeaturesList() {
                           <FileText className="size-4" />
                         </Button>
                       </Link>
-                      <Link
-                        to="/fonctionnalites/$featureId/modifier"
-                        params={{ featureId: f.id }}
-                        title={t("pages.features.edit_feature")}
-                      >
-                        <Button size="icon" variant="ghost" className="size-7">
-                          <Pencil className="size-4" />
-                        </Button>
-                      </Link>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-7 text-danger hover:bg-danger/10 hover:text-danger"
-                        onClick={() => setToDeleteFeature(f)}
-                        title={t("pages.features.delete_feature")}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
+                      {canCreateFeature() ? (
+                        <>
+                          <Link
+                            to="/fonctionnalites/$featureId/modifier"
+                            params={{ featureId: f.id }}
+                            title={t("pages.features.edit_feature")}
+                          >
+                            <Button size="icon" variant="ghost" className="size-7">
+                              <Pencil className="size-4" />
+                            </Button>
+                          </Link>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-7 text-danger hover:bg-danger/10 hover:text-danger"
+                            onClick={() => setToDeleteFeature(f)}
+                            title={t("pages.features.delete_feature")}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </>
+                      ) : null}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -527,14 +531,17 @@ function FeaturesList() {
                         {fReqs.length === 0 && fTests.length === 0 ? (
                           <p className="py-6 text-center text-sm text-muted-foreground border border-dashed border-border rounded-md">
                             {t("pages.features.no_requirement_or_test")}
-                            <Link
-                              to="/fonctionnalites/$featureId/modifier"
-                              params={{ featureId: f.id }}
-                            >
-                              <Button size="sm" variant="outline" className="ml-3">
-                                <Pencil className="size-3.5 mr-1" /> {t("pages.features.complete")}
-                              </Button>
-                            </Link>
+                            {canCreateFeature() ? (
+                              <Link
+                                to="/fonctionnalites/$featureId/modifier"
+                                params={{ featureId: f.id }}
+                              >
+                                <Button size="sm" variant="outline" className="ml-3">
+                                  <Pencil className="size-3.5 mr-1" />{" "}
+                                  {t("pages.features.complete")}
+                                </Button>
+                              </Link>
+                            ) : null}
                           </p>
                         ) : null}
                       </div>

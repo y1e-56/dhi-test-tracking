@@ -106,20 +106,24 @@ export function MemberMultiSelect({
           <div className="flex items-center justify-between border-b px-3 py-1.5 text-xs text-muted-foreground">
             <span>{selectedCount}/{sorted.filter((o) => o.active).length} {t("pages.add_campaign.selectionnes_compteur")}</span>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => onChange(new Set(sorted.filter((o) => o.active).map((o) => o.name)))}
-                className="font-medium text-primary hover:underline"
-              >
-                {t("pages.add_campaign.tout_selectionner")}
-              </button>
-              <button
-                type="button"
-                onClick={clear}
-                className="font-medium text-destructive hover:underline"
-              >
-                {t("pages.add_campaign.tout_effacer")}
-              </button>
+              {sorted.filter((o) => o.active).length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => onChange(new Set(sorted.filter((o) => o.active).map((o) => o.name)))}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {t("pages.add_campaign.tout_selectionner")}
+                </button>
+              ) : null}
+              {selectedCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={clear}
+                  className="font-medium text-destructive hover:underline"
+                >
+                  {t("pages.add_campaign.tout_effacer")}
+                </button>
+              ) : null}
             </div>
           </div>
           <CommandList className="max-h-56">

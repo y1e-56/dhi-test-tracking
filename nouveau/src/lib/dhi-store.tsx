@@ -1583,12 +1583,20 @@ const featureById = new Map<string, Feature>();
           : campaigns.find((c) => c.productId === d.productId);
         const campaignBackend = backendIdOf(campaign?.id);
         if (featureBackend && campaignBackend) {
+          const reporter = users.find((u) => u.name === d.reporter);
+          const assignee = users.find((u) => u.name === (d.assignee ?? d.developer));
+          const reporterBackendId = backendIdOf(reporter?.id);
+          const assigneeBackendId = backendIdOf(assignee?.id);
+          const testBackendId = backendIdOf(d.testId);
           attemptBackend("Création anomalie", () =>
             createAnomaly({
               feature_id: featureBackend,
               campaign_id: campaignBackend,
               description: d.description ? `${d.title}\n\n${d.description}` : d.title,
               correction_due_date: d.targetDate,
+              ...(reporterBackendId !== undefined ? { reported_by: reporterBackendId } : {}),
+              ...(assigneeBackendId !== undefined ? { assigned_to: assigneeBackendId } : {}),
+              ...(testBackendId !== undefined ? { test_case_id: testBackendId } : {}),
             }),
           );
         }

@@ -217,7 +217,7 @@ router.post('/', authenticate, requireExecutionEditor, async (req, res, next) =>
 router.put('/:id', authenticate, requireExecutionEditor, async (req, res, next) => {
   try {
     const parsed = updateSchema.parse(req.body);
-    const exec = await testExecutionsService.updateExecution(parseInt(req.params.id), parsed);
+    const exec = await testExecutionsService.updateExecution(parseInt(req.params.id), parsed, req.user.id);
     res.json(exec);
   } catch (err) { next(err); }
 });

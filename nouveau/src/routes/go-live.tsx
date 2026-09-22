@@ -260,11 +260,24 @@ function GoLivePage() {
               key={item.id}
               className="flex items-start gap-3 rounded-md border border-border px-3 py-2"
             >
+              {canDecide ? (
               <Checkbox
                 checked={item.checked}
                 onCheckedChange={() => toggleChecklistItem(releaseId, item.id)}
                 className="mt-0.5"
               />
+            ) : (
+              <span
+                className={cn(
+                  "mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold",
+                  item.checked
+                    ? "border-success bg-success text-white"
+                    : "border-border bg-muted text-muted-foreground",
+                )}
+              >
+                {item.checked ? "✓" : ""}
+              </span>
+            )}
               <div className="flex min-w-0 flex-1 justify-between gap-2 text-sm">
                 <span>{item.label}</span>
                 <span className="num shrink-0 text-muted-foreground">{item.weight} %</span>
