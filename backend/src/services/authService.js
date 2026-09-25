@@ -10,6 +10,21 @@ const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION_MINUTES = 15;
 const MAX_LOCK_DURATION_MINUTES = 24 * 60;
 
+const ALLOWED_ROLES = ['admin', 'chef_testeur', 'tester', 'developer', 'quality_manager', 'qa_lead', 'product_owner', 'chef_projet', 'approver', 'lecteur'];
+const ROLE_PRIVILEGE = Object.fromEntries(ALLOWED_ROLES.map((r, i) => [r, i]));
+
+function collectRoles(user) {
+  const list = Array.isArray(user?.roles) && user.roles.length ? user.roles : user?.role ? [user.role] : [];
+  return [...new Set(list.filter((r) => ALLOWED_ROLES.includes(r)))];
+}
+
+// Le rôle principal est toujours le plus privilégié (index le plus faible).
+function computePrimary(roles) {
+  const list = roles.filter((r) => ALLOWED_ROLES.includes(r));
+  if (list.length === 0) return 'lecteur';
+  return list.reduce((best, r) => (ROLE_PRIVILEGE[r] < ROLE_PRIVILEGE[best] ? r : best));
+}
+
 function toPublic(user) {
   return {
     id: user.id,
@@ -17,19 +32,35 @@ function toPublic(user) {
     first_name: user.first_name,
     last_name: user.last_name,
     role: user.role,
+    roles: collectRoles(user),
     created_at: user.created_at,
   };
 }
 
-export async function register(email, password, firstName, lastName, role) {
-  const existing = await db.users.findByEmail(email);
-  if (existing) {
-    throw new AppError('Cet email est déjà utilisé', 409);
+export async function register(email, password, firstName, lastName, role, roles = []) {
+  const wantedRoles = [...new Set((roles && roles.length ? roles : [role]).filter((r) => ALLOWED_ROLES.includes(r)))];
+  if (wantedRoles.length === 0) {
+    throw new AppError('Rôle invalide. Rôles autorisés : ' + ALLOWED_ROLES.join(', '), 400);
   }
 
+  const existing = await db.users.findByEmail(email);
+  if (existing) {
+    // Un même email = un même compte : on cumule simplement les rôles.
+    const merged = [...new Set([...collectRoles(existing), ...wantedRoles])];
+    const primary = computePrimary(merged);
+    if (existing.date_suppression) await db.users.restore(existing.id);
+    await db.users.resetFailedAttempts(existing.id);
+    const user = await db.users.setRoles(existing.id, merged, primary);
+    return { user: toPublic(user), created: false };
+  }
+
+  if (!password || password.length < 6) throw new AppError('Mot de passe requis (6 caractères minimum)', 400);
+  if (!firstName?.trim() || !lastName?.trim()) throw new AppError('Prénom et nom requis', 400);
+
+  const primary = computePrimary(wantedRoles);
   const password_hash = await bcrypt.hash(password, 10);
-  const user = await db.users.create({ email, password_hash, firstName, lastName, role });
-  return toPublic(user);
+  const user = await db.users.create({ email, password_hash, firstName, lastName, role: primary, roles: wantedRoles });
+  return { user: toPublic(user), created: true };
 }
 
 export async function login(email, password) {
@@ -64,7 +95,7 @@ export async function login(email, password) {
 
   await db.users.resetFailedAttempts(user.id);
 
-  const payload = { userId: user.id, email: user.email, role: user.role };
+  const payload = { userId: user.id, email: user.email, role: user.role, roles: collectRoles(user) };
   const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
 
   return { user: toPublic(user), token };
@@ -83,13 +114,23 @@ export async function updateProfile(userId, data) {
 }
 
 export async function updateUserRole(userId, role) {
-  const allowedRoles = ['admin', 'chef_testeur', 'tester', 'developer', 'quality_manager', 'qa_lead', 'product_owner', 'chef_projet', 'approver', 'lecteur'];
-  if (!allowedRoles.includes(role)) {
-    throw new AppError('Rôle invalide. Rôles autorisés : ' + allowedRoles.join(', '), 400);
+  if (!ALLOWED_ROLES.includes(role)) {
+    throw new AppError('Rôle invalide. Rôles autorisés : ' + ALLOWED_ROLES.join(', '), 400);
   }
   const user = await db.users.updateRole(userId, role);
   if (!user) throw new AppError('Utilisateur non trouvé', 404);
-  return { id: user.id, email: user.email, first_name: user.first_name, last_name: user.last_name, role: user.role };
+  return { id: user.id, email: user.email, first_name: user.first_name, last_name: user.last_name, role: user.role, roles: user.roles };
+}
+
+export async function updateUserRoles(userId, roles) {
+  if (!Array.isArray(roles) || roles.length === 0 || roles.some((r) => !ALLOWED_ROLES.includes(r))) {
+    throw new AppError('Rôles invalides. Rôles autorisés : ' + ALLOWED_ROLES.join(', '), 400);
+  }
+  const merged = [...new Set(roles)];
+  const primary = computePrimary(merged);
+  const user = await db.users.setRoles(userId, merged, primary);
+  if (!user) throw new AppError('Utilisateur non trouvé', 404);
+  return { id: user.id, email: user.email, first_name: user.first_name, last_name: user.last_name, role: user.role, roles: user.roles };
 }
 
 export async function listUsers() {

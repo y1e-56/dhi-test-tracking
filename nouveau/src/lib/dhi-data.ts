@@ -414,6 +414,7 @@ export interface PlatformUser {
   name: string;
   email: string;
   role: AppRole;
+  roles?: AppRole[];
   active: boolean;
   password?: string;
 }

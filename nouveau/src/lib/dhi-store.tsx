@@ -181,7 +181,13 @@ type PersistedSnapshot = {
   featureDocuments: FeatureDocument[];
 };
 
-export type SessionUser = { id: string; name: string; email: string; role: AppRole };
+export type SessionUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: AppRole;
+  roles?: AppRole[];
+};
 
 const today = () => new Date().toISOString().slice(0, 10);
 const now = () => new Date().toISOString().slice(0, 16).replace("T", " ");
@@ -260,7 +266,8 @@ export function reconcileSessionFromMe(me: BackendUser): void {
   if (
     session.role !== freshUser.role ||
     session.name !== freshUser.name ||
-    session.email !== freshUser.email
+    session.email !== freshUser.email ||
+    (session.roles?.length ?? 0) !== (freshUser.roles?.length ?? 0)
   ) {
     saveSession(freshUser);
     currentUserSetter?.(freshUser);
@@ -334,6 +341,7 @@ interface Store {
   /*  2.2  Session / Auth -----------------------------------------------  */
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string; user?: SessionUser }>;
   logout: () => void;
+  setActiveRole: (role: AppRole) => void;
   backendStatus: "checking" | "online" | "offline";
   reloadFromBackend: () => void;
 
@@ -1232,6 +1240,14 @@ const featureById = new Map<string, Feature>();
         localStorage.removeItem("token");
         setBackendStatus("online");
       },
+      setActiveRole: (role: AppRole) => {
+        setCurrentUser((prev) => {
+          if (!prev) return prev;
+          const next = { ...prev, role };
+          saveSession(next);
+          return next;
+        });
+      },
 
       /* Produits / Projets / Features --------------------------------  */
       addProduct: (p) => {
@@ -1785,11 +1801,11 @@ const featureById = new Map<string, Feature>();
             `/auth/users/${id}/role`,
             {
               method: "PATCH",
-              body: JSON.stringify({ role: ROLE_TO_BACKEND[role] }),
+              body: JSON.stringify({ roles: [ROLE_TO_BACKEND[role]] }),
             },
           );
         }
-        setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
+        setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role, roles: [role] } : u)));
         pushAudit(asActor("Administrateur"), "Rôle modifié", id, role);
       },
       toggleUserActive: async (id) => {
@@ -1826,18 +1842,21 @@ const featureById = new Map<string, Feature>();
       },
       addUser: async (u) => {
         const [first_name, ...rest] = u.name.trim().split(/\s+/);
-        const created = await api<{ user: { id: number | string } }>("/auth/register", {
+        const frontRoles = u.roles && u.roles.length ? u.roles : [u.role];
+        const backendRoles = [...new Set(frontRoles.map((r) => ROLE_TO_BACKEND[r]))];
+        const created = await api<{ user: { id: number | string }; created?: boolean }>("/auth/register", {
           method: "POST",
           body: JSON.stringify({
             email: u.email,
             password: u.password ?? "",
             first_name: first_name ?? "",
             last_name: rest.join(" "),
-            role: ROLE_TO_BACKEND[u.role],
+            role: backendRoles[0],
+            roles: backendRoles,
           }),
         });
         const id = String(created.user.id);
-        setUsers((prev) => [...prev, { id, ...u }]);
+        setUsers((prev) => [...prev, { id, ...u, roles: frontRoles }]);
         pushAudit(asActor("Administrateur"), "Utilisateur créé", id, u.name);
         return id;
       },

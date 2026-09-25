@@ -50,6 +50,7 @@ export const frDict = {
   },
   common: {
     nom: "Nom",
+    role_actif: "Rôle actif",
     description: "Description",
     criticite: "Criticité",
     type: "Type",
@@ -585,6 +586,8 @@ export const frDict = {
       role: "Rôle",
       select_role: "Sélectionner un rôle",
       role_hint: "Le rôle détermine les accès et permissions de l'utilisateur.",
+      roles_hint: "Un utilisateur peut cumuler plusieurs rôles.",
+      roles_required: "Sélectionnez au moins un rôle.",
       password_section: "Sécurité & mot de passe",
       password_section_hint: "Définissez le mot de passe de connexion du nouvel utilisateur.",
       password: "Mot de passe",

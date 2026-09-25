@@ -3,11 +3,18 @@ import * as db from '../db/index.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 
+export function getUserRoles(user) {
+  if (!user) return [];
+  if (Array.isArray(user.roles) && user.roles.length) return user.roles;
+  return user.role ? [user.role] : [];
+}
+
 export function requireRole(...roles) {
   return (req, res, next) => {
     // admin = super-utilisateur : toujours autorisé, sur tous les endpoints (aligné
     // sur canAccessAll() du front, qui lui accorde toutes les pages et toutes les actions).
-    if (!req.user || (req.user.role !== 'admin' && !roles.includes(req.user.role))) {
+    const userRoles = getUserRoles(req.user);
+    if (!req.user || (!userRoles.includes('admin') && !roles.some((r) => userRoles.includes(r)))) {
       return res.status(403).json({ message: 'Accès non autorisé pour votre rôle' });
     }
     next();

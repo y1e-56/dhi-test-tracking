@@ -105,12 +105,12 @@ async function autoSeedIfEmpty() {
       const hash = (pwd) => bcrypt.hashSync(pwd, 10);
 
       const users = await client.query(`
-        INSERT INTO users (email, password_hash, first_name, last_name, role) VALUES
-          ('admin@test.fr', $1, 'Admin', 'Principal', 'admin'),
-          ('chef@test.fr', $2, 'Chef', 'Projet', 'chef_testeur'),
-          ('chef2@test.fr', $3, 'Second', 'Chef', 'chef_testeur'),
-          ('testeur@test.fr', $4, 'Testeur', 'Principal', 'tester'),
-          ('dev@test.fr', $5, 'Developpeur', 'Senior', 'developer')
+        INSERT INTO users (email, password_hash, first_name, last_name, role, roles) VALUES
+          ('admin@test.fr', $1, 'Admin', 'Principal', 'admin', ARRAY['admin']::text[]),
+          ('chef@test.fr', $2, 'Chef', 'Projet', 'chef_testeur', ARRAY['chef_testeur']::text[]),
+          ('chef2@test.fr', $3, 'Second', 'Chef', 'chef_testeur', ARRAY['chef_testeur']::text[]),
+          ('testeur@test.fr', $4, 'Testeur', 'Principal', 'tester', ARRAY['tester']::text[]),
+          ('dev@test.fr', $5, 'Developpeur', 'Senior', 'developer', ARRAY['developer']::text[])
         RETURNING id, email, role
       `, [hash('Admin@DHI2026'), hash('Chef@DHI2026'), hash('Chef@DHI2026'), hash('Testeur@DHI2026'), hash('Dev@DHI2026')]);
 

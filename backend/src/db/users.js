@@ -15,11 +15,21 @@ export async function findById(id, client = null) {
 
 export async function create(data, client = null) {
   const c = client || pool;
+  const roles = data.roles && data.roles.length ? data.roles : [data.role];
   const result = await c.query(
-    'INSERT INTO users (email, password_hash, first_name, last_name, role) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-    [data.email, data.password_hash, data.firstName, data.lastName, data.role]
+    'INSERT INTO users (email, password_hash, first_name, last_name, role, roles) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+    [data.email, data.password_hash, data.firstName, data.lastName, data.role, roles]
   );
   return result.rows[0];
+}
+
+export async function setRoles(id, roles, primaryRole, client = null) {
+  const c = client || pool;
+  const result = await c.query(
+    'UPDATE users SET roles = $2::text[], role = $3::user_role WHERE id = $1 AND date_suppression IS NULL RETURNING id, email, first_name, last_name, role, roles',
+    [id, roles, primaryRole]
+  );
+  return result.rows[0] || null;
 }
 
 export async function update(id, data, client = null) {
@@ -45,7 +55,7 @@ export async function update(id, data, client = null) {
 
 export async function list(client = null) {
   const c = client || pool;
-  const result = await c.query("SELECT id, email, first_name, last_name, role, created_at, locked_until, failed_login_attempts, date_suppression, password_reset_requested_at FROM users WHERE date_suppression IS NULL ORDER BY id");
+  const result = await c.query("SELECT id, email, first_name, last_name, role, roles, created_at, locked_until, failed_login_attempts, date_suppression, password_reset_requested_at FROM users WHERE date_suppression IS NULL ORDER BY id");
   return result.rows;
 }
 
@@ -62,8 +72,9 @@ export async function listPaginated(filters = {}, client = null) {
   }
   if (filters.role) {
     const ROLE_MAP = { testeur: 'tester', developpeur: 'developer' };
-    conditions.push(`u.role = $${idx++}`);
+    conditions.push(`(u.role = $${idx} OR u.roles @> ARRAY[$${idx}]::text[])`);
     params.push(ROLE_MAP[filters.role] || filters.role);
+    idx++;
   }
   if (filters.bloque === 'true' || filters.bloque === true) {
     conditions.push(`u.locked_until IS NOT NULL AND u.locked_until > NOW()`);
@@ -75,7 +86,7 @@ export async function listPaginated(filters = {}, client = null) {
     conditions.push(`u.date_suppression IS NOT NULL`);
   }
 
-  const select = `u.id, u.email, u.first_name, u.last_name, u.role, u.created_at, u.locked_until, u.failed_login_attempts, u.date_suppression, u.password_reset_requested_at`;
+  const select = `u.id, u.email, u.first_name, u.last_name, u.role, u.roles, u.created_at, u.locked_until, u.failed_login_attempts, u.date_suppression, u.password_reset_requested_at`;
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const from = `FROM users u`;
 
@@ -92,7 +103,7 @@ export async function listPaginated(filters = {}, client = null) {
 export async function updateRole(id, role, client = null) {
   const c = client || pool;
   const result = await c.query(
-    'UPDATE users SET role = $1 WHERE id = $2 AND date_suppression IS NULL RETURNING id, email, first_name, last_name, role',
+    'UPDATE users SET role = $1, roles = ARRAY[$1]::text[] WHERE id = $2 AND date_suppression IS NULL RETURNING id, email, first_name, last_name, role, roles',
     [role, id]
   );
   return result.rows[0] || null;
@@ -101,7 +112,7 @@ export async function updateRole(id, role, client = null) {
 export async function listByRole(role, client = null) {
   const c = client || pool;
   const result = await c.query(
-    'SELECT id, email, first_name, last_name, role FROM users WHERE role = $1 ORDER BY id',
+    'SELECT id, email, first_name, last_name, role, roles FROM users WHERE role = $1 OR roles @> ARRAY[$1]::text[] ORDER BY id',
     [role]
   );
   return result.rows;

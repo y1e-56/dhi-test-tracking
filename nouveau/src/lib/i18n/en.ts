@@ -52,6 +52,7 @@ export const enDict: DictShape = {
   },
   common: {
     nom: "Name",
+    role_actif: "Active role",
     description: "Description",
     criticite: "Criticality",
     type: "Type",
@@ -586,6 +587,8 @@ export const enDict: DictShape = {
       role: "Role",
       select_role: "Select a role",
       role_hint: "The role determines the user's accesses and permissions.",
+      roles_hint: "A user can hold multiple roles.",
+      roles_required: "Select at least one role.",
       password_section: "Security & password",
       password_section_hint: "Set the login password for the new user.",
       password: "Password",

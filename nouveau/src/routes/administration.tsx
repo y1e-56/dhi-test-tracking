@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ROLE_LABEL, type AppRole } from "@/lib/dhi-data";
+import { cn } from "@/lib/utils";
 
 import { useI18n } from "@/lib/i18n";
 import { loadSession, useStore } from "@/lib/dhi-store";
@@ -99,6 +100,21 @@ function AdminList() {
                 <TableCell className="font-medium">{u.name}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
                 <TableCell>
+                  <div className="flex flex-wrap items-center gap-1.5 pb-1.5">
+                    {(u.roles && u.roles.length > 0 ? u.roles : [u.role]).map((r) => (
+                      <span
+                        key={r}
+                        className={cn(
+                          "rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                          r === u.role
+                            ? "border-primary/40 bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground",
+                        )}
+                      >
+                        {ROLE_LABEL[r] ?? r}
+                      </span>
+                    ))}
+                  </div>
                   <Select
                     value={u.role}
                     onValueChange={async (v) => {

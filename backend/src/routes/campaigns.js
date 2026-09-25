@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import * as campaignService from '../services/campaignService.js';
-import { authenticate, requireRole } from '../middleware/auth.js';
+import { authenticate, requireRole, getUserRoles } from '../middleware/auth.js';
 import bus from '../lib/eventBus.js';
 
 const router = Router();
 
 const requireCampaignCreator = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'test_lead');
+
+const userHasAnyRole = (req, roles) => getUserRoles(req.user).some((r) => roles.includes(r));
 
 const createSchema = z.object({
   project_id: z.number(),
@@ -154,7 +156,7 @@ router.post('/', authenticate, requireCampaignCreator, async (req, res) => {
   // Le chef testeur qui crée la campagne est automatiquement chef de cette campagne
   const chefTesteurRoles = ['chef_testeur', 'test_lead'];
   let test_lead_ids = data.test_lead_ids || [];
-  if (chefTesteurRoles.includes(req.user.role)) {
+  if (userHasAnyRole(req, chefTesteurRoles)) {
     test_lead_ids = [...new Set([...test_lead_ids, req.user.id])];
   }
 
@@ -196,14 +198,13 @@ router.post('/', authenticate, requireCampaignCreator, async (req, res) => {
  *       404: { $ref: '#/components/responses/NotFound' }
  */
 router.put('/:id', authenticate, async (req, res) => {
-  const userRole = req.user.role;
   const allowedRoles = ['admin', 'chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet'];
 
-  if (!allowedRoles.includes(userRole)) {
+  if (!userHasAnyRole(req, allowedRoles)) {
     return res.status(403).json({ error: 'Vous n\'avez pas la permission de modifier cette campagne' });
   }
 
-  if (userRole === 'chef_testeur') {
+  if (userHasAnyRole(req, ['chef_testeur'])) {
     const campaign = await campaignService.getCampaignBasic(Number(req.params.id));
     if (!campaign.test_leads || !campaign.test_leads.includes(req.user.id)) {
       return res.status(403).json({ error: 'Vous n\'êtes pas chef testeur de cette campagne' });

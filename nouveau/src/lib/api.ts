@@ -70,6 +70,7 @@ export type BackendUser = {
   first_name?: string;
   last_name?: string;
   role: string;
+  roles?: string[];
   date_suppression?: string | null;
   locked_until?: string | null;
 };
@@ -263,18 +264,35 @@ export function mapBackendTestCase(test: BackendTestCase, execution?: BackendTes
   };
 }
 
+const FRONT_ROLE_FROM_BACKEND: Record<string, AppRole> = {
+  admin: "admin",
+  qa_lead: "qa_lead",
+  quality_manager: "quality_manager",
+  product_owner: "product_owner",
+  chef_projet: "chef_projet",
+  chef_testeur: "chef_testeur",
+  tester: "testeur",
+  developer: "developpeur",
+  approver: "approver",
+  lecteur: "lecteur",
+};
+
+export function toFrontRole(backendRole: string): AppRole {
+  return FRONT_ROLE_FROM_BACKEND[backendRole] ?? (backendRole as AppRole);
+}
+
 export function mapBackendUser(user: BackendUser): PlatformUser {
-  const role = user.role === "tester"
-    ? "testeur"
-    : user.role === "developer"
-      ? "developpeur"
-      : user.role;
+  const role = toFrontRole(user.role);
   const locked = user.locked_until ? new Date(user.locked_until).getTime() : 0;
   return {
     id: String(user.id),
     name: [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email,
     email: user.email,
-    role: role as AppRole,
+    role,
+    roles:
+      Array.isArray(user.roles) && user.roles.length > 0
+        ? [...new Set(user.roles.map(toFrontRole))]
+        : [role],
     active: user.date_suppression == null && locked <= Date.now(),
   };
 }

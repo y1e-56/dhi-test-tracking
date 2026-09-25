@@ -26,6 +26,7 @@ import {
   Moon,
   Sun,
   Globe,
+  Check,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -264,7 +265,7 @@ function NotificationBell() {
 
 function UserMenu() {
   const navigate = useNavigate();
-  const { currentUser, logout } = useStore();
+  const { currentUser, logout, setActiveRole } = useStore();
   const { lang, setLang, theme, toggleTheme, languages, t } = useI18n();
 
   const initials = (name: string) =>
@@ -331,6 +332,31 @@ function UserMenu() {
             <History className="mr-2 size-4 text-muted-foreground" /> {t("nav.audit")}
           </DropdownMenuItem>
         </DropdownMenuGroup>
+        {currentUser.roles && currentUser.roles.length > 1 ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t("common.role_actif")}
+              </DropdownMenuLabel>
+              {currentUser.roles.map((r) => (
+                <DropdownMenuItem
+                  key={r}
+                  className="text-sm"
+                  onSelect={() => {
+                    setActiveRole(r);
+                    void navigate({ to: getDefaultDashboardForRole(r) });
+                  }}
+                >
+                  {currentUser.role === r && <Check className="mr-2 size-4 text-primary" />}
+                  <span className={currentUser.role === r ? "font-semibold" : "ml-6"}>
+                    {ROLE_LABEL[r] ?? r}
+                  </span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </>
+        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem onClick={toggleTheme} className="text-sm">

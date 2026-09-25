@@ -23,15 +23,19 @@ export const BACKEND_ROLES = ['admin', 'chef_testeur', 'tester', 'developer', 'q
 
 const registerSchema = z.object({
   email: z.string().email('Email invalide'),
-  password: z.string().min(6, 'Minimum 6 caractÃ¨res'),
-  first_name: z.string().min(1, 'PrÃ©nom requis'),
-  last_name: z.string().min(1, 'Nom requis'),
-  role: z.enum(BACKEND_ROLES),
+  password: z.string().min(6, 'Minimum 6 caractÃ¨res').optional(),
+  first_name: z.string().min(1, 'PrÃ©nom requis').optional(),
+  last_name: z.string().min(1, 'Nom requis').optional(),
+  role: z.enum(BACKEND_ROLES).optional(),
+  roles: z.array(z.enum(BACKEND_ROLES)).min(1, 'Au moins un rôle requis').optional(),
 });
 
-const updateRoleSchema = z.object({
-  role: z.enum(BACKEND_ROLES),
-});
+const updateRoleSchema = z
+  .object({
+    role: z.enum(BACKEND_ROLES).optional(),
+    roles: z.array(z.enum(BACKEND_ROLES)).min(1, 'Au moins un rôle requis').optional(),
+  })
+  .refine((d) => d.role || d.roles, { message: 'role ou roles requis' });
 
 const loginSchema = z.object({
   email: z.string().email('Email invalide'),
@@ -79,9 +83,10 @@ const forgotPasswordSchema = z.object({
  */
 router.post('/register', authenticate, requireAdmin, authRateLimiter, async (req, res) => {
   const data = registerSchema.parse(req.body);
-  const user = await authService.register(data.email, data.password, data.first_name, data.last_name, data.role);
-  bus.emit('user:created', { user, password: data.password });
-  res.status(201).json({ user });
+  const { user, created } = await authService.register(data.email, data.password, data.first_name, data.last_name, data.role, data.roles);
+  if (created) bus.emit('user:created', { user, password: data.password });
+  bus.emit('data:changed', { entity: 'users' });
+  res.status(created ? 201 : 200).json({ user, created });
 });
 
 /**
@@ -501,8 +506,8 @@ router.patch('/users/:id/role', authenticate, requireAdmin, async (req, res) => 
   if (targetId === req.user.id) {
     return res.status(400).json({ message: 'Vous ne pouvez pas modifier votre propre rÃ´le' });
   }
-  const { role } = updateRoleSchema.parse(req.body);
-  const user = await authService.updateUserRole(targetId, role);
+  const { role, roles } = updateRoleSchema.parse(req.body);
+  const user = roles ? await authService.updateUserRoles(targetId, roles) : await authService.updateUserRole(targetId, role);
   bus.emit('data:changed', { entity: 'users' });
   res.json({ user });
 });

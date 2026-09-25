@@ -6,14 +6,8 @@ import { AppShell } from "@/components/dhi/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ROLE_LABEL, type AppRole } from "@/lib/dhi-data";
+import { cn } from "@/lib/utils";
 
 import { useI18n } from "@/lib/i18n";
 import { loadSession, useStore } from "@/lib/dhi-store";
@@ -42,11 +36,21 @@ function AddUserPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    role: "lecteur" as AppRole,
+    roles: ["lecteur"] as AppRole[],
     password: "",
     confirmPassword: "",
   });
   const [showPasswords, setShowPasswords] = useState(false);
+
+  const toggleRole = (role: AppRole) => {
+    setFormData((prev) => {
+      const has = prev.roles.includes(role);
+      return {
+        ...prev,
+        roles: has ? prev.roles.filter((r) => r !== role) : [...prev.roles, role],
+      };
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +75,11 @@ function AddUserPage() {
       return;
     }
 
+    if (formData.roles.length === 0) {
+      toast.error(t("pages.add_user.roles_required"));
+      return;
+    }
+
     if (!formData.password) {
       toast.error(t("pages.add_user.password_required"));
       return;
@@ -90,7 +99,8 @@ function AddUserPage() {
       await addUser({
         name: formData.name.trim(),
         email: formData.email.trim(),
-        role: formData.role,
+        role: formData.roles[0] ?? "lecteur",
+        roles: formData.roles,
         active: true,
         password: formData.password,
       });
@@ -164,25 +174,30 @@ function AddUserPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="role" className="text-sm font-medium">
-                  {t("pages.add_user.role")}
-                </Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value) => setFormData({ ...formData, role: value as AppRole })}
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder={t("pages.add_user.select_role")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roles.map((role) => (
-                      <SelectItem key={role} value={role}>
+                <Label className="text-sm font-medium">{t("pages.add_user.role")}</Label>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {roles.map((role) => {
+                    const selected = formData.roles.includes(role);
+                    return (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => toggleRole(role)}
+                        className={cn(
+                          "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                          selected
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                        )}
+                      >
                         {ROLE_LABEL[role]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">{t("pages.add_user.role_hint")}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t("pages.add_user.roles_hint")}
+                </p>
               </div>
             </div>
           </div>
