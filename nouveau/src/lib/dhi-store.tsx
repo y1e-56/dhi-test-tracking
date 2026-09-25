@@ -1856,8 +1856,16 @@ const featureById = new Map<string, Feature>();
           }),
         });
         const id = String(created.user.id);
-        setUsers((prev) => [...prev, { id, ...u, roles: frontRoles }]);
-        pushAudit(asActor("Administrateur"), "Utilisateur créé", id, u.name);
+        const mergedRoles = frontRoles;
+        if (created.created === false) {
+          setUsers((prev) =>
+            prev.map((p) => (p.id === id ? { ...p, name: u.name, roles: mergedRoles, role: u.role } : p)),
+          );
+          pushAudit(asActor("Administrateur"), "Rôles rattachés", id, u.name);
+        } else {
+          setUsers((prev) => [...prev, { id, ...u, roles: mergedRoles }]);
+          pushAudit(asActor("Administrateur"), "Utilisateur créé", id, u.name);
+        }
         return id;
       },
       updateRule: (id, patch) => {
