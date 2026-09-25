@@ -56,6 +56,11 @@ function AddUserPage() {
       return;
     }
 
+    if (!formData.name.trim().includes(" ")) {
+      toast.error(t("pages.add_user.name_full"));
+      return;
+    }
+
     if (!formData.email.trim()) {
       toast.error(t("pages.add_user.email_required"));
       return;

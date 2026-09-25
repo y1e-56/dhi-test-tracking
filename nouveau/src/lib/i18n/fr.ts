@@ -574,6 +574,7 @@ export const frDict = {
       breadcrumb: ["Système", "Administration", "Ajouter un utilisateur"],
       back_to_admin: "Retour à l'administration",
       name_required: "Le nom est requis.",
+      name_full: "Saisissez un prénom et un nom (ex. Jean Dupont).",
       email_required: "L'e-mail est requis.",
       email_invalid: "L'e-mail n'est pas valide.",
       success: "Utilisateur {name} ajouté avec succès.",

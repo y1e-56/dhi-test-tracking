@@ -575,6 +575,7 @@ export const enDict: DictShape = {
       breadcrumb: ["System", "Administration", "Add user"],
       back_to_admin: "Back to administration",
       name_required: "The name is required.",
+      name_full: "Enter a first name and a last name (e.g. John Smith).",
       email_required: "The email is required.",
       email_invalid: "The email is invalid.",
       success: "User {name} added successfully.",
