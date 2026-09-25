@@ -5,7 +5,7 @@ services:
     env: node
     region: frankfurt
     plan: free
-    autoDeploy: false
+    autoDeploy: true
     pullRequestPreviewsEnabled: false
     rootDir: nouveau
     buildCommand: npm install && NITRO_PRESET=node-server npm run build
@@ -24,7 +24,7 @@ services:
     env: node
     region: frankfurt
     plan: free
-    autoDeploy: false
+    autoDeploy: true
     rootDir: backend
     buildCommand: npm install
     startCommand: node src/index.js
