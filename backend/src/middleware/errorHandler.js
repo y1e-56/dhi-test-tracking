@@ -30,5 +30,5 @@ export function errorHandler(err, _req, res, _next) {
   }
 
   console.error('Unhandled error:', err);
-  res.status(500).json({ message: 'Erreur interne du serveur', error: err?.stack || err?.message || String(err) });
+  res.status(500).json({ message: 'Erreur interne du serveur' });
 }
