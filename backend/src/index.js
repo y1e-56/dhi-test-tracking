@@ -20,6 +20,8 @@ import bcrypt from 'bcryptjs';
 
 dotenv.config();
 
+console.log(`[DHI] boot ${new Date().toISOString()} commit=7bf5f28`);
+
 const app = express();
 app.set('trust proxy', 1);
 const httpServer = http.createServer(app);
