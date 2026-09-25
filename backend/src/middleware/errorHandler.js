@@ -29,12 +29,6 @@ export function errorHandler(err, _req, res, _next) {
     return;
   }
 
-  if (process.env.DEBUG_ERRORS === '1') {
-    console.error('DEBUG_ERRORS:', err?.stack || err);
-    res.status(500).json({ message: 'Erreur interne du serveur', error: err?.message || String(err) });
-    return;
-  }
-
   console.error('Unhandled error:', err);
-  res.status(500).json({ message: 'Erreur interne du serveur' });
+  res.status(500).json({ message: 'Erreur interne du serveur', error: err?.stack || err?.message || String(err) });
 }
