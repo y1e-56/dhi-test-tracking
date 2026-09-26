@@ -5,13 +5,13 @@ import { AppShell } from "@/components/dhi/AppShell";
 import { DefectStatusBadge, KpiCard, Panel, SeverityBadge } from "@/components/dhi/indicators";
 import { useStore } from "@/lib/dhi-store";
 import { loadSession } from "@/lib/dhi-store";
+import { hasSessionRole } from "@/lib/role-protection";
 import { DEFECT_STATUS_LABEL, type DefectStatus } from "@/lib/dhi-data";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/dashboard-developpeur")({
   beforeLoad: () => {
-    const session = loadSession();
-    if (!session || session.role !== "developpeur") {
+    if (!hasSessionRole("developpeur")) {
       throw redirect({ to: "/" });
     }
   },

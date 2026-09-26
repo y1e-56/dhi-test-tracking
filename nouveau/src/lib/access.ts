@@ -3,9 +3,25 @@ import type { AppRole, Campaign, Defect, Product, Project } from "@/lib/dhi-data
 
 const FULL_ACCESS_ROLES: AppRole[] = ["admin", "quality_manager", "product_owner", "qa_lead"];
 
+/** Tous les rôles attribués à un utilisateur (union). */
+export function userRoles(user: SessionUser | null | undefined): AppRole[] {
+  if (!user) return [];
+  return Array.isArray(user.roles) && user.roles.length > 0 ? user.roles : [user.role];
+}
+
+/** L'utilisateur a-t-il l'un des rôles donné (union sur ses rôles attribués) ? */
+export function hasAnyRole(user: SessionUser | null | undefined, ...roles: AppRole[]): boolean {
+  return userRoles(user).some((r) => roles.includes(r));
+}
+
 export function canAccessAll(role?: string): boolean {
   if (!role) return false;
   return (FULL_ACCESS_ROLES as string[]).includes(role);
+}
+
+/** L'utilisateur peut-il tout voir (union : dès qu'un de ses rôles a le plein accès) ? */
+export function userCanAccessAll(user: SessionUser | null | undefined): boolean {
+  return userRoles(user).some((r) => canAccessAll(r));
 }
 
 export function getUser(): SessionUser | null {
@@ -14,7 +30,7 @@ export function getUser(): SessionUser | null {
 
 export function productVisibleTo(product: Product, user: SessionUser | null): boolean {
   if (!user) return false;
-  if (canAccessAll(user.role)) return true;
+  if (userCanAccessAll(user)) return true;
   const name = user.name;
   return (
     product.owner === name ||
@@ -29,7 +45,7 @@ export function projectVisibleTo(
   user: SessionUser | null,
 ): boolean {
   if (!user) return false;
-  if (canAccessAll(user.role)) return true;
+  if (userCanAccessAll(user)) return true;
   const product = products.find((p) => p.id === project.productId);
   if (product && productVisibleTo(product, user)) return true;
   const name = user.name;
@@ -42,7 +58,7 @@ export function campaignVisibleTo(
   user: SessionUser | null,
 ): boolean {
   if (!user) return false;
-  if (canAccessAll(user.role)) return true;
+  if (userCanAccessAll(user)) return true;
   const product = products.find((p) => p.id === campaign.productId);
   if (product && productVisibleTo(product, user)) return true;
   const name = user.name;
@@ -50,7 +66,7 @@ export function campaignVisibleTo(
 }
 
 export function visibleProducts(products: Product[], user: SessionUser | null): Product[] {
-  if (!user || canAccessAll(user.role)) return products;
+  if (!user || userCanAccessAll(user)) return products;
   return products.filter((p) => productVisibleTo(p, user));
 }
 
@@ -59,7 +75,7 @@ export function visibleProjects(
   products: Product[],
   user: SessionUser | null,
 ): Project[] {
-  if (!user || canAccessAll(user.role)) return projects;
+  if (!user || userCanAccessAll(user)) return projects;
   return projects.filter((p) => projectVisibleTo(p, products, user));
 }
 
@@ -68,18 +84,18 @@ export function visibleCampaigns(
   products: Product[],
   user: SessionUser | null,
 ): Campaign[] {
-  if (!user || canAccessAll(user.role)) return campaigns;
+  if (!user || userCanAccessAll(user)) return campaigns;
   return campaigns.filter((c) => campaignVisibleTo(c, products, user));
 }
 
 export function defectVisibleTo(defect: Defect, user: SessionUser | null): boolean {
   if (!user) return false;
-  if (canAccessAll(user.role)) return true;
+  if (userCanAccessAll(user)) return true;
   const name = user.name;
   return defect.reporter === name || defect.assignee === name || defect.developer === name;
 }
 
 export function visibleDefects(defects: Defect[], user: SessionUser | null): Defect[] {
-  if (!user || canAccessAll(user.role)) return defects;
+  if (!user || userCanAccessAll(user)) return defects;
   return defects.filter((d) => defectVisibleTo(d, user));
 }

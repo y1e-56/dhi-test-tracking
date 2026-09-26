@@ -1,8 +1,24 @@
 import { loadSession } from "./dhi-store";
 import { ROLE_PAGES, type AppRole } from "./dhi-data";
 
+/** Tous les rôles de l'utilisateur connecté (union des rôles attribués). */
+export function getSessionRoles(): AppRole[] {
+  const session = loadSession();
+  if (!session) return [];
+  return Array.isArray(session.roles) && session.roles.length > 0
+    ? session.roles
+    : [session.role as AppRole];
+}
+
+/** L'utilisateur connecté possède-t-il ce rôle (parmi tous ses rôles attribués) ? */
+export function hasSessionRole(role: AppRole): boolean {
+  return getSessionRoles().includes(role);
+}
+
 /**
- * Vérifie si l'utilisateur connecté a accès à la page donnée
+ * Vérifie si l'utilisateur connecté a accès à la page donnée.
+ * L'accès est l'UNION des rôles attribués : dès qu'un de ses rôles
+ * autorise la page, l'accès est accordé.
  * @param path - Le chemin de la page à vérifier
  * @returns true si l'utilisateur a accès, false sinon
  */
@@ -10,25 +26,25 @@ export function hasAccessToPage(path: string): boolean {
   const session = loadSession();
   if (!session) return false;
 
-  const role = session.role as AppRole;
-  const allowedPages = ROLE_PAGES[role] || [];
+  const pageAllowed = (allowedPages: string[]): boolean => {
+    // Vérifier si le chemin exact est autorisé
+    if (allowedPages.includes(path)) return true;
 
-  // Vérifier si le chemin exact est autorisé
-  if (allowedPages.includes(path)) return true;
+    // Vérifier si un chemin parent est autorisé (pour les routes dynamiques)
+    // Par exemple, si "/produits" est autorisé, alors "/produits/123" l'est aussi
+    const pathParts = path.split('/').filter(Boolean);
+    if (pathParts.length > 1) {
+      const parentPath = '/' + pathParts[0];
+      if (allowedPages.includes(parentPath)) return true;
 
-  // Vérifier si un chemin parent est autorisé (pour les routes dynamiques)
-  // Par exemple, si "/produits" est autorisé, alors "/produits/123" l'est aussi
-  const pathParts = path.split('/').filter(Boolean);
-  if (pathParts.length > 1) {
-    const parentPath = '/' + pathParts[0];
-    if (allowedPages.includes(parentPath)) return true;
-    
-    // Vérifier les chemins à deux niveaux comme "/campagnes/ajouter"
-    const twoLevelPath = '/' + pathParts.slice(0, 2).join('/');
-    if (allowedPages.includes(twoLevelPath)) return true;
-  }
+      // Vérifier les chemins à deux niveaux comme "/campagnes/ajouter"
+      const twoLevelPath = '/' + pathParts.slice(0, 2).join('/');
+      if (allowedPages.includes(twoLevelPath)) return true;
+    }
+    return false;
+  };
 
-  return false;
+  return getSessionRoles().some((role) => pageAllowed(ROLE_PAGES[role] || []));
 }
 
 /**
@@ -91,9 +107,7 @@ export const CREATE_FEATURE_ROLES: AppRole[] = [
 export const CREATE_REQUIREMENT_ROLES: AppRole[] = CREATE_FEATURE_ROLES;
 
 function roleIs(...roles: AppRole[]): boolean {
-  const session = loadSession();
-  if (!session) return false;
-  return roles.includes(session.role as AppRole);
+  return getSessionRoles().some((r) => roles.includes(r));
 }
 
 /** L'utilisateur connecté peut-il créer un produit ? */
@@ -126,9 +140,10 @@ const OPERATIONAL_READ_ONLY_ROLES: AppRole[] = ["admin", "lecteur"];
 
 /** L'utilisateur connecté peut-il modifier des données opérationnelles ? */
 export function canManageOperational(): boolean {
-  const session = loadSession();
-  if (!session) return false;
-  return !OPERATIONAL_READ_ONLY_ROLES.includes(session.role as AppRole);
+  const roles = getSessionRoles();
+  if (roles.length === 0) return false;
+  // Union : possible dès qu'aucun de ses rôles n'est en lecture seule.
+  return roles.some((r) => !OPERATIONAL_READ_ONLY_ROLES.includes(r));
 }
 
 /** Rôles autorisés à paramétrer les référentiels / règles métier (seuls à avoir la page). */

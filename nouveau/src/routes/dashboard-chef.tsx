@@ -4,12 +4,12 @@ import { AppShell } from "@/components/dhi/AppShell";
 import { KpiCard, Panel } from "@/components/dhi/indicators";
 import { useStore } from "@/lib/dhi-store";
 import { loadSession } from "@/lib/dhi-store";
+import { hasSessionRole } from "@/lib/role-protection";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/dashboard-chef")({
   beforeLoad: () => {
-    const session = loadSession();
-    if (!session || session.role !== "chef_projet") {
+    if (!hasSessionRole("chef_projet")) {
       throw redirect({ to: "/" });
     }
   },

@@ -10,14 +10,14 @@ import { ROLE_LABEL, type AppRole } from "@/lib/dhi-data";
 import { cn } from "@/lib/utils";
 
 import { useI18n } from "@/lib/i18n";
-import { loadSession, useStore } from "@/lib/dhi-store";
+import { useStore } from "@/lib/dhi-store";
+import { hasSessionRole } from "@/lib/role-protection";
 
 const ADMIN_ROLES: AppRole[] = ["admin"];
 
 export const Route = createFileRoute("/administration/ajouter-utilisateur")({
   beforeLoad: () => {
-    const s = loadSession();
-    if (!s || !ADMIN_ROLES.includes(s.role)) {
+    if (!hasSessionRole("admin")) {
       throw redirect({ to: "/" });
     }
   },

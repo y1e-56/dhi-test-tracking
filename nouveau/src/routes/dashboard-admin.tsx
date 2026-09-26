@@ -3,13 +3,12 @@ import { Settings, Users, AlertTriangle, ShieldCheck } from "lucide-react";
 import { AppShell } from "@/components/dhi/AppShell";
 import { KpiCard, Panel } from "@/components/dhi/indicators";
 import { useStore } from "@/lib/dhi-store";
-import { loadSession } from "@/lib/dhi-store";
+import { hasSessionRole } from "@/lib/role-protection";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/dashboard-admin")({
   beforeLoad: () => {
-    const session = loadSession();
-    if (!session || session.role !== "admin") {
+    if (!hasSessionRole("admin")) {
       throw redirect({ to: "/" });
     }
   },

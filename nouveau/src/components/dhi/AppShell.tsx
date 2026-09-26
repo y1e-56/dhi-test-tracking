@@ -291,6 +291,10 @@ function UserMenu() {
   }
 
   const dashboardPath = getDefaultDashboardForRole(currentUser.role);
+  const assignedRoles =
+    Array.isArray(currentUser.roles) && currentUser.roles.length > 0
+      ? currentUser.roles
+      : [currentUser.role];
 
   return (
     <DropdownMenu>
@@ -307,7 +311,7 @@ function UserMenu() {
           <div className="hidden min-w-0 text-left sm:block">
             <p className="truncate text-[12px] font-semibold leading-none">{currentUser.name}</p>
             <p className="mt-0.5 truncate text-[10px] text-muted-foreground leading-none">
-              {ROLE_LABEL[currentUser.role] ?? currentUser.role}
+              {assignedRoles.map((r) => ROLE_LABEL[r] ?? r).join(" · ")}
             </p>
           </div>
         </button>
@@ -316,9 +320,20 @@ function UserMenu() {
         <DropdownMenuLabel>
           <p className="text-sm font-semibold">{currentUser.name}</p>
           <p className="text-xs font-normal text-muted-foreground">{currentUser.email}</p>
-          <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-primary/80">
-            {ROLE_LABEL[currentUser.role] ?? currentUser.role}
-          </p>
+          <div className="mt-2 flex flex-wrap gap-1">
+            {assignedRoles.map((r) => (
+              <span
+                key={r}
+                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold leading-none ${
+                  r === currentUser.role
+                    ? "bg-primary/10 text-primary"
+                    : "bg-subtle text-muted-foreground"
+                }`}
+              >
+                {ROLE_LABEL[r] ?? r}
+              </span>
+            ))}
+          </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>

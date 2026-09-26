@@ -84,10 +84,28 @@ export const FEATURE_DOC_DELETE_ROLES: Record<string, AppRole[]> = {
   autre: [CHEF_PRJ, CHEF_TST, ADMIN],
 };
 
-function currentRole(): AppRole | null {
+function currentRoles(): AppRole[] {
   const session = loadSession();
-  if (!session) return null;
-  return session.role as AppRole;
+  if (!session) return [];
+  return Array.isArray(session.roles) && session.roles.length > 0
+    ? session.roles
+    : [session.role as AppRole];
+}
+
+/** L'un des rôles attribués correspond à la matrice autorisée (union). */
+function matches(roles: AppRole[], allowed: AppRole[] | undefined): boolean {
+  if (!allowed) return false;
+  return roles.some((r) => allowed.includes(r));
+}
+
+/** L'un des rôles attribués est admin (union). */
+function isAdmin(roles: AppRole[]): boolean {
+  return roles.includes(ADMIN);
+}
+
+/** L'un des rôles attribués est admin ou quality_manager (union). */
+function isAdminOrQuality(roles: AppRole[]): boolean {
+  return roles.some((r) => r === ADMIN || r === QUALITY);
 }
 
 /**
@@ -95,35 +113,33 @@ function currentRole(): AppRole | null {
  * "Règles métier produit"), seuls admin + manager qualité peuvent téléverser.
  */
 export function canUploadProductDoc(type: ProductDocumentType): boolean {
-  const role = currentRole();
-  if (!role) return false;
+  const roles = currentRoles();
+  if (roles.length === 0) return false;
   const allowed = PRODUCT_DOC_UPLOAD_ROLES[type];
-  if (allowed) return allowed.includes(role);
-  return role === ADMIN || role === QUALITY;
+  if (allowed) return matches(roles, allowed);
+  return isAdminOrQuality(roles);
 }
 
 /** L'utilisateur peut-il téléverser au moins un type de document produit ? */
 export function canUploadAnyProductDoc(): boolean {
-  const role = currentRole();
-  if (!role) return false;
+  const roles = currentRoles();
+  if (roles.length === 0) return false;
   return (
-    role === ADMIN ||
-    role === QUALITY ||
-    role === PO ||
-    PRODUCT_DOC_UPLOAD_ROLES["cdc"]?.includes(role) === true ||
-    PRODUCT_DOC_UPLOAD_ROLES["notes_techniques"]?.includes(role) === true ||
-    PRODUCT_DOC_UPLOAD_ROLES["architecture"]?.includes(role) === true
+    roles.some((r) => r === ADMIN || r === QUALITY || r === PO) ||
+    matches(roles, PRODUCT_DOC_UPLOAD_ROLES["cdc"]) ||
+    matches(roles, PRODUCT_DOC_UPLOAD_ROLES["notes_techniques"]) ||
+    matches(roles, PRODUCT_DOC_UPLOAD_ROLES["architecture"])
   );
 }
 
 /** L'utilisateur peut-il téléverser au moins un type de document projet ? */
 export function canUploadAnyProjectDoc(): boolean {
-  const role = currentRole();
-  if (!role) return false;
+  const roles = currentRoles();
+  if (roles.length === 0) return false;
   return (
-    PROJECT_DOC_UPLOAD_ROLES["cdc_sprint"]?.includes(role) === true ||
-    PROJECT_DOC_UPLOAD_ROLES["spec_features"]?.includes(role) === true ||
-    PROJECT_DOC_UPLOAD_ROLES["cas_de_test"]?.includes(role) === true
+    matches(roles, PROJECT_DOC_UPLOAD_ROLES["cdc_sprint"]) ||
+    matches(roles, PROJECT_DOC_UPLOAD_ROLES["spec_features"]) ||
+    matches(roles, PROJECT_DOC_UPLOAD_ROLES["cas_de_test"])
   );
 }
 
@@ -132,11 +148,11 @@ export function canUploadAnyProjectDoc(): boolean {
  * humain (généré par le système).
  */
 export function canUploadProjectDoc(type: ProjectDocumentType): boolean {
-  const role = currentRole();
-  if (!role) return false;
+  const roles = currentRoles();
+  if (roles.length === 0) return false;
   const allowed = PROJECT_DOC_UPLOAD_ROLES[type];
   if (!allowed) return false;
-  return allowed.includes(role);
+  return matches(roles, allowed);
 }
 
 /**
@@ -144,11 +160,11 @@ export function canUploadProjectDoc(type: ProjectDocumentType): boolean {
  * peut supprimer.
  */
 export function canDeleteProductDoc(type: ProductDocumentType): boolean {
-  const role = currentRole();
-  if (!role) return false;
+  const roles = currentRoles();
+  if (roles.length === 0) return false;
   const allowed = PRODUCT_DOC_DELETE_ROLES[type];
-  if (allowed) return allowed.includes(role);
-  return role === ADMIN;
+  if (allowed) return matches(roles, allowed);
+  return isAdmin(roles);
 }
 
 /**
@@ -156,11 +172,11 @@ export function canDeleteProductDoc(type: ProductDocumentType): boolean {
  * supprimable, archivé seulement).
  */
 export function canDeleteProjectDoc(type: ProjectDocumentType): boolean {
-  const role = currentRole();
-  if (!role) return false;
+  const roles = currentRoles();
+  if (roles.length === 0) return false;
   const allowed = PROJECT_DOC_DELETE_ROLES[type];
   if (!allowed) return false;
-  return allowed.includes(role);
+  return matches(roles, allowed);
 }
 
 /** Lecture document produit : tous les rôles connectés. */
@@ -177,61 +193,61 @@ export function canReadProjectDoc(project: Project | undefined, products: Produc
 
 /** Upload document campagne : tout type sans matrice dédiée → admin + qualité. */
 export function canUploadCampaignDoc(type: CampaignDocumentType): boolean {
-  const role = currentRole();
-  if (!role) return false;
+  const roles = currentRoles();
+  if (roles.length === 0) return false;
   const allowed = CAMPAIGN_DOC_UPLOAD_ROLES[type];
-  if (allowed) return allowed.includes(role);
-  return role === ADMIN || role === QUALITY;
+  if (allowed) return matches(roles, allowed);
+  return isAdminOrQuality(roles);
 }
 
 /** L'utilisateur peut-il téléverser au moins un type de document campagne ? */
 export function canUploadAnyCampaignDoc(): boolean {
-  const role = currentRole();
-  if (!role) return false;
+  const roles = currentRoles();
+  if (roles.length === 0) return false;
   return (
-    !!CAMPAIGN_DOC_UPLOAD_ROLES["scenario_test"]?.includes(role) ||
-    !!CAMPAIGN_DOC_UPLOAD_ROLES["rapport_execution"]?.includes(role) ||
-    !!CAMPAIGN_DOC_UPLOAD_ROLES["preuve_test"]?.includes(role)
+    matches(roles, CAMPAIGN_DOC_UPLOAD_ROLES["scenario_test"]) ||
+    matches(roles, CAMPAIGN_DOC_UPLOAD_ROLES["rapport_execution"]) ||
+    matches(roles, CAMPAIGN_DOC_UPLOAD_ROLES["preuve_test"])
   );
 }
 
 /** Suppression document campagne : tout type sans matrice dédiée → admin seul. */
 export function canDeleteCampaignDoc(type: CampaignDocumentType): boolean {
-  const role = currentRole();
-  if (!role) return false;
+  const roles = currentRoles();
+  if (roles.length === 0) return false;
   const allowed = CAMPAIGN_DOC_DELETE_ROLES[type];
-  if (allowed) return allowed.includes(role);
-  return role === ADMIN;
+  if (allowed) return matches(roles, allowed);
+  return isAdmin(roles);
 }
 
 /** Upload document fonctionnalité : tout type sans matrice dédiée → admin + qualité. */
 export function canUploadFeatureDoc(type: FeatureDocumentType): boolean {
-  const role = currentRole();
-  if (!role) return false;
+  const roles = currentRoles();
+  if (roles.length === 0) return false;
   const allowed = FEATURE_DOC_UPLOAD_ROLES[type];
-  if (allowed) return allowed.includes(role);
-  return role === ADMIN || role === QUALITY;
+  if (allowed) return matches(roles, allowed);
+  return isAdminOrQuality(roles);
 }
 
 /** L'utilisateur peut-il téléverser au moins un type de document fonctionnalité ? */
 export function canUploadAnyFeatureDoc(): boolean {
-  const role = currentRole();
-  if (!role) return false;
+  const roles = currentRoles();
+  if (roles.length === 0) return false;
   return (
-    !!FEATURE_DOC_UPLOAD_ROLES["specification"]?.includes(role) ||
-    !!FEATURE_DOC_UPLOAD_ROLES["plan_test"]?.includes(role) ||
-    !!FEATURE_DOC_UPLOAD_ROLES["preuve_recette"]?.includes(role) ||
-    !!FEATURE_DOC_UPLOAD_ROLES["autre"]?.includes(role)
+    matches(roles, FEATURE_DOC_UPLOAD_ROLES["specification"]) ||
+    matches(roles, FEATURE_DOC_UPLOAD_ROLES["plan_test"]) ||
+    matches(roles, FEATURE_DOC_UPLOAD_ROLES["preuve_recette"]) ||
+    matches(roles, FEATURE_DOC_UPLOAD_ROLES["autre"])
   );
 }
 
 /** Suppression document fonctionnalité : tout type sans matrice dédiée → admin seul. */
 export function canDeleteFeatureDoc(type: FeatureDocumentType): boolean {
-  const role = currentRole();
-  if (!role) return false;
+  const roles = currentRoles();
+  if (roles.length === 0) return false;
   const allowed = FEATURE_DOC_DELETE_ROLES[type];
-  if (allowed) return allowed.includes(role);
-  return role === ADMIN;
+  if (allowed) return matches(roles, allowed);
+  return isAdmin(roles);
 }
 
 /** Lecture document campagne : tous les rôles connectés. */

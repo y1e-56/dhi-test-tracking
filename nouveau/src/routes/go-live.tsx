@@ -57,7 +57,12 @@ function GoLivePage() {
   const [justification, setJustification] = useState("");
 
   const decisionRoles: string[] = ["admin", "chef_testeur", "quality_manager", "qa_lead", "approver"];
-  const canDecide = !!currentUser && decisionRoles.includes(currentUser.role);
+  const userRoles = currentUser
+    ? Array.isArray(currentUser.roles) && currentUser.roles.length > 0
+      ? currentUser.roles
+      : [currentUser.role]
+    : [];
+  const canDecide = !!currentUser && userRoles.some((r) => decisionRoles.includes(r));
 
   const release = releases.find((r) => r.id === releaseId);
   const project = projects.find((p) => p.id === release?.projectId);

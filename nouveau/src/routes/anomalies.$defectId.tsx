@@ -107,8 +107,12 @@ function DefectDetailPage() {
   };
 
   const forbiddenRoles: string[] = ["developpeur"];
-  const role = currentUser?.role;
-  const canChangeStatus = !!role && !forbiddenRoles.includes(role);
+  const userRoles = currentUser
+    ? Array.isArray(currentUser.roles) && currentUser.roles.length > 0
+      ? currentUser.roles
+      : [currentUser.role]
+    : [];
+  const canChangeStatus = userRoles.length > 0 && userRoles.some((r) => !forbiddenRoles.includes(r));
   const allowedNext = DEFECT_TRANSITIONS[defect.status] ?? [];
 
   return (
