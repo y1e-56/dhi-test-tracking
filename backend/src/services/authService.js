@@ -45,8 +45,10 @@ export async function register(email, password, firstName, lastName, role, roles
 
   const existing = await db.users.findByEmail(email);
   if (existing) {
-    // Un même email = un même compte : on cumule simplement les rôles.
-    const merged = [...new Set([...collectRoles(existing), ...wantedRoles])];
+    // Un même email = un même compte : l'appelant (admin) envoie TOUJOURS le set
+    // complet des rôles voulus, donc on REMPLACE (pas d'union) pour ne pas laisser
+    // de rôles "fantômes" hérités d'anciennes éditions.
+    const merged = wantedRoles;
     const primary = computePrimary(merged);
     if (existing.date_suppression) await db.users.restore(existing.id);
     await db.users.resetFailedAttempts(existing.id);
