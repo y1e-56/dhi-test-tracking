@@ -135,6 +135,10 @@ import {
   listReferentialRules,
   updateReferentialRule,
   deleteReferentialRule,
+  getMyNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  mapBackendNotificationToApp,
   ROLE_TO_BACKEND,
   type BackendUser,
   type BackendCampaign,
@@ -406,6 +410,8 @@ interface Store {
   pushAlert: (a: Omit<Alert, "id" | "createdAt" | "read">) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
+  loadNotifications: () => Promise<void>;
+  pushBackendNotification: (n: AppNotification) => void;
   addUser: (u: Omit<PlatformUser, "id">) => Promise<string>;
   updateUserRole: (id: string, role: PlatformUser["role"]) => Promise<void>;
   toggleUserActive: (id: string) => Promise<void>;
@@ -1788,12 +1794,40 @@ const featureById = new Map<string, Feature>();
           { id: `AL-${Date.now()}`, ...a, read: false, createdAt: now() },
           ...prev,
         ]),
-      markNotificationRead: (id) =>
+      markNotificationRead: (id) => {
         setNotifications((prev) =>
           prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
-        ),
-      markAllNotificationsRead: () =>
-        setNotifications((prev) => prev.map((n) => ({ ...n, read: true }))),
+        );
+        if (/^\d+$/.test(id)) {
+          markNotificationRead(Number(id)).catch(() => {});
+        }
+      },
+      markAllNotificationsRead: () => {
+        setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+        markAllNotificationsRead().catch(() => {});
+      },
+      loadNotifications: async () => {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        try {
+          const backend = await getMyNotifications();
+          const meId = currentUser?.id;
+          if (!meId) return;
+          const mapped = backend.map((n) => mapBackendNotificationToApp(n, meId));
+          setNotifications((prev) => {
+            const present = new Set(prev.map((n) => n.id));
+            return [...mapped.filter((n) => !present.has(n.id)), ...prev];
+          });
+        } catch (error) {
+          console.warn("[notifications] Chargement impossible", error);
+        }
+      },
+      pushBackendNotification: (n) => {
+        setNotifications((prev) => {
+          const present = new Set(prev.map((x) => x.id));
+          return present.has(n.id) ? prev : [n, ...prev];
+        });
+      },
       updateUserRole: async (id, role) => {
         const isBackendUser = /^\d+$/.test(id);
         if (isBackendUser) {

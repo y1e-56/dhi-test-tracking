@@ -19,6 +19,7 @@ import evidenceRouter from './evidence.js';
 import dependenciesRouter from './dependencies.js';
 import goLiveRouter from './goLive.js';
 import referentialRulesRouter from './referentialRules.js';
+import notificationsRouter from './notifications.js';
 
 const router = Router();
 
@@ -42,5 +43,6 @@ router.use('/evidence', evidenceRouter);
 router.use('/dependencies', dependenciesRouter);
 router.use('/go-live', goLiveRouter);
 router.use('/referential-rules', referentialRulesRouter);
+router.use('/notifications', notificationsRouter);
 
 export default router;

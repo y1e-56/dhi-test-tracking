@@ -1,6 +1,7 @@
 const API_BASE_URL = import.meta.env["VITE_API_URL"] ?? "http://localhost:5000/api";
 
 import type {
+  AppNotification,
   AppRole,
   Criticality,
   Defect,
@@ -8,6 +9,7 @@ import type {
   GoLiveChecklistItem,
   GoLiveDecision,
   GoLiveVerdict,
+  NotificationType,
   PlatformUser,
   Requirement,
   RequirementStatus,
@@ -930,4 +932,73 @@ export async function createReferentialRule(data: Omit<BackendReferentialRule, "
 
 export async function deleteReferentialRule(id: string) {
   return api<void>(`/referential-rules/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+/* ── Notifications ---------------------------------------------------------- */
+
+export type BackendNotification = {
+  id: number;
+  notified_user_id: number;
+  anomaly_id: number | null;
+  notification_type: string;
+  description: string | null;
+  link_url: string | null;
+  is_read: boolean;
+  created_at: string;
+  anomaly_description?: string | null;
+};
+
+export async function getMyNotifications() {
+  return api<BackendNotification[]>("/notifications/my");
+}
+
+export async function getUnreadNotificationsCount() {
+  return api<{ count: number }>("/notifications/unread-count");
+}
+
+export async function markNotificationRead(id: number) {
+  return api<{ message: string }>(`/notifications/${id}/read`, { method: "PATCH" });
+}
+
+export async function markAllNotificationsRead() {
+  return api<{ message: string }>("/notifications/mark-all-read", { method: "PATCH" });
+}
+
+export const NOTIFICATION_TYPES_BACKEND_TO_FRONT: Record<string, NotificationType> = {
+  anomaly_reported: "defect_assign",
+  anomaly_resolved: "defect_status",
+  resolution_signaled: "defect_status",
+  reopened: "defect_status",
+  feature_conforme: "defect_status",
+  task_assigned: "test_assign",
+  member_added: "campaign",
+  campaign_created: "campaign",
+  campaign_completed: "campaign",
+  product_created: "product",
+  project_created: "project",
+  password_forgot: "system",
+};
+
+export function mapBackendNotificationToApp(
+  n: BackendNotification,
+  userId: string,
+): AppNotification {
+  const raw = new Date(n.created_at);
+  const createdAt = Number.isNaN(raw.getTime())
+    ? ""
+    : `${raw.getFullYear()}-${String(raw.getMonth() + 1).padStart(2, "0")}-${String(
+        raw.getDate(),
+      ).padStart(2, "0")} ${String(raw.getHours()).padStart(2, "0")}:${String(
+        raw.getMinutes(),
+      ).padStart(2, "0")}`;
+  const base: AppNotification = {
+    id: String(n.id),
+    userId,
+    type: NOTIFICATION_TYPES_BACKEND_TO_FRONT[n.notification_type] ?? "system",
+    title: n.notification_type || "system",
+    message: n.description ?? "",
+    read: n.is_read,
+    createdAt,
+  };
+  return n.link_url ? { ...base, link: n.link_url } : base;
 }

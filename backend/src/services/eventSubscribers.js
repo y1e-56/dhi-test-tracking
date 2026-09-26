@@ -274,10 +274,26 @@ export function setupEventSubscribers(io) {
 
       for (const userId of uniqueIds) {
         const user = await db.users.findById(userId).catch(() => null);
-        if (!user?.email) continue;
+        if (!user) continue;
 
         const isTester = (campaign.testers || []).includes(userId);
         const roleLabel = isTester ? 'testeur' : 'développeur';
+
+        // Notification in-app (membres affectés à la campagne)
+        try {
+          const notification = await notificationService.createNotification({
+            notified_user_id: userId,
+            anomaly_id: null,
+            notification_type: 'campaign_created',
+            description: `Vous avez été affecté(e) comme ${roleLabel} à la campagne « ${campaign.name} » (${projectName})`,
+            link_url: `/campagnes/${campaign.id}`,
+          });
+          if (io) emitNotification(io, userId, notification);
+        } catch (e) {
+          console.error('[events] Erreur notification campaign:created', e);
+        }
+
+        if (!user.email) continue;
 
         await sendEmail({
           to: user.email,
@@ -405,6 +421,26 @@ export function setupEventSubscribers(io) {
       });
     } catch (e) {
       console.error('[events] Erreur history product:created', e);
+    }
+
+    const recipients = [...new Set([
+      product.owner_id,
+      product.quality_manager_id,
+    ].filter(Boolean))];
+
+    for (const recipientId of recipients) {
+      try {
+        const notification = await notificationService.createNotification({
+          notified_user_id: recipientId,
+          anomaly_id: null,
+          notification_type: 'product_created',
+          description: `Vous avez été affecté(e) au produit « ${product.name} »`,
+          link_url: '/produits',
+        });
+        if (io) emitNotification(io, recipientId, notification);
+      } catch (e) {
+        console.error('[events] Erreur notification product:created', e);
+      }
     }
   });
   bus.on('product:updated', async ({ product_id, user_id }) => {

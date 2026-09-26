@@ -19,6 +19,11 @@ export async function markAllAsRead(userId) {
   await db.notifications.markAllAsRead(userId);
 }
 
+export async function getUnreadCount(userId) {
+  if (!Number.isInteger(userId)) return 0;
+  return db.notifications.countUnreadByUser(userId);
+}
+
 export async function createNotification(data) {
   const notification = await db.notifications.create({
     ...data,

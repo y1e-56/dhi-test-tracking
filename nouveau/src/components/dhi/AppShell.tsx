@@ -56,6 +56,7 @@ import { ROLE_LABEL, ROLE_PAGES, NOTIFICATION_TYPE_LABEL } from "@/lib/dhi-data"
 import { useStore } from "@/lib/dhi-store";
 import { hasAccessToPage, getDefaultDashboardForRole } from "@/lib/role-protection";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
+import { useRealtimeNotifications } from "@/lib/use-realtime-notifications";
 
 /* =========================================================
    2. TYPES
@@ -429,6 +430,7 @@ export function AppShell({
   const navigate = useNavigate();
   const { currentUser } = useStore();
   const { lang, setLang, theme, toggleTheme, languages, t } = useI18n();
+  useRealtimeNotifications();
   const allItems = NAV_SECTIONS.flatMap((s) => s.items).filter((item) =>
     currentUser ? hasAccessToPage(item.to) : false,
   );

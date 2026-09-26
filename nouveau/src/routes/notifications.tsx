@@ -34,6 +34,7 @@ const TYPE_KEY: Record<NotificationType, TranslationKey> = {
   defect_status: "pages.notifications.type_defect",
   campaign: "pages.notifications.type_campaign",
   product: "pages.notifications.type_product",
+  project: "pages.notifications.type_project",
   golive: "pages.notifications.type_golive",
   system: "pages.notifications.type_system",
 };
@@ -45,6 +46,7 @@ const FILTERS: { id: "all" | "unread" | NotificationType; label: TranslationKey 
   { id: "defect_assign", label: "pages.notifications.type_defect" },
   { id: "campaign", label: "pages.notifications.type_campaign" },
   { id: "product", label: "pages.notifications.type_product" },
+  { id: "project", label: "pages.notifications.type_project" },
   { id: "golive", label: "pages.notifications.type_golive" },
 ];
 

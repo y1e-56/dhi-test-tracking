@@ -657,6 +657,7 @@ export const enDict: DictShape = {
       type_defect: "Defect",
       type_campaign: "Campaign",
       type_product: "Product",
+      type_project: "Project",
       type_golive: "Go Live",
       type_system: "System",
     },

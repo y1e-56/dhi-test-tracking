@@ -7,10 +7,20 @@ export async function findByUser(userId, client = null) {
      FROM notifications n
      LEFT JOIN anomalies a ON a.id = n.anomaly_id
      WHERE n.notified_user_id = $1
-     ORDER BY n.created_at DESC`,
+     ORDER BY n.created_at DESC
+     LIMIT 100`,
     [userId]
   );
   return result.rows;
+}
+
+export async function countUnreadByUser(userId, client = null) {
+  const c = client || pool;
+  const result = await c.query(
+    'SELECT COUNT(*)::int AS count FROM notifications WHERE notified_user_id = $1 AND is_read = FALSE',
+    [userId]
+  );
+  return result.rows[0]?.count ?? 0;
 }
 
 export async function create(data, client = null) {

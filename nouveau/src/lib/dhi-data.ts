@@ -368,6 +368,7 @@ export type NotificationType =
   | "defect_status"
   | "campaign"
   | "product"
+  | "project"
   | "golive"
   | "system";
 
@@ -388,6 +389,7 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
   defect_status: "Anomalie",
   campaign: "Campagne",
   product: "Produit",
+  project: "Projet",
   golive: "Go Live",
   system: "Système",
 };

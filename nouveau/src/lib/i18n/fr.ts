@@ -656,6 +656,7 @@ export const frDict = {
       type_defect: "Anomalie",
       type_campaign: "Campagne",
       type_product: "Produit",
+      type_project: "Projet",
       type_golive: "Go Live",
       type_system: "Système",
     },
