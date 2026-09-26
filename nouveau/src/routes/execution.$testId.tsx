@@ -576,7 +576,7 @@ function ExecutionPage() {
   const sevOfCriticality = (c?: TestCase["criticality"]): Severity =>
     c === "critique" || c === "haute" ? "haute" : c === "basse" ? "basse" : "moyenne";
 
-  const devs = users.filter((u) => u.active && u.role === "developpeur");
+  const devs = users.filter((u) => u.active && (u.roles ?? [u.role]).includes("developpeur"));
   const assigneeOptions =
     campaignTesters.length > 0
       ? campaignTesters

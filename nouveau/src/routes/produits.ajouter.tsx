@@ -33,7 +33,10 @@ function CreateProductPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const { users, products, addProduct, replaceProducts } = useStore();
-  const activeMembers = users.filter((u) => u.active).map((u) => u.name);
+  const activeMembers = users
+    .filter((u) => u.active)
+    .map((u) => ({ id: u.id, name: u.name, roles: u.roles ?? [u.role] }));
+  const memberNames = activeMembers.map((u) => u.name);
 
   const [form, setForm] = useState({
     name: "",
@@ -127,12 +130,21 @@ function CreateProductPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label className="text-sm font-medium">{t("pages.products.owner")}</Label>
-                  <Input
+                  <Select
                     value={form.owner}
-                    onChange={(e) => setForm((f) => ({ ...f, owner: e.target.value }))}
-                    placeholder={t("pages.products.owner_placeholder")}
-                    className="h-11"
-                  />
+                    onValueChange={(v) => setForm((f) => ({ ...f, owner: v }))}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder={t("pages.go_live.choose")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {memberNames.map((p) => (
+                        <SelectItem key={p} value={p}>
+                          {p}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid gap-2">
                   <Label className="text-sm font-medium">{t("pages.products.qa_lead")}</Label>
@@ -144,7 +156,7 @@ function CreateProductPage() {
                       <SelectValue placeholder={t("pages.go_live.choose")} />
                     </SelectTrigger>
                     <SelectContent>
-                      {activeMembers.map((p) => (
+                      {memberNames.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>

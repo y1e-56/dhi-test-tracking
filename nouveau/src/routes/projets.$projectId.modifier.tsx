@@ -18,7 +18,7 @@ import { projects as seedProjects, type ProjectStatus } from "@/lib/dhi-data";
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 import { api, mapBackendProject, type BackendProject } from "@/lib/api";
-import { getUser, projectVisibleTo } from "@/lib/access";
+import { getUser, projectVisibleTo, userHasAnyRole } from "@/lib/access";
 import { ProjectAccessDenied } from "@/components/dhi/AccessDenied";
 import { useVisibleProducts } from "@/lib/use-scope";
 
@@ -55,10 +55,10 @@ function EditProjectPage() {
   const { products, projects, users, updateProject, replaceProjects } = useStore();
   const activeMembers = users.filter((u) => u.active).map((u) => u.name);
   const managerOptions = users
-    .filter((u) => u.active && ["chef_projet", "quality_manager", "qa_lead"].includes(u.role))
+    .filter((u) => u.active && userHasAnyRole(u, "chef_projet", "quality_manager", "qa_lead"))
     .map((u) => u.name);
   const qaOptions = users
-    .filter((u) => u.active && ["quality_manager", "qa_lead"].includes(u.role))
+    .filter((u) => u.active && userHasAnyRole(u, "quality_manager", "qa_lead"))
     .map((u) => u.name);
   const viewableProducts = useVisibleProducts(products);
   const project = projects.find((p) => p.id === projectId);

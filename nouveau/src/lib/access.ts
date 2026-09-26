@@ -1,5 +1,5 @@
 import { loadSession, type SessionUser } from "@/lib/dhi-store";
-import type { AppRole, Campaign, Defect, Product, Project } from "@/lib/dhi-data";
+import type { AppRole, Campaign, Defect, PlatformUser, Product, Project } from "@/lib/dhi-data";
 
 const FULL_ACCESS_ROLES: AppRole[] = ["admin", "quality_manager", "product_owner", "qa_lead"];
 
@@ -12,6 +12,13 @@ export function userRoles(user: SessionUser | null | undefined): AppRole[] {
 /** L'utilisateur a-t-il l'un des rôles donné (union sur ses rôles attribués) ? */
 export function hasAnyRole(user: SessionUser | null | undefined, ...roles: AppRole[]): boolean {
   return userRoles(user).some((r) => roles.includes(r));
+}
+
+/** Vérification multi-rôles pour un utilisateur de la plateforme (union). */
+export function userHasAnyRole(user: PlatformUser | null | undefined, ...roles: AppRole[]): boolean {
+  if (!user) return false;
+  const assigned = Array.isArray(user.roles) && user.roles.length > 0 ? user.roles : [user.role];
+  return assigned.some((r) => roles.includes(r));
 }
 
 export function canAccessAll(role?: string): boolean {

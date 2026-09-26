@@ -58,7 +58,9 @@ function DefectDetailPage() {
     ? campaigns.find((campaign) => campaign.id === linkedTest.campaignId)
     : undefined);
   const universe = users.filter((u) => u.active).map((u) => u.name);
-  const devs = users.filter((u) => u.active && u.role === "developpeur").map((u) => u.name);
+  const devs = users
+    .filter((u) => u.active && (u.roles ?? [u.role]).includes("developpeur"))
+    .map((u) => u.name);
 
   const reassign = (v: string) => {
     updateDefect(defect.id, { assignee: v });

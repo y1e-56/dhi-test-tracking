@@ -47,7 +47,9 @@ function CreateDefectPage() {
   const viewableProducts = useVisibleProducts(products);
 
   const universe = users.filter((u) => u.active).map((u) => u.name);
-  const devs = users.filter((u) => u.active && u.role === "developpeur").map((u) => u.name);
+  const devs = users
+    .filter((u) => u.active && (u.roles ?? [u.role]).includes("developpeur"))
+    .map((u) => u.name);
   const isDev = (currentUser?.role as string) === "developpeur";
   const defaultDeveloper =
     isDev && currentUser && devs.includes(currentUser.name)

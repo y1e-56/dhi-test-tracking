@@ -46,10 +46,11 @@ function CreateCampaignPage() {
   const memberOptions: MemberOption[] = users.map((u) => ({
     name: u.name,
     role: u.role,
+    roles: u.roles ?? [u.role],
     active: u.active,
   }));
-  const testerOptions = memberOptions.filter((o) => o.role === "testeur" || o.role === "chef_testeur");
-  const devOptions = memberOptions.filter((o) => o.role === "developpeur");
+  const testerOptions = memberOptions.filter((o) => o.active && (o.roles ? o.roles : [o.role]).some((r) => r === "testeur" || r === "chef_testeur"));
+  const devOptions = memberOptions.filter((o) => o.active && (o.roles ? o.roles : [o.role]).includes("developpeur"));
 
   const viewableProducts = useVisibleProducts(products);
   const viewableProjects = useVisibleProjects(projects, products);
@@ -298,7 +299,7 @@ function CreateCampaignPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {memberOptions
-                        .filter((o) => o.active && CAMPAIGN_OWNER_ROLES.includes(o.role as AppRole))
+                        .filter((o) => o.active && (o.roles ? o.roles : [o.role]).some((r) => CAMPAIGN_OWNER_ROLES.includes(r as AppRole)))
                         .map((o) => (
                           <SelectItem key={o.name} value={o.name}>
                             {o.name}

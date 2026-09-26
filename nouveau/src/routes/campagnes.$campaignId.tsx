@@ -515,10 +515,11 @@ function ManageMembersButton({ campaign }: { campaign: Campaign }) {
   const memberOptions: MemberOption[] = users.map((u) => ({
     name: u.name,
     role: u.role,
+    roles: u.roles ?? [u.role],
     active: u.active,
   }));
-  const testerOptions = memberOptions.filter((o) => o.role === "testeur" || o.role === "chef_testeur");
-  const devOptions = memberOptions.filter((o) => o.role === "developpeur");
+  const testerOptions = memberOptions.filter((o) => o.active && (o.roles ? o.roles : [o.role]).some((r) => r === "testeur" || r === "chef_testeur"));
+  const devOptions = memberOptions.filter((o) => o.active && (o.roles ? o.roles : [o.role]).includes("developpeur"));
 
   const save = async () => {
     if (/^\d+$/.test(campaign.id) && localStorage.getItem("token")) {

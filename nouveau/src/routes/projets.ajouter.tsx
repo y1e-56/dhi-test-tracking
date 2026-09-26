@@ -18,6 +18,7 @@ import { type ProjectStatus } from "@/lib/dhi-data";
 import { useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 import { api, mapBackendProject, type BackendProject } from "@/lib/api";
+import { userHasAnyRole } from "@/lib/access";
 
 export const Route = createFileRoute("/projets/ajouter")({
   head: () => ({
@@ -45,10 +46,10 @@ function CreateProjectPage() {
   const { products, users, projects, addProject, replaceProjects } = useStore();
   const activeMembers = users.filter((u) => u.active).map((u) => u.name);
   const managerOptions = users
-    .filter((u) => u.active && ["chef_projet", "quality_manager", "qa_lead"].includes(u.role))
+    .filter((u) => u.active && userHasAnyRole(u, "chef_projet", "quality_manager", "qa_lead"))
     .map((u) => u.name);
   const qaOptions = users
-    .filter((u) => u.active && ["quality_manager", "qa_lead"].includes(u.role))
+    .filter((u) => u.active && userHasAnyRole(u, "quality_manager", "qa_lead"))
     .map((u) => u.name);
 
   const [form, setForm] = useState<ProjectForm>({
