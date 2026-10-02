@@ -27,7 +27,8 @@ Prérequis serveurs :
   - Front : http://localhost:8080  (NEW VERSION npm run dev)
   Vérifier http://localhost:5000/api-docs avant de commencer.
 
- 0. Se connecter : admin@test.fr / Admin@DHI2026  (rôle admin)
+ 0. Se connecter avec le compte admin (admin@test.fr) — proposé en un clic
+     sur la page de connexion, le mot de passe n'est pas affiché.
       -> Monter la plateforme : produit Paiement (score), campagne
          "Sécurité v4.12", ouvrir un cas de test, exécution, preuves.
  1. SEPARATION DES RESPONSABILITES (la règle "on ne valide pas son travail")

@@ -117,6 +117,12 @@ export async function updateAnomaly(id, data, userId = null) {
     const updated = await db.anomalies.update(id, data);
     if (!updated) throw new AppError('Anomalie non trouvée', 404);
 
+    // Réaffectation à un nouveau développeur : notifié in-app + par email.
+    const previousDev = existing.assigned_to ?? null;
+    if (updated.assigned_to && updated.assigned_to !== previousDev) {
+      bus.emit('anomaly:assigned', { anomaly: updated, assigned_to: updated.assigned_to, user_id: userId });
+    }
+
     if (data.status === 'resolution_signaled' && updated.reported_by) {
       bus.emit('anomaly:resolution_signaled', { anomaly: updated, reported_by: updated.reported_by, user_id: userId });
     }

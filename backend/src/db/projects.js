@@ -5,16 +5,26 @@ async function attachTestLeadIds(rows, client) {
   if (!rows || rows.length === 0) return rows;
   const ids = rows.map(r => r.id);
   const result = await client.query(
-    'SELECT project_id, user_id FROM project_test_leads WHERE project_id = ANY($1) ORDER BY project_id, id',
+    `SELECT ptl.project_id, ptl.user_id, u.first_name, u.last_name
+     FROM project_test_leads ptl
+     LEFT JOIN users u ON u.id = ptl.user_id
+     WHERE ptl.project_id = ANY($1) ORDER BY ptl.project_id, ptl.id`,
     [ids]
   );
+  const nameOf = (u) => [u.first_name, u.last_name].filter(Boolean).join(' ');
   const map = {};
   for (const row of result.rows) {
     if (!map[row.project_id]) map[row.project_id] = [];
     map[row.project_id].push(row.user_id);
   }
+  const nameMap = {};
+  for (const row of result.rows) {
+    if (!nameMap[row.project_id]) nameMap[row.project_id] = [];
+    nameMap[row.project_id].push(nameOf(row));
+  }
   for (const row of rows) {
     row.test_lead_ids = map[row.id] || [];
+    row.test_lead_names = nameMap[row.id] || [];
   }
   return rows;
 }
@@ -97,8 +107,8 @@ export async function create(data, client = null) {
   if (data.test_lead_ids && data.test_lead_ids.length > 0) {
     await setTestLeads(project.id, data.test_lead_ids, c);
   }
-  project.test_lead_ids = data.test_lead_ids || [];
-  return project;
+  const [withLeads] = await attachTestLeadIds([project], c);
+  return withLeads;
 }
 
 export async function update(id, data, client = null) {

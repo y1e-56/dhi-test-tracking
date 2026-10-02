@@ -81,11 +81,17 @@ function normalizeType(value: string, errors: string[]): TestType {
 export function resolveFeatureId(value: string, features: Feature[]): string {
   const v = value.trim();
   if (!v) return features[0]?.id ?? "";
+  const byModule = features.find((f) => f.module && f.module.trim().toLowerCase() === v.toLowerCase());
+  if (byModule) return byModule.id;
   const byId = features.find((f) => f.id.toLowerCase() === v.toLowerCase());
   if (byId) return byId.id;
   const m = v.match(/\(([^)]+)\)\s*$/);
   if (m && m[1]) {
     const innerId = m[1].trim();
+    const byInnerModule = features.find(
+      (f) => f.module && f.module.trim().toLowerCase() === innerId.toLowerCase(),
+    );
+    if (byInnerModule) return byInnerModule.id;
     const byInner = features.find((f) => f.id.toLowerCase() === innerId.toLowerCase());
     if (byInner) return byInner.id;
   }
@@ -214,6 +220,38 @@ function parseNor(text: string, features: Feature[]): ParsedTestRow[] {
   return rows;
 }
 
+/**
+ * Résolution stricte, utilisée par le parseur CSV qui dispose d'une colonne
+ * fonctionnalité : une référence non vide mais inconnue renvoie "" pour que la
+ * ligne soit signalée en erreur, plutôt que rattachée à la première
+ * fonctionnalité du produit. Un code FCT-99 mal saisi ne doit pas devenir
+ * silencieusement le test d'une autre fonctionnalité.
+ */
+function resolveFeatureStrict(value: string, features: Feature[]): string {
+  const v = value.trim();
+  if (!v) return features[0]?.id ?? "";
+  const direct = features.find(
+    (f) =>
+      (f.module && f.module.trim().toLowerCase() === v.toLowerCase()) ||
+      f.id.toLowerCase() === v.toLowerCase() ||
+      f.name.toLowerCase() === v.toLowerCase(),
+  );
+  if (direct) return direct.id;
+  const inner = v.match(/\(([^)]+)\)\s*$/);
+  if (inner?.[1]) {
+    const innerValue = inner[1].trim().toLowerCase();
+    const byInner = features.find(
+      (f) =>
+        (f.module && f.module.trim().toLowerCase() === innerValue) ||
+        f.id.toLowerCase() === innerValue,
+    );
+    if (byInner) return byInner.id;
+  }
+  const target = v.toLowerCase();
+  const byPartial = features.find((f) => f.name.toLowerCase().includes(target));
+  return byPartial?.id ?? "";
+}
+
 function parseCsv(text: string, features: Feature[]): ParsedTestRow[] {
   const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length < 2) return [];
@@ -242,8 +280,8 @@ function parseCsv(text: string, features: Feature[]): ParsedTestRow[] {
     const name = raw["nom"] ?? "";
     if (!name) errors.push("Nom vide");
     const featureVal = iFeat >= 0 ? cells[iFeat] ?? "" : "";
-    const fid = resolveFeatureId(featureVal, features);
-    if (!fid) errors.push("Fonctionnalité introuvable");
+    const fid = resolveFeatureStrict(featureVal, features);
+    if (!fid) errors.push(`Fonctionnalité introuvable : ${featureVal.trim()}`);
     const criticality = normalizeCrit(iCrit >= 0 ? cells[iCrit] ?? "" : "moyenne", errors);
     const type = normalizeType(iType >= 0 ? cells[iType] ?? "" : "fonctionnel", errors);
     const tester = iTesteur >= 0 ? (cells[iTesteur] ?? "").trim() : "";

@@ -2,10 +2,12 @@
    1. Imports
    ============================== */
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ImagePlus, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
 import { KpiCard, Panel } from "@/components/dhi/indicators";
+import { GoLiveScreenshots } from "@/components/dhi/GoLiveScreenshots";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -26,6 +28,11 @@ import { cn } from "@/lib/utils";
 /* ==============================
    2. Helpers / utilitaires
    ============================== */
+
+/** Nombre maximal de captures jointes à une décision. */
+const MAX_SCREENSHOTS = 5;
+/** Taille maximale par image, alignée sur la limite serveur des preuves. */
+const MAX_SHOT_BYTES = 10 * 1024 * 1024;
 
 /* ==============================
    3. Sous-composants
@@ -55,6 +62,59 @@ function GoLivePage() {
   const [verdict, setVerdict] = useState<GoLiveVerdict>("GO");
   const [decider, setDecider] = useState<string>(currentUser?.name ?? "Jean Dupont");
   const [justification, setJustification] = useState("");
+  /** Captures d'écran jointes à la décision, avec leur aperçu local. */
+  const [shots, setShots] = useState<{ file: File; url: string }[]>([]);
+  const [saving, setSaving] = useState(false);
+  const shotsInputRef = useRef<HTMLInputElement | null>(null);
+  // Lu uniquement au démontage : un cleanup dépendant de `shots` révoquerait
+  // les aperçus déjà affichés à chaque nouvel ajout.
+  const shotsRef = useRef(shots);
+  shotsRef.current = shots;
+
+  // Les URL d' aperçu créées à la main fuient si on ne les libère pas.
+  useEffect(() => {
+    return () => {
+      for (const shot of shotsRef.current) URL.revokeObjectURL(shot.url);
+    };
+  }, []);
+
+  const addShots = (files: FileList | null) => {
+    if (!files?.length) return;
+    const images = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (images.length === 0) {
+      toast.error(t("pages.go_live.image_only"));
+      return;
+    }
+    if (images.length < files.length) {
+      toast.warning(t("pages.go_live.non_image_ignored"));
+    }
+    // Garde-fou côté client ; le serveur n'applique aujourd'hui aucune limite.
+    const tooBig = images.filter((f) => f.size > MAX_SHOT_BYTES);
+    const accepted = images.filter((f) => f.size <= MAX_SHOT_BYTES);
+    if (tooBig.length > 0) {
+      toast.error(
+        t("pages.go_live.image_too_big").replace("{n}", String(tooBig.length)),
+      );
+    }
+    if (accepted.length === 0) return;
+    if (shots.length + accepted.length > MAX_SCREENSHOTS) {
+      toast.error(
+        t("pages.go_live.max_screenshots").replace("{n}", String(MAX_SCREENSHOTS)),
+      );
+      return;
+    }
+    setShots((prev) => [
+      ...prev,
+      ...accepted.map((file) => ({ file, url: URL.createObjectURL(file) })),
+    ]);
+  };
+
+  const removeShot = (index: number) => {
+    setShots((prev) => {
+      URL.revokeObjectURL(prev[index]?.url ?? "");
+      return prev.filter((_, i) => i !== index);
+    });
+  };
 
   const decisionRoles: string[] = ["admin", "chef_testeur", "quality_manager", "qa_lead", "approver"];
   const userRoles = currentUser
@@ -115,7 +175,8 @@ function GoLivePage() {
   );
   const blocked = gates.some((g) => !g.ok);
 
-  const decide = () => {
+  const decide = async () => {
+    if (saving) return;
     if (!releaseId) {
       toast.error(t("pages.go_live.select_release"));
       return;
@@ -128,9 +189,32 @@ function GoLivePage() {
       toast.error(t("pages.go_live.gate_blocked"));
       return;
     }
-    addGoLiveDecision(releaseId, verdict, decider, justification.trim());
-    toast.success(`${t("pages.go_live.decision_saved")} ${GOLIVE_VERDICT_LABEL[verdict]}.`);
-    setJustification("");
+    if (shots.length > 0 && !localStorage.getItem("token")) {
+      // Les captures sont jointes côté serveur : sans session, elles seraient
+      // perdues au rechargement. Mieux vaut le dire que les accepter pour rien.
+      toast.error(t("pages.go_live.login_required_for_images"));
+      return;
+    }
+    setSaving(true);
+    try {
+      await addGoLiveDecision(
+        releaseId,
+        verdict,
+        decider,
+        justification.trim(),
+        shots.map((s) => s.file),
+      );
+      toast.success(`${t("pages.go_live.decision_saved")} ${GOLIVE_VERDICT_LABEL[verdict]}.`);
+      setJustification("");
+      for (const shot of shots) URL.revokeObjectURL(shot.url);
+      setShots([]);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("pages.go_live.decision_failed"),
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   const history = goLiveDecisions.filter((d) => (release ? d.releaseId === release.id : true));
@@ -329,8 +413,67 @@ function GoLivePage() {
                   placeholder={t("pages.go_live.justification_placeholder")}
                 />
               </div>
+              <div className="md:col-span-2 grid gap-1.5">
+                <Label>{t("pages.go_live.screenshots")}</Label>
+                <input
+                  ref={shotsInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    addShots(e.target.files);
+                    // Reset pour pouvoir resélectionner le même fichier ensuite.
+                    e.target.value = "";
+                  }}
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => shotsInputRef.current?.click()}
+                    disabled={shots.length >= MAX_SCREENSHOTS}
+                  >
+                    <ImagePlus className="size-4" />
+                    {t("pages.go_live.add_screenshots")}
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    {t("pages.go_live.screenshots_count")
+                      .replace("{n}", String(shots.length))
+                      .replace("{max}", String(MAX_SCREENSHOTS))}
+                  </span>
+                </div>
+                {shots.length > 0 ? (
+                  <ul className="flex flex-wrap gap-2">
+                    {shots.map((shot, index) => (
+                      <li key={shot.url} className="relative">
+                        <img
+                          src={shot.url}
+                          alt={shot.file.name}
+                          className="size-20 rounded-md border border-border object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeShot(index)}
+                          className="absolute -right-1.5 -top-1.5 inline-flex size-5 items-center justify-center rounded-full bg-danger text-white shadow-sm hover:opacity-90"
+                          aria-label={t("pages.go_live.remove_screenshot")}
+                          title={shot.file.name}
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                <p className="text-xs text-muted-foreground">
+                  {t("pages.go_live.screenshots_hint")}
+                </p>
+              </div>
             </div>
-            <Button className="mt-4" onClick={decide}>
+            <Button className="mt-4" onClick={() => void decide()} disabled={saving}>
+              {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
               {t("pages.go_live.record_decision")}
             </Button>
           </>
@@ -354,6 +497,7 @@ function GoLivePage() {
                 <div>
                   <p className="text-sm font-medium">{GOLIVE_VERDICT_LABEL[d.verdict]}</p>
                   <p className="text-sm text-muted-foreground">{d.justification}</p>
+                  <GoLiveScreenshots backendId={d.backendId} />
                 </div>
                 <p className="num text-xs text-muted-foreground">
                   {d.date} · {d.decider} · checklist {d.checklistCompletion} %

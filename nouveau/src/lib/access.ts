@@ -1,5 +1,5 @@
 import { loadSession, type SessionUser } from "@/lib/dhi-store";
-import type { AppRole, Campaign, Defect, Product, Project } from "@/lib/dhi-data";
+import type { AppRole, Campaign, Defect, PlatformUser, Product, Project } from "@/lib/dhi-data";
 
 const FULL_ACCESS_ROLES: AppRole[] = ["admin", "quality_manager", "product_owner", "qa_lead"];
 
@@ -12,6 +12,13 @@ export function userRoles(user: SessionUser | null | undefined): AppRole[] {
 /** L'utilisateur a-t-il l'un des rôles donné (union sur ses rôles attribués) ? */
 export function hasAnyRole(user: SessionUser | null | undefined, ...roles: AppRole[]): boolean {
   return userRoles(user).some((r) => roles.includes(r));
+}
+
+/** Vérification multi-rôles pour un utilisateur de la plateforme (union). */
+export function userHasAnyRole(user: PlatformUser | null | undefined, ...roles: AppRole[]): boolean {
+  if (!user) return false;
+  const assigned = Array.isArray(user.roles) && user.roles.length > 0 ? user.roles : [user.role];
+  return assigned.some((r) => roles.includes(r));
 }
 
 export function canAccessAll(role?: string): boolean {
@@ -52,17 +59,28 @@ export function projectVisibleTo(
   return project.manager === name || project.qaLead === name;
 }
 
+/**
+ * Acces a une campagne : les roles qualite (vue complete) voient tout, sinon
+ * l'utilisateur doit etre membre de la campagne — chef testeur, testeur ou
+ * developpeur. Le produit ne donne plus acces a lui seul : etre owner ou QA d'un
+ * produit ne doit pas ouvrir toutes les campagnes de ce produit a un chef
+ * testeur qui n'y est pas affecte.
+ */
 export function campaignVisibleTo(
   campaign: Campaign,
-  products: Product[],
+  _products: Product[],
   user: SessionUser | null,
 ): boolean {
   if (!user) return false;
   if (userCanAccessAll(user)) return true;
-  const product = products.find((p) => p.id === campaign.productId);
-  if (product && productVisibleTo(product, user)) return true;
   const name = user.name;
-  return campaign.owner === name || (Array.isArray(campaign.testers) && campaign.testers.includes(name));
+  if (!name) return false;
+  return (
+    campaign.owner === name ||
+    (Array.isArray(campaign.testLeads) && campaign.testLeads.includes(name)) ||
+    (Array.isArray(campaign.testers) && campaign.testers.includes(name)) ||
+    (Array.isArray(campaign.developers) && campaign.developers.includes(name))
+  );
 }
 
 export function visibleProducts(products: Product[], user: SessionUser | null): Product[] {
@@ -98,4 +116,35 @@ export function defectVisibleTo(defect: Defect, user: SessionUser | null): boole
 export function visibleDefects(defects: Defect[], user: SessionUser | null): Defect[] {
   if (!user || userCanAccessAll(user)) return defects;
   return defects.filter((d) => defectVisibleTo(d, user));
+}
+
+/**
+ * Seuls les comptes de rôle « testeur » sont proposés comme testeurs d'une
+ * campagne. Un chef testeur se choisit dans le champ « Chef(s) de test » : le
+ * proposer aussi parmi les testeurs melangeait deux rôles sur la même campagne.
+ */
+export function isTesterRole(roles: string[] | undefined, role?: string): boolean {
+  const assigned = Array.isArray(roles) && roles.length > 0 ? roles : role ? [role] : [];
+  return assigned.includes("testeur");
+}
+
+/**
+ * Testeurs assignables à une campagne : uniquement les comptes actifs qui ont
+ * été enregistrés lors de la création de la campagne (campaign.testers), pas
+ * tous les testeurs de l'application.
+ */
+export function campaignTesterOptions(
+  users: PlatformUser[],
+  campaignTesters: string[] | undefined,
+): { id: string; name: string }[] {
+  const names = new Set(campaignTesters ?? []);
+  return users
+    .filter((u) => {
+      if (!u.active || !names.has(u.name)) return false;
+      if (!isTesterRole(u.roles, u.role)) return false;
+      const id = Number(u.id);
+      return Number.isInteger(id) && id > 0;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, "fr"))
+    .map((u) => ({ id: u.id, name: u.name }));
 }

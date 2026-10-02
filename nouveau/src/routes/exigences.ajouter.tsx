@@ -21,7 +21,14 @@ import { type Criticality, type RequirementStatus } from "@/lib/dhi-data";
 
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 import { useVisibleProducts } from "@/lib/use-scope";
-import { api, mapBackendRequirement, type BackendRequirement } from "@/lib/api";
+import {
+  api,
+  backendIdOf,
+  mapBackendRequirement,
+  toBackendRequirementPriority,
+  toBackendRequirementStatus,
+  type BackendRequirement,
+} from "@/lib/api";
 
 export const Route = createFileRoute("/exigences/ajouter")({
   head: () => ({
@@ -92,19 +99,30 @@ function CreateRequirementPage() {
       status: form.status,
       featureIds: form.featureIds,
     };
-    const featureId = form.featureIds.find((id) => /^\d+$/.test(id));
-    if (!localStorage.getItem("token") || !featureId) {
+    const productBackend = backendIdOf(form.productId);
+    const featureBackends = form.featureIds
+      .map((id) => backendIdOf(id))
+      .filter((id): id is number => id != null);
+
+    if (!localStorage.getItem("token")) {
       addRequirement(localRequirement);
-      toast.success(t("pages.requirements.added"));
+      toast.warning(t("pages.requirements.not_authenticated"), { duration: 9000 });
       void navigate({ to: "/exigences" });
       return;
     }
     try {
       const response = await api<BackendRequirement>("/requirements", {
         method: "POST",
-        body: JSON.stringify({ feature_id: Number(featureId), title: localRequirement.title, description: localRequirement.description, status: ({ brouillon: "proposed", validee: "validated", couverte: "approved" } as const)[localRequirement.status] }),
+        body: JSON.stringify({
+          title: localRequirement.title,
+          description: localRequirement.description,
+          status: toBackendRequirementStatus(localRequirement.status),
+          priority: toBackendRequirementPriority(localRequirement.priority),
+          product_id: productBackend ?? null,
+          feature_ids: featureBackends,
+        }),
       });
-      replaceRequirements([...requirements, { ...mapBackendRequirement(response), productId: localRequirement.productId, priority: localRequirement.priority }]);
+      replaceRequirements([...requirements, mapBackendRequirement(response)]);
       toast.success(t("pages.requirements.added"));
       void navigate({ to: "/exigences" });
     } catch (error) {
@@ -214,23 +232,19 @@ function CreateRequirementPage() {
                   </Select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>{t("pages.requirements.fonctionnalites_couvertes")}</Label>
-                  <span className="text-[11px] text-muted-foreground">
-                    {t("pages.requirements.selection_count").replace(
-                      "{count}",
-                      String(form.featureIds.length),
-                    )}{" "}
-                    / {linkedFeatures.length}
-                  </span>
-                </div>
-                <div className="rounded-md border border-border bg-subtle/50 p-3 max-h-56 overflow-y-auto">
-                  {linkedFeatures.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">
-                      {t("pages.requirements.aucune_feature_produit")}
-                    </p>
-                  ) : (
+              {linkedFeatures.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>{t("pages.requirements.fonctionnalites_couvertes")}</Label>
+                    <span className="text-[11px] text-muted-foreground">
+                      {t("pages.requirements.selection_count").replace(
+                        "{count}",
+                        String(form.featureIds.length),
+                      )}{" "}
+                      / {linkedFeatures.length}
+                    </span>
+                  </div>
+                  <div className="rounded-md border border-border bg-subtle/50 p-3 max-h-56 overflow-y-auto">
                     <div className="grid gap-2 sm:grid-cols-2">
                       {linkedFeatures.map((f) => (
                         <label
@@ -252,9 +266,9 @@ function CreateRequirementPage() {
                         </label>
                       ))}
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 

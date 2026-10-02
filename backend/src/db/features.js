@@ -1,4 +1,4 @@
-import pool from '../config/database.js';
+import pool, { withTransaction } from '../config/database.js';
 import { paginate } from './helpers/paginate.js';
 
 export async function findByCampaign(campaignId, client = null) {
@@ -122,6 +122,29 @@ export async function create(data, client = null) {
      data.description_audio_data || null, data.description_audio_type || null, data.description_transcription || null, data.description_duration_seconds || null]
   );
   return result.rows[0];
+}
+
+/** Insertion groupée : une seule transaction, un seul INSERT multi-valeurs. */
+export async function createMany(rows, client = null) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+
+  const run = async (c) => {
+    const values = [];
+    const tuples = rows.map((data, i) => {
+      const o = i * 5;
+      values.push(data.campaign_id, data.name, data.description || null, data.priority || 'medium', data.module || null);
+      return `($${o + 1}, $${o + 2}, $${o + 3}, $${o + 4}, $${o + 5})`;
+    });
+    const result = await c.query(
+      `INSERT INTO features (campaign_id, name, description, priority, module)
+       VALUES ${tuples.join(', ')}
+       RETURNING id`,
+      values
+    );
+    return result.rows.map((r) => r.id);
+  };
+
+  return client ? run(client) : withTransaction(run);
 }
 
 export async function findByName(campaignId, name, excludeId = null, client = null) {

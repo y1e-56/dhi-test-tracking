@@ -16,8 +16,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
-import { getUser, campaignVisibleTo } from "@/lib/access";
+import { getUser, campaignVisibleTo, campaignTesterOptions } from "@/lib/access";
 import { CampaignAccessDenied } from "@/components/dhi/AccessDenied";
+import { canManageCampaign } from "@/lib/role-protection";
 import {
   campaigns as seedCampaigns,
   testCases as seedTests,
@@ -92,7 +93,7 @@ function splitLines(s: string): string[] {
 function EditTestPage() {
   const { campaignId, testId } = Route.useParams();
   const store = useStore();
-  const { campaigns, tests, features, products, updateTest } = store;
+  const { campaigns, tests, features, products, updateTest, users } = store;
   const { t } = useI18n();
   const navigate = useNavigate();
   const campaign = campaigns.find((c) => c.id === campaignId);
@@ -102,6 +103,26 @@ function EditTestPage() {
     () => features.filter((f) => f.productId === campaign?.productId),
     [features, campaign?.productId],
   );
+
+  /**
+   * Testeurs proposés : uniquement les comptes actifs enregistrés dans la
+   * campagne lors de sa création. On conserve aussi le testeur déjà affecté
+   * au cas (même s'il a été retiré de la campagne) pour ne pas l'effacer
+   * silencieusement.
+   */
+  const testerOptions = useMemo(() => {
+    const options = campaignTesterOptions(users, campaign?.testers);
+    if (
+      test?.tester &&
+      !options.some((o) => o.name === test.tester)
+    ) {
+      options.push({
+        id: test.assignedTo != null ? String(test.assignedTo) : "0",
+        name: test.tester,
+      });
+    }
+    return options;
+  }, [users, campaign?.testers, test?.tester, test?.assignedTo]);
 
   const [form, setForm] = useState<TestForm>(() => ({
     name: test?.name ?? "",
@@ -119,6 +140,9 @@ function EditTestPage() {
   if (campaign && !campaignVisibleTo(campaign, products, getUser())) {
     return <CampaignAccessDenied subject={campaign.name} />;
   }
+  if (campaign && !canManageCampaign()) {
+    return <CampaignAccessDenied subject={campaign.name} />;
+  }
   if (campaign?.status === "terminee") {
     return <CampaignAccessDenied subject={campaign.name} />;
   }
@@ -130,12 +154,15 @@ function EditTestPage() {
       toast.error(t("pages.campaign_detail.nom_test_obligatoire"));
       return;
     }
+    const selectedTester = testerOptions.find((o) => o.name === form.tester);
     const patch = {
       name: form.name.trim(),
       featureId: form.featureId,
       criticality: form.criticality,
       type: form.type,
-      tester: form.tester.trim() || undefined,
+      tester: selectedTester?.name,
+      // `null` retire l'affectation et doit être envoyé explicitement.
+      assignedTo: selectedTester ? Number(selectedTester.id) : null,
       preconditions: splitLines(form.preconditions),
       steps: splitLines(form.steps),
       expected: splitLines(form.expected),
@@ -162,6 +189,8 @@ function EditTestPage() {
             expected_result: splitLines(form.expected).join("\n"),
             priority: priorityMap[form.criticality],
             type: form.type,
+            // `null` efface l'affectation côté serveur ; un id la remplace.
+            assigned_to: selectedTester ? Number(selectedTester.id) : null,
           }),
         });
       } catch (error) {
@@ -246,11 +275,26 @@ function EditTestPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>{t("pages.campaign_detail.testeur_referent")}</Label>
-                  <Input
-                    value={form.tester}
-                    placeholder={t("pages.campaign_detail.tester_placeholder")}
-                    onChange={(e) => setForm({ ...form, tester: e.target.value })}
-                  />
+                  <Select
+                    value={form.tester || "__none__"}
+                    onValueChange={(v) =>
+                      setForm({ ...form, tester: v === "__none__" ? "" : v })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("pages.campaign_detail.tester_placeholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">
+                        {t("pages.campaign_detail.unassigned")}
+                      </SelectItem>
+                      {testerOptions.map((o) => (
+                        <SelectItem key={o.id} value={o.name}>
+                          {o.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">

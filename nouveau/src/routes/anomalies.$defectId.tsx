@@ -1,7 +1,10 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
+import { EvidenceThumbnails } from "@/components/dhi/EvidenceThumbnails";
+import { ScreenshotPicker } from "@/components/dhi/ScreenshotPicker";
 import { DefectStatusBadge, SeverityBadge } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -21,7 +24,7 @@ import {
 } from "@/lib/dhi-data";
 
 import { useI18n } from "@/lib/i18n";
-import { api } from "@/lib/api";
+import { api, uploadEvidence } from "@/lib/api";
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
 
 export const Route = createFileRoute("/anomalies/$defectId")({
@@ -57,8 +60,61 @@ function DefectDetailPage() {
   const fallbackCampaign = linkedCampaign ?? (linkedTest
     ? campaigns.find((campaign) => campaign.id === linkedTest.campaignId)
     : undefined);
+  // Id hébergé en base : les preuves nécessitent un serveur et un jeton.
+  const backendId = /^\d+$/.test(defect.id) ? Number(defect.id) : null;
+
+  /** Captures justifiant l'anomalie ou confirmant une correction en attente d'envoi. */
+  const [proofFiles, setProofFiles] = useState<File[]>([]);
+  const [serverProofCount, setServerProofCount] = useState(0);
+  const [savingProof, setSavingProof] = useState(false);
+  const [evidenceRefresh, setEvidenceRefresh] = useState(0);
+  const [pickerKey, setPickerKey] = useState(0);
+  const captureLabels = {
+    add: t("pages.anomalies.add_capture"),
+    count: t("pages.anomalies.captures_count"),
+    remove: t("pages.anomalies.remove_capture"),
+    imageOnly: t("pages.anomalies.images_only"),
+    nonImageIgnored: t("pages.anomalies.non_image_ignored"),
+    tooBig: t("pages.anomalies.capture_too_big"),
+    maxReached: t("pages.anomalies.max_captures"),
+  };
+
+  const saveProof = async () => {
+    if (!backendId || proofFiles.length === 0) return;
+    if (!localStorage.getItem("token")) {
+      toast.error(t("pages.anomalies.login_required_for_captures"));
+      return;
+    }
+    setSavingProof(true);
+    try {
+      const results = await Promise.allSettled(
+        proofFiles.map((file) =>
+          uploadEvidence(
+            "anomaly",
+            String(backendId),
+            file,
+            JSON.stringify({ name: file.name, type: "capture" }),
+          ),
+        ),
+      );
+      const failed = results.filter((r) => r.status === "rejected").length;
+      if (failed > 0) {
+        console.error(
+          `[DHI] ${failed}/${proofFiles.length} capture(s) d'anomalie non enregistrée(s)`,
+        );
+      }
+      setProofFiles([]);
+      setPickerKey((k) => k + 1);
+      setEvidenceRefresh((n) => n + 1);
+      toast.success(t("pages.anomalies.evidence_saved"));
+    } finally {
+      setSavingProof(false);
+    }
+  };
   const universe = users.filter((u) => u.active).map((u) => u.name);
-  const devs = users.filter((u) => u.active && u.role === "developpeur").map((u) => u.name);
+  const devs = users
+    .filter((u) => u.active && (u.roles ?? [u.role]).includes("developpeur"))
+    .map((u) => u.name);
 
   const reassign = (v: string) => {
     updateDefect(defect.id, { assignee: v });
@@ -71,6 +127,52 @@ function DefectDetailPage() {
   };
 
   const changeStatus = async (v: DefectStatus) => {
+    // Signaler la résolution exige une preuve (capture confirmant la
+    // correction), conformément au processus d'anomalie.
+    if (v === "a_retester") {
+      if (!backendId) {
+        if (proofFiles.length === 0) {
+          toast.error(t("pages.anomalies.fix_requires_captures"));
+          return;
+        }
+      } else {
+        const totalProofs = serverProofCount + proofFiles.length;
+        if (totalProofs === 0) {
+          toast.error(t("pages.anomalies.fix_requires_captures"));
+          return;
+        }
+        if (proofFiles.length > 0) {
+          if (!localStorage.getItem("token")) {
+            toast.error(t("pages.anomalies.login_required_for_captures"));
+            return;
+          }
+          let uploaded = true;
+          setSavingProof(true);
+          try {
+            const results = await Promise.allSettled(
+              proofFiles.map((file) =>
+                uploadEvidence(
+                  "anomaly",
+                  String(backendId),
+                  file,
+                  JSON.stringify({ name: file.name, type: "capture" }),
+                ),
+              ),
+            );
+            uploaded = results.every((r) => r.status === "fulfilled");
+          } finally {
+            setSavingProof(false);
+          }
+          if (!uploaded) {
+            toast.error(t("pages.anomalies.fix_requires_captures"));
+            return;
+          }
+          setProofFiles([]);
+          setPickerKey((k) => k + 1);
+          setEvidenceRefresh((n) => n + 1);
+        }
+      }
+    }
     updateDefect(defect.id, { status: v });
     toast.success(`${t("pages.anomalies.status_updated")} : ${DEFECT_STATUS_LABEL[v]}.`);
     if (!/^\d+$/.test(defect.id) || !localStorage.getItem("token")) return;
@@ -224,6 +326,43 @@ function DefectDetailPage() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="rounded-md border border-border p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium">{t("pages.anomalies.evidence_section")}</p>
+            <p className="text-sm text-muted-foreground">{t("pages.anomalies.captures_hint")}</p>
+          </div>
+          {backendId && proofFiles.length > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => void saveProof()}
+              disabled={savingProof}
+            >
+              {savingProof ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+              {t("pages.anomalies.save_captures")}
+            </Button>
+          ) : null}
+        </div>
+        <EvidenceThumbnails
+          entityType="anomaly"
+          backendId={backendId}
+          refreshKey={evidenceRefresh}
+          onCountChange={setServerProofCount}
+        />
+        {backendId ? (
+          <div className="mt-3">
+            <ScreenshotPicker key={pickerKey} onChange={setProofFiles} labels={captureLabels} />
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-muted-foreground">
+            {t("pages.anomalies.login_required_for_captures")}
+          </p>
+        )}
       </div>
 
       <div className="rounded-md border border-border bg-muted/50 p-3 text-sm">

@@ -48,6 +48,44 @@ export async function createFeature(data) {
   return result;
 }
 
+/**
+ * Import groupé de fonctionnalités pour une campagne.
+ * Refuse les doublons de nom dans le lot et les noms déjà présents en base :
+ * la contrainte d'unicité existe en base, on la remonte avant d'écrire quoi que ce soit.
+ */
+export async function bulkCreateFeatures(items, campaignId) {
+  const campaign = await db.campaigns.findById(campaignId);
+  if (!campaign) throw new AppError('Campagne introuvable', 404);
+
+  const seen = new Set();
+  const duplicates = [];
+  for (const item of items) {
+    const key = item.name.trim().toLowerCase();
+    if (seen.has(key)) duplicates.push(item.name);
+    seen.add(key);
+  }
+  if (duplicates.length > 0) {
+    throw new AppError(`Nom de fonctionnalité en double dans le fichier : ${[...new Set(duplicates)].join(', ')}`, 400);
+  }
+
+  const existing = await db.features.findByCampaign(campaignId);
+  const existingNames = new Set(existing.map((f) => f.name.trim().toLowerCase()));
+  const clashes = [...seen].filter((n) => existingNames.has(n));
+  if (clashes.length > 0) {
+    throw new AppError(`Fonctionnalité déjà présente dans cette campagne : ${clashes.join(', ')}`, 409);
+  }
+
+  const created = await db.features.createMany(
+    items.map((i) => ({ ...i, campaign_id: campaignId })),
+  );
+
+  for (const id of created) {
+    const feature = await db.features.findById(id);
+    bus.emit('feature:created', { feature });
+  }
+  return created;
+}
+
 export async function updateFeature(id, data) {
   try {
     if (data.name !== undefined) {

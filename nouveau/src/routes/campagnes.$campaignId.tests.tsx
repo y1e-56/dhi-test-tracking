@@ -4,13 +4,20 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/dhi/AppShell";
 import { CriticalityBadge, VerdictBadge } from "@/components/dhi/indicators";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
 import { campaigns as seedCampaigns } from "@/lib/dhi-data";
 import { campaignTabs } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
 import { api, mapBackendTestCase, type BackendTestCase, type BackendTestExecution } from "@/lib/api";
-import { canManageOperational } from "@/lib/role-protection";
+import { canManageOperational, canManageCampaign } from "@/lib/role-protection";
 import type { TestCase } from "@/lib/dhi-data";
 
 export const Route = createFileRoute("/campagnes/$campaignId/tests")({
@@ -30,13 +37,34 @@ function CampaignTests() {
   const { campaignId } = Route.useParams();
   const matches = useMatches();
   const { t } = useI18n();
-  const { campaigns, tests } = useStore();
+  const { campaigns, tests, updateTest, users } = useStore();
   const [backendTests, setBackendTests] = useState<TestCase[] | null>(null);
   const [search, setSearch] = useState("");
   const exact = matches[matches.length - 1]?.pathname === `/campagnes/${campaignId}/tests`;
-  if (!exact) return <Outlet />;
 
   const campaign = campaigns.find((item) => item.id === campaignId);
+  const locked = campaign?.status === "terminee";
+
+  // Seuls les testeurs de la campagne peuvent etre affectes. On travaille sur des
+  // ids et non des noms : la colonne backend est une reference users(id), donc
+  // afficher un nom sans pouvoir le resoudre rendrait l'affectation non persistee.
+  const assignees = useMemo(() => {
+    const names = new Set(campaign?.testers ?? []);
+    return users
+      .filter((user) => names.has(user.name))
+      .map((user) => ({ id: user.id, name: user.name }))
+      .filter((user) => Number.isInteger(Number(user.id)) && Number(user.id) > 0);
+  }, [campaign?.testers, users]);
+
+  const onAssign = (testId: string, value: string) => {
+    if (value === "__none__") {
+      updateTest(testId, { tester: undefined, assignedTo: null });
+      return;
+    }
+    const user = users.find((u) => u.id === value);
+    if (!user) return;
+    updateTest(testId, { tester: user.name, assignedTo: Number(value) });
+  };
 
   useEffect(() => {
     if (!localStorage.getItem("token") || !/^\d+$/.test(campaignId)) return;
@@ -58,15 +86,22 @@ function CampaignTests() {
 
   const availableTests = backendTests ?? tests;
   const rows = useMemo(() => {
-    const executed = availableTests
-      .filter((test) => test.campaignId === campaignId && (backendTests ? true : test.executedAt))
-      .sort((a, b) => (Date.parse(b.executedAt ?? "") || 0) - (Date.parse(a.executedAt ?? "") || 0))
-      .slice(0, 10);
+    // Tous les cas de test de la campagne, pas seulement les 10 derniers executes :
+    // une affectation doit etre possible sur n'importe quel cas, execute ou non.
+    // Tri par id (donc par ordre de creation) pour que la liste reste stable :
+    // trier par date d'execution ferait sauter les lignes a chaque verdict saisi.
+    const all = availableTests
+      .filter((test) => test.campaignId === campaignId)
+      .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
     const query = search.trim().toLowerCase();
     return query
-      ? executed.filter((test) => test.id.toLowerCase().includes(query) || test.name.toLowerCase().includes(query))
-      : executed;
+      ? all.filter((test) => test.id.toLowerCase().includes(query) || test.name.toLowerCase().includes(query))
+      : all;
   }, [availableTests, campaignId, search]);
+
+  // Garde place apres tous les hooks : un retour conditionnel avant un useMemo
+  // ferait varyer le nombre de hooks selon le routeur et casser React.
+  if (!exact) return <Outlet />;
 
   return (
     <AppShell
@@ -117,7 +152,25 @@ function CampaignTests() {
                     {tc.observed || "—"}
                   </span>
                 </TableCell>
-                <TableCell className="text-sm">{tc.tester ?? "—"}</TableCell>
+                <TableCell className="text-sm">
+                  <Select
+                    value={tc.assignedTo != null ? String(tc.assignedTo) : "__none__"}
+                    onValueChange={(v) => onAssign(tc.id, v)}
+                    disabled={locked || !canManageCampaign()}
+                  >
+                    <SelectTrigger className="h-8 w-40">
+                      <SelectValue placeholder={t("pages.campaign_detail.unassigned")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">{t("pages.campaign_detail.unassigned")}</SelectItem>
+                      {assignees.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </TableCell>
                 <TableCell className="text-right">
                   {campaign?.status === "terminee" ? (
                     <span className="text-xs text-muted-foreground">

@@ -10,6 +10,23 @@ const requireCampaignCreator = requireRole('chef_testeur', 'quality_manager', 'q
 
 const userHasAnyRole = (req, roles) => getUserRoles(req.user).some((r) => roles.includes(r));
 
+/**
+ * Roles qui ont la vue complete sur toutes les campagnes (aligne sur
+ * FULL_ACCESS_ROLES / canAccessAll() du front).
+ */
+const FULL_ACCESS_ROLES = ['admin', 'quality_manager', 'product_owner', 'qa_lead'];
+
+/**
+ * L'utilisateur est-il membre de la campagne ? Chef testeur affecte, testeur ou
+ * developpeur. C'est le seul moyen d'acceder a une campagne pour qui n'a pas la
+ * vue complete : etre owner ou QA d'un produit ne suffit pas.
+ */
+function isCampaignMember(campaign, userId) {
+  if (!campaign) return false;
+  const contains = (list) => Array.isArray(list) && list.map(Number).includes(Number(userId));
+  return contains(campaign.test_leads) || contains(campaign.testers) || contains(campaign.developers);
+}
+
 const createSchema = z.object({
   project_id: z.number(),
   name: z.string().min(1, 'Nom requis'),
@@ -71,6 +88,8 @@ const createSchema = z.object({
  *       401: { $ref: '#/components/responses/Unauthorized' }
  */
 router.get('/', authenticate, async (req, res) => {
+  // Hors roles qualite, on ne renvoie que les campagnes ou l'utilisateur est membre.
+  const scoped = !userHasAnyRole(req, FULL_ACCESS_ROLES);
   const { page, limit, ...filters } = req.query;
   if (page || limit || filters.recherche || filters.statut || filters.chefTesteurId || filters.project_id || filters.projectId) {
     const result = await campaignService.listCampaignsPaginated({
@@ -83,12 +102,16 @@ router.get('/', authenticate, async (req, res) => {
       dateDebut: filters.dateDebut || undefined,
       dateFin: filters.dateFin || undefined,
     });
-    res.json(result);
-  } else {
-    const projectId = filters.project_id ? Number(filters.project_id) : filters.projectId ? Number(filters.projectId) : undefined;
-    const campaigns = await campaignService.listCampaigns(projectId);
-    res.json(campaigns);
+    if (!scoped) return res.json(result);
+    const items = result.data.filter((c) => isCampaignMember(c, req.user.id));
+    return res.json({
+      data: items,
+      pagination: { ...result.pagination, total: items.length, totalPages: 1 },
+    });
   }
+  const projectId = filters.project_id ? Number(filters.project_id) : filters.projectId ? Number(filters.projectId) : undefined;
+  const campaigns = await campaignService.listCampaigns(projectId);
+  res.json(scoped ? campaigns.filter((c) => isCampaignMember(c, req.user.id)) : campaigns);
 });
 
 /**
@@ -109,10 +132,14 @@ router.get('/', authenticate, async (req, res) => {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Campaign' }
  *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       403: { $ref: '#/components/responses/Forbidden' }
  *       404: { $ref: '#/components/responses/NotFound' }
  */
 router.get('/:id', authenticate, async (req, res) => {
   const campaign = await campaignService.getCampaign(Number(req.params.id));
+  if (!userHasAnyRole(req, FULL_ACCESS_ROLES) && !isCampaignMember(campaign, req.user.id)) {
+    return res.status(403).json({ error: 'Vous n\'êtes pas membre de cette campagne' });
+  }
   res.json(campaign);
 });
 

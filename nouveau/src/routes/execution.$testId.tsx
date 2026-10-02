@@ -508,7 +508,9 @@ function ExecutionPage() {
       observed: current.observed,
       comment: current.comment,
       measuredValue: current.measuredValue || undefined,
-      tester: "Marie Martin",
+      // Qui a execute, pas qui est affecte : l'affectation vit dans `assignedTo`
+      // et ne doit pas etre overwritten par le fait d'avoir lance le test.
+      tester: currentUser?.name ?? "—",
       executedAt: now.toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }),
       duration: test.duration ?? "4 min 10 sec",
     });
@@ -576,11 +578,10 @@ function ExecutionPage() {
   const sevOfCriticality = (c?: TestCase["criticality"]): Severity =>
     c === "critique" || c === "haute" ? "haute" : c === "basse" ? "basse" : "moyenne";
 
-  const devs = users.filter((u) => u.active && u.role === "developpeur");
-  const assigneeOptions =
-    campaignTesters.length > 0
-      ? campaignTesters
-      : users.filter((u) => u.active).map((u) => u.name);
+  const devs = users.filter((u) => u.active && (u.roles ?? [u.role]).includes("developpeur"));
+  // L'anomalie est affectée à un testeur de la campagne uniquement : on ne
+  // propose pas tous les testeurs de l'application.
+  const assigneeOptions = campaignTesters;
 
   const openCreateDialog = () => {
     const severity = sevOfCriticality(test.criticality);

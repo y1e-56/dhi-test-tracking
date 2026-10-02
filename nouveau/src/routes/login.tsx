@@ -42,7 +42,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const { lang, setLang, theme, toggleTheme, languages, t } = useI18n();
   const [email, setEmail] = useState("admin@test.fr");
-  const [password, setPassword] = useState("Admin@DHI2026");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -176,11 +176,6 @@ function LoginPage() {
               <Button className="mt-2 h-10" type="submit" disabled={loading}>
                 {loading ? t("pages.login.connecting") : t("actions.connexion")}
               </Button>
-
-              <p className="pt-2 text-center text-xs text-muted-foreground">
-                {t("login.mdp")} {t("pages.login.demo_password")} :{" "}
-                <span className="font-mono font-medium">Admin@DHI2026</span>
-              </p>
             </form>
           </Card>
 

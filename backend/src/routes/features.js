@@ -142,6 +142,30 @@ router.post('/', authenticate, requireFeatureManager, async (req, res) => {
   res.status(201).json(result);
 });
 
+const bulkSchema = z.object({
+  campaign_id: z.number().int().positive(),
+  items: z
+    .array(
+      z.object({
+        name: z.string().min(1, 'Nom requis'),
+        description: z.string().optional(),
+        priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+        module: z.string().optional(),
+      })
+    )
+    .min(1, 'Aucun élément à importer')
+    .max(1000, 'Maximum 1000 fonctionnalités par import'),
+});
+
+router.post('/bulk', authenticate, requireFeatureManager, async (req, res, next) => {
+  try {
+    const { campaign_id, items } = bulkSchema.parse(req.body);
+    const ids = await featureService.bulkCreateFeatures(items, campaign_id);
+    bus.emit('data:changed', { entity: 'features' });
+    res.status(201).json({ created: ids.length, ids });
+  } catch (err) { next(err); }
+});
+
 /**
  * @swagger
  * /features/{id}:

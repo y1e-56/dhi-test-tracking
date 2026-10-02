@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useMatches, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Download,
@@ -9,11 +9,19 @@ import {
   Upload,
   FileUp,
   Users,
+  MoreHorizontal,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
 import { MemberMultiSelect, type MemberOption } from "@/components/dhi/MemberMultiSelect";
+import { ImportMenu } from "@/components/dhi/ImportMenu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -57,10 +65,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { campaignStats, loadSnapshot, useStore } from "@/lib/dhi-store";
-import { getUser, campaignVisibleTo } from "@/lib/access";
-import { canManageOperational } from "@/lib/role-protection";
+import { getUser, campaignVisibleTo, isTesterRole } from "@/lib/access";
+import { canManageOperational, canManageCampaign } from "@/lib/role-protection";
 import { CampaignAccessDenied } from "@/components/dhi/AccessDenied";
-import { api } from "@/lib/api";
+import { api, type BackendCampaign } from "@/lib/api";
 import {
   campaigns as seedCampaigns,
   CAMPAIGN_STATUS_LABEL,
@@ -208,6 +216,7 @@ function InfoPanel({
           [t("pages.campaign_detail.environnement"), campaign.environment],
           [t("common.responsable"), campaign.owner],
           [t("pages.campaign_detail.periode"), `${campaign.startDate} → ${campaign.endDate}`],
+          [t("pages.campaign_detail.chefs_test"), (campaign.testLeads ?? []).join(", ") || "—"],
           [t("pages.campaign_detail.testeurs"), campaign.testers.join(", ") || "—"],
           [t("pages.campaign_detail.developpeurs"), (campaign.developers ?? []).join(", ") || "—"],
         ].map(([k, v]) => (
@@ -270,19 +279,32 @@ function CampaignTestsTable({
   locked: boolean;
 }) {
   const { t } = useI18n();
-  const { campaigns, updateTest, tests } = useStore();
+  const { campaigns, updateTest, users } = useStore();
   const campaign = campaigns.find((c) => c.id === campaignId);
   const assignees = campaign?.testers ?? [];
+  const canManage = canManageCampaign();
 
-  const reassign = (testId: string, tester: string) => {
-    const test = tests.find((x) => x.id === testId);
-    const next = tester === "__none__" ? undefined : tester;
-    updateTest(testId, { tester: next });
-    toast.success(
-      `${testId} ${t("pages.campaign_detail.reassigned")} ${
-        next || t("pages.campaign_detail.unassigned")
-      }.`,
-    );
+  const reassign = (testId: string, testerName: string) => {
+    if (testerName === "__none__") {
+      // Retirer l'affectation : `assignedTo: null` est distingue de l'absence de cle
+      // côté store, donc le retrait est bien envoye au backend.
+      updateTest(testId, { tester: undefined, assignedTo: null });
+      toast.success(
+        `${testId} ${t("pages.campaign_detail.reassigned")} ${
+          t("pages.campaign_detail.unassigned")
+        }.`,
+      );
+      return;
+    }
+    // La colonne backend est une reference users(id) : on resout le nom en id.
+    const user = users.find((u) => u.name === testerName);
+    const userId = user ? Number(user.id) : Number.NaN;
+    if (!user || !Number.isInteger(userId) || userId <= 0) {
+      toast.error(`${testerName} : ${t("pages.campaign_detail.user_not_resolved")}`);
+      return;
+    }
+    updateTest(testId, { tester: testerName, assignedTo: userId });
+    toast.success(`${testId} ${t("pages.campaign_detail.reassigned")} ${testerName}.`);
   };
 
   return (
@@ -322,7 +344,7 @@ function CampaignTestsTable({
                 </span>
               </TableCell>
               <TableCell className="text-sm">
-                <Select value={tc.tester ?? ""} onValueChange={(v) => reassign(tc.id, v)} disabled={locked || !canManageOperational()}>
+                <Select value={tc.tester ?? ""} onValueChange={(v) => reassign(tc.id, v)} disabled={locked || !canManage}>
                   <SelectTrigger className="h-8 w-40"><SelectValue placeholder="—" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">{t("pages.campaign_detail.unassigned")}</SelectItem>
@@ -342,7 +364,7 @@ function CampaignTestsTable({
                 )}
               </TableCell>
               <TableCell>
-                {!locked && canManageOperational() ? <div className="flex justify-end gap-1">
+                {!locked && canManage ? <div className="flex justify-end gap-1">
                   <Link to="/campagnes/$campaignId/tests/$testId/modifier" params={{ campaignId, testId: tc.id }} title={t("pages.campaign_detail.modifier_cas_test")}>
                     <Button size="icon" variant="ghost" className="size-7"><Pencil className="size-4" /></Button>
                   </Link>
@@ -427,37 +449,102 @@ function CampaignActions({
   onExportTemplate: () => void;
 }) {
   const { t } = useI18n();
-  const canManage = canManageOperational();
+  const canManage = canManageCampaign();
+  const navigate = useNavigate();
+  const [membersOpen, setMembersOpen] = useState(false);
   return (
     <div className="flex flex-wrap items-center gap-2">
       {canManage && campaign.status !== "terminee" ? (
-        <Link to="/campagnes/$campaignId/tests/ajouter" params={{ campaignId: campaign.id }}>
-          <Button size="sm">
-            <Plus className="size-4" /> {t("pages.campaign_detail.ajouter_un_test")}
-          </Button>
-        </Link>
-      ) : null}
-      {canManage && campaign.status !== "terminee" ? (
-        <Link to="/campagnes/$campaignId/importer" params={{ campaignId: campaign.id }}>
-          <Button size="sm" variant="outline">
-            <Upload className="size-4" /> {t("pages.campaign_detail.importer_csv")}
-          </Button>
-        </Link>
-      ) : null}
-      {campaign.status !== "terminee" ? (
-        <Button size="sm" variant="ghost" onClick={onExportTemplate}>
-          <FileUp className="size-4" /> {t("pages.campaign_detail.modele_csv")}
+        <Button
+          size="sm"
+          className="[&_svg]:size-3.5"
+          onClick={() =>
+            navigate({ to: "/campagnes/$campaignId/tests/ajouter", params: { campaignId: campaign.id } })
+          }
+        >
+          <Plus /> {t("pages.campaign_detail.ajouter_un_test")}
         </Button>
       ) : null}
       {canManage && campaign.status !== "terminee" ? (
-        <Button size="sm" variant="outline" onClick={onTransition}>
-          <PlayCircle className="size-4" />
-          {campaign.status === "encours" ? t("actions.cloturer") : t("actions.demarrer")}
-        </Button>
+        <ImportMenu
+          label={t("actions.importer")}
+          descriptionLabel={t("pages.campaign_detail.import_choisir")}
+          options={[
+            {
+              key: "tests",
+              label: t("campagne_import.menu_title"),
+              description: t("campagne_import.menu_description"),
+              icon: Upload,
+              onSelect: () =>
+                navigate({
+                  to: "/campagnes/$campaignId/importer",
+                  params: { campaignId: campaign.id },
+                }),
+            },
+            {
+              key: "features",
+              label: t("pages.features.menu_title"),
+              description: t("pages.features.import_menu_description"),
+              icon: FileUp,
+              onSelect: () =>
+                navigate({
+                  to: "/campagnes/$campaignId/fonctionnalites/importer",
+                  params: { campaignId: campaign.id },
+                }),
+            },
+          ]}
+          secondaryLabel={t("pages.campaign_detail.modele_menu_titre")}
+          secondary={[
+            {
+              key: "template-tests",
+              label: t("pages.campaign_detail.modele_csv"),
+              description: t("pages.campaign_detail.modele_menu_description"),
+              icon: FileUp,
+              onSelect: onExportTemplate,
+            },
+          ]}
+        />
       ) : null}
-      <Button size="sm" variant="outline" onClick={onExport}>
-        <Download className="size-4" /> {t("actions.rapport")}
-      </Button>
+      {/*
+       * Memoire des membres, transition de statut et generation du rapport
+       * convergent ici : ce sont des actions utiles mais peu frequentes, qui
+       * donnaient trois boutons alignes pour une seule action courante.
+       */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            size="icon-sm"
+            variant="outline"
+            aria-label={t("actions.plus")}
+            title={t("actions.plus")}
+          >
+            <MoreHorizontal className="size-3.5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-60">
+          {canManage && campaign.status !== "terminee" ? (
+            <DropdownMenuItem onSelect={() => setMembersOpen(true)}>
+              <Users className="size-3.5 text-muted-foreground" />
+              {t("pages.add_campaign.gerer_membres")}
+            </DropdownMenuItem>
+          ) : null}
+          {canManage && campaign.status !== "terminee" ? (
+            <DropdownMenuItem onSelect={onTransition}>
+              <PlayCircle className="size-3.5 text-muted-foreground" />
+              {campaign.status === "encours" ? t("actions.cloturer") : t("actions.demarrer")}
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem onSelect={onExport}>
+            <Download className="size-3.5 text-muted-foreground" />
+            {t("actions.rapport")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <ManageMembersDialog
+        campaign={campaign}
+        open={membersOpen}
+        onOpenChange={setMembersOpen}
+      />
     </div>
   );
 }
@@ -505,52 +592,86 @@ function exportTemplateCsv(featureList: Feature[], t: TranslateFn) {
   toast.success(t("pages.campaign_detail.modele_csv_telecharge"));
 }
 
-function ManageMembersButton({ campaign }: { campaign: Campaign }) {
+/**
+ * Dialogue de gestion des membres, pilote par le parent.
+ *
+ * Le declencheur vit dans le menu d'actions de la campagne : le dialogue est
+ * donc expose en mode controle plutot que de porter son propre bouton.
+ */
+function ManageMembersDialog({
+  campaign,
+  open,
+  onOpenChange,
+}: {
+  campaign: Campaign;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const { t } = useI18n();
-  const { users, updateCampaign } = useStore();
-  const [open, setOpen] = useState(false);
+  const { users, updateCampaign, campaigns, replaceCampaigns } = useStore();
+  const [testLeads, setTestLeads] = useState<Set<string>>(new Set(campaign.testLeads ?? (campaign.owner ? [campaign.owner] : [])));
   const [testers, setTesters] = useState<Set<string>>(new Set(campaign.testers));
   const [developers, setDevelopers] = useState<Set<string>>(new Set(campaign.developers ?? []));
 
   const memberOptions: MemberOption[] = users.map((u) => ({
     name: u.name,
     role: u.role,
+    roles: u.roles ?? [u.role],
     active: u.active,
   }));
-  const testerOptions = memberOptions.filter((o) => o.role === "testeur" || o.role === "chef_testeur");
-  const devOptions = memberOptions.filter((o) => o.role === "developpeur");
+  const leadOptions = memberOptions.filter((o) => o.active && (o.roles ? o.roles : [o.role]).some((r) => r === "chef_testeur" || r === "quality_manager" || r === "qa_lead"));
+  const testerOptions = memberOptions.filter((o) => o.active && isTesterRole(o.roles, o.role));
+  const devOptions = memberOptions.filter((o) => o.active && (o.roles ? o.roles : [o.role]).includes("developpeur"));
 
   const save = async () => {
+    const leadNames = [...testLeads];
     if (/^\d+$/.test(campaign.id) && localStorage.getItem("token")) {
       try {
-        const testersIds = users.filter((user) => testers.has(user.name)).map((user) => Number(user.id));
-        const developersIds = users.filter((user) => developers.has(user.name)).map((user) => Number(user.id));
-        await api(`/campaigns/${campaign.id}`, {
+        const idsOf = (names: Set<string>) =>
+          users.filter((user) => names.has(user.name)).map((user) => Number(user.id));
+        const response = await api<{ campaign: BackendCampaign }>(`/campaigns/${campaign.id}`, {
           method: "PUT",
-          body: JSON.stringify({ testers: testersIds, developers: developersIds }),
+          body: JSON.stringify({ test_lead_ids: idsOf(testLeads), testers: idsOf(testers), developers: idsOf(developers) }),
         });
+        if (response.campaign) {
+          replaceCampaigns(campaigns.map((c) => (c.id === campaign.id ? { ...c, testLeads: (response.campaign.test_lead_names ?? []).map(String), owner: (response.campaign.test_lead_names ?? []).map(String)[0] ?? c.owner, testers: (response.campaign.tester_names ?? []).map(String), developers: (response.campaign.developer_names ?? []).map(String) } : c)));
+          toast.success(t("pages.add_campaign.membres_update_ok"));
+          onOpenChange(false);
+          return;
+        }
       } catch (error) {
         toast.error(error instanceof Error ? error.message : t("common.erreur"));
         return;
       }
     }
-    updateCampaign(campaign.id, { testers: [...testers], developers: [...developers] });
+    updateCampaign(campaign.id, { testLeads: leadNames, owner: leadNames[0] ?? campaign.owner, testers: [...testers], developers: [...developers] });
     toast.success(t("pages.add_campaign.membres_update_ok"));
-    setOpen(false);
+    onOpenChange(false);
   };
 
   return (
     <>
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-        <Users className="size-4" /> {t("pages.add_campaign.gerer_membres")}
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("pages.add_campaign.gerer_membres")}</DialogTitle>
             <DialogDescription>{campaign.name}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label className="text-sm font-medium">{t("pages.add_campaign.membres_chefs_test")}</Label>
+              <MemberMultiSelect
+                value={testLeads}
+                onChange={setTestLeads}
+                options={leadOptions}
+                showRole={false}
+                placeholder={t("pages.add_campaign.aucun_membre")}
+                selectionLabel={{
+                  label: t("pages.add_campaign.membre"),
+                  labelPlural: t("pages.add_campaign.membres"),
+                }}
+              />
+            </div>
             <div className="grid gap-2">
               <Label className="text-sm font-medium">{t("pages.add_campaign.membres_testeurs")}</Label>
               <MemberMultiSelect
@@ -581,7 +702,7 @@ function ManageMembersButton({ campaign }: { campaign: Campaign }) {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               {t("pages.campaign_detail.fermer")}
             </Button>
             <Button onClick={save}>{t("actions.enregistrer")}</Button>
@@ -615,10 +736,6 @@ function CampaignDetail() {
   const project = projects.find((p) => p.id === campaign.projectId);
 
   const st = campaignStats(tests, campaign.id);
-  const recentExecuted = st.list
-    .filter((test) => test.executedAt)
-    .sort((a, b) => (Date.parse(b.executedAt ?? "") || 0) - (Date.parse(a.executedAt ?? "") || 0))
-    .slice(0, 10);
   const failedTests = st.list.filter((t) => t.verdict === "FAIL");
   const campaignFeatures = features.filter((f) => f.productId === campaign.productId);
 
@@ -639,18 +756,13 @@ function CampaignDetail() {
       subtitle={`${CAMPAIGN_STATUS_LABEL[campaign.status]} · ${st.executionRate} % ${t("pages.campaigns.executed")} · ${campaign.environment}`}
       breadcrumb={[t("nav.execution"), t("pages.campaigns.campaigns"), campaign.name]}
       tabs={campaignTabs(campaignId)}
-      actions={
-        <>
-          {canManageOperational() && campaign.status !== "terminee" ? <ManageMembersButton campaign={campaign} /> : null}
-          <CampaignActions
+      actions={<CampaignActions
             campaign={campaign}
             st={st}
             onExport={onExport}
             onTransition={onTransition}
             onExportTemplate={onExportTemplate}
-          />
-        </>
-      }
+          />}
     >
       <Link
         to="/campagnes"
@@ -665,7 +777,7 @@ function CampaignDetail() {
         <FailedTestsPanel failedTests={failedTests} />
       </div>
       <CampaignTestsTable
-        list={recentExecuted}
+        list={st.list}
         campaignId={campaign.id}
         onDelete={(t) => setToDeleteTest(t)}
         locked={campaign.status === "terminee"}

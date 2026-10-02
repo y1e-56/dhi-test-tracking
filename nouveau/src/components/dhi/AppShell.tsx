@@ -18,7 +18,6 @@ import {
   BookOpen,
   FolderKanban,
   Menu,
-  Search,
   ChevronRight,
   LogOut,
   UserRound,
@@ -29,7 +28,7 @@ import {
   Check,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -43,20 +42,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { SEARCH_PAGES, SEARCH_GROUPS, type AppShellTab } from "@/lib/dhi-nav";
+import { type AppShellTab } from "@/lib/dhi-nav";
 import { ROLE_LABEL, ROLE_PAGES, NOTIFICATION_TYPE_LABEL } from "@/lib/dhi-data";
 import { useStore } from "@/lib/dhi-store";
 import { hasAccessToPage, getDefaultDashboardForRole } from "@/lib/role-protection";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 import { useRealtimeNotifications } from "@/lib/use-realtime-notifications";
+import { cn } from "@/lib/utils";
 
 /* =========================================================
    2. TYPES
@@ -128,6 +120,58 @@ export type { AppShellTab };
    4. COMPOSANTS HELPERS
    ========================================================= */
 
+/**
+ * Preferences d'affichage (langue, theme) en pied de la barre laterale.
+ *
+ * Ces reglages sont peu frequents et n'ont pas besoin d'etre visibles en
+ * permanence : les sortir de la barre horizontale rend celle-ci plus lisible et
+ * allège visuellement les commandes rares.
+ *
+ * Le composant est monte dans la sidebar desktop ET dans le drawer mobile pour
+ * que les deux navigation restent coherentes.
+ */
+function SidebarPreferences({ onNavigate }: { onNavigate?: () => void }) {
+  const { lang, setLang, theme, toggleTheme, languages, t } = useI18n();
+
+  const toggleLanguage = () => {
+    const currentIndex = languages.findIndex((l) => l.id === lang);
+    const next = languages[(currentIndex + 1) % languages.length];
+    if (next) setLang(next.id);
+  };
+
+  const currentLanguage = languages.find((l) => l.id === lang)?.native ?? lang;
+  const themeLabel = theme === "dark" ? t("common.mode_clair") : t("common.mode_sombre");
+
+  return (
+    <div
+      className="flex items-center gap-1 border-t border-sidebar-border px-3 py-2.5"
+      onClick={onNavigate}
+    >
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={toggleLanguage}
+        className="h-8 flex-1 justify-start gap-2 px-2 text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        aria-label={t("common.changer_langue")}
+        title={t("common.langue_label").replace("{langue}", currentLanguage)}
+      >
+        <Globe className="size-3.5 shrink-0" />
+        <span className="text-xs font-medium">{currentLanguage}</span>
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={toggleTheme}
+        className="h-8 w-8 px-0 text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        aria-label={t("common.changer_theme")}
+        title={themeLabel}
+      >
+        {theme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+      </Button>
+    </div>
+  );
+}
+
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { currentUser } = useStore();
   const { t } = useI18n();
@@ -162,13 +206,35 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+/**
+ * Marque de l'application : une validation (« carte verte »).
+ *
+ * Le bras long est volontairement deux fois plus long que le bras court : la
+ * coche symetrique par defaut se lit comme une icone generique, l'allongement
+ * donne au glyphe une signature. Elle se place dans le badge sombre, donc
+ * visible des 16 px, et reprend le vert du score qualite.
+ */
+function BrandMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={cn("size-4", className)}>
+      <path
+        d="M6 12.5 L10 16.5 L18.5 6.5"
+        stroke="var(--success)"
+        strokeWidth={2.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function Brand() {
   const { t } = useI18n();
 
   return (
     <div className="flex h-14 items-center gap-2.5 border-b border-sidebar-border px-4">
-      <div className="flex size-7 items-center justify-center rounded-md bg-sidebar-primary text-[11px] font-bold tracking-tight text-sidebar-primary-foreground">
-        QC
+      <div className="flex size-7 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+        <BrandMark />
       </div>
       <div className="min-w-0">
         <p className="truncate text-[13px] font-semibold leading-none text-foreground">
@@ -279,8 +345,8 @@ function UserMenu() {
 
   const toggleLanguage = () => {
     const currentIndex = languages.findIndex((l) => l.id === lang);
-    const nextIndex = (currentIndex + 1) % languages.length;
-    setLang(languages[nextIndex].id);
+    const next = languages[(currentIndex + 1) % languages.length];
+    if (next) setLang(next.id);
   };
 
   if (!currentUser) {
@@ -426,31 +492,13 @@ export function AppShell({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const navigate = useNavigate();
   const { currentUser } = useStore();
-  const { lang, setLang, theme, toggleTheme, languages, t } = useI18n();
+  const { t } = useI18n();
   useRealtimeNotifications();
   const allItems = NAV_SECTIONS.flatMap((s) => s.items).filter((item) =>
     currentUser ? hasAccessToPage(item.to) : false,
   );
-
-  const toggleLanguage = () => {
-    const currentIndex = languages.findIndex((l) => l.id === lang);
-    const nextIndex = (currentIndex + 1) % languages.length;
-    setLang(languages[nextIndex].id);
-  };
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setSearchOpen((v) => !v);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
 
   return (
     <div className="flex min-h-screen bg-subtle">
@@ -458,6 +506,7 @@ export function AppShell({
       <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex print:hidden">
         <Brand />
         <SidebarNav />
+        <SidebarPreferences />
         <div className="border-t border-sidebar-border px-4 py-3 text-[11px] leading-relaxed text-muted-foreground">
           {t("footer.copyright")}
         </div>
@@ -471,16 +520,22 @@ export function AppShell({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="lg:hidden"
+                  className="size-7 rounded-md [&_svg]:size-3.5 lg:hidden"
                   aria-label={t("common.navigation")}
                 >
                   <Menu />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[264px] bg-sidebar p-0">
+              <SheetContent side="left" className="flex w-[264px] flex-col bg-sidebar p-0">
                 <SheetTitle className="sr-only">{t("common.navigation")}</SheetTitle>
                 <Brand />
                 <SidebarNav onNavigate={() => setOpen(false)} />
+                <div className="mt-auto flex flex-col">
+                  <SidebarPreferences onNavigate={() => setOpen(false)} />
+                  <div className="border-t border-sidebar-border px-4 py-3 text-[11px] leading-relaxed text-muted-foreground">
+                    {t("footer.copyright")}
+                  </div>
+                </div>
               </SheetContent>
             </Sheet>
 
@@ -505,53 +560,7 @@ export function AppShell({
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSearchOpen(true)}
-                className="hidden items-center gap-2 rounded-md border border-input bg-background px-2.5 py-1.5 text-xs text-muted-foreground xl:flex hover:bg-subtle"
-              >
-                <Search className="size-3.5" />
-                <span>{t("common.recherche_page")}</span>
-                <kbd className="num rounded border border-border bg-muted px-1 text-[10px]">⌘K</kbd>
-              </button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="xl:hidden"
-                aria-label={t("common.recherche_ecran")}
-                onClick={() => setSearchOpen(true)}
-              >
-                <Search className="size-4" />
-              </Button>
-
-              {/* Theme Toggle */}
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={toggleTheme}
-                aria-label={t("common.changer_theme")}
-                title={theme === "dark" ? t("common.mode_clair") : t("common.mode_sombre")}
-              >
-                {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
-              </Button>
-
-              {/* Language Toggle */}
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={toggleLanguage}
-                aria-label={t("common.changer_langue")}
-                title={t("common.langue_label").replace(
-                  "{langue}",
-                  lang === "fr" ? "Français" : "English",
-                )}
-              >
-                {" "}
-                <Globe className="size-4" />
-                <span className="sr-only">{lang === "fr" ? "FR" : "EN"}</span>
-              </Button>
-
+            <div className="flex shrink-0 items-center gap-2 [&_svg]:size-3.5">
               {actions}
               <NotificationBell />
               <UserMenu />
@@ -596,29 +605,6 @@ export function AppShell({
           <div className="w-full space-y-6">{children}</div>
         </main>
       </div>
-
-      <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
-        <CommandInput placeholder={t("common.recherche_ecran")} />
-        <CommandList>
-          <CommandEmpty>{t("common.aucun_ecran")}</CommandEmpty>
-          {SEARCH_GROUPS.map((group) => (
-            <CommandGroup key={group} heading={t(group)}>
-              {SEARCH_PAGES.filter((p) => p.group === group && hasAccessToPage(p.to)).map((p) => (
-                <CommandItem
-                  key={p.to}
-                  value={`${t(p.label)} ${p.to}`}
-                  onSelect={() => {
-                    setSearchOpen(false);
-                    void navigate({ to: p.to });
-                  }}
-                >
-                  {t(p.label)}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          ))}
-        </CommandList>
-      </CommandDialog>
     </div>
   );
 }

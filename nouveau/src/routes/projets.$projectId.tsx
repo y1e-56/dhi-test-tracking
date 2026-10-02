@@ -65,9 +65,8 @@ export const Route = createFileRoute("/projets/$projectId")({
 function ProjectDetail() {
   const { t } = useI18n();
   const { projectId } = Route.useParams();
-  const { products, projects, campaigns, tests, releases, goLiveDecisions, features, defects, addRelease, updateRelease } =
+  const { products, projects, campaigns, tests, releases, goLiveDecisions, features, defects, addRelease } =
     useStore();
-  const [selRel, setSelRel] = useState("");
 
   const matches = useMatches();
   const project = projects.find((p) => p.id === projectId);
@@ -96,16 +95,6 @@ function ProjectDetail() {
   const score = product ? productScore(product) : 0;
   const projCampaigns = campaigns.filter((c) => c.projectId === project.id);
 
-  const linkableReleases = releases.filter((r) => r.projectId !== project.id);
-  const linkRelease = () => {
-    if (!selRel) {
-      toast.error(t("pages.releases.select_link"));
-      return;
-    }
-    updateRelease(selRel, { projectId: project.id });
-    toast.success(`${t("pages.releases.linked")} ${project.name}.`);
-    setSelRel("");
-  };
   const projReleases = releases.filter((r) => r.projectId === project.id);
   const prodFeatures = features.filter((f) => f.productId === project.productId);
   const openDefects = defects.filter(
@@ -240,42 +229,17 @@ function ProjectDetail() {
                 >
                   <span className="num font-medium">{r.version}</span>
                   <span className="text-muted-foreground">
-                    {RELEASE_STATUS_LABEL[r.status]} · {r.environment}
+                    {RELEASE_STATUS_LABEL[r.status]}
+                    {r.environment ? ` · ${r.environment}` : ""}
                   </span>
                 </li>
               ))}
             </ul>
           )}
           {canCreateProject() ? (
-            <div className="mt-4 border-t border-border pt-4">
-              <Label className="text-sm font-medium">{t("pages.releases.link_existing")}</Label>
-              <div className="mt-2 flex items-center gap-2">
-                <Select value={selRel} onValueChange={setSelRel}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder={t("pages.releases.select_release_placeholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {linkableReleases.map((r) => {
-                      const owner = projects.find((p) => p.id === r.projectId)?.name;
-                      return (
-                        <SelectItem key={r.id} value={r.id}>
-                          {r.version} · {RELEASE_STATUS_LABEL[r.status]}
-                          {owner ? ` (${owner})` : ""}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                <Button type="button" onClick={linkRelease} disabled={linkableReleases.length === 0}>
-                  {t("pages.releases.link")}
-                </Button>
-              </div>
-              {linkableReleases.length === 0 ? (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {t("pages.releases.no_linkable")}
-                </p>
-              ) : null}
-            </div>
+            <p className="mt-4 border-t border-border pt-4 text-xs text-muted-foreground">
+              {t("pages.releases.rattache_hint")}
+            </p>
           ) : null}
         </Panel>
         <Panel title={t("pages.project_detail.indicators_title")}>

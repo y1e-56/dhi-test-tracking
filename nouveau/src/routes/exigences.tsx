@@ -9,6 +9,7 @@ import {
   Pencil,
   Trash2,
   AlertTriangle,
+  Upload,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -179,11 +180,18 @@ function RequirementsList() {
       breadcrumb={t("pages.requirements.breadcrumb")}
       actions={
         canCreateRequirement() ? (
-          <Link to="/exigences/ajouter">
-            <Button size="sm">
-              <Plus className="size-4" /> {t("pages.requirements.new_requirement")}
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link to="/exigences/importer">
+              <Button size="sm" variant="outline">
+                <Upload className="size-4" /> {t("pages.requirements.import_title")}
+              </Button>
+            </Link>
+            <Link to="/exigences/ajouter">
+              <Button size="sm">
+                <Plus className="size-4" /> {t("pages.requirements.new_requirement")}
+              </Button>
+            </Link>
+          </div>
         ) : undefined
       }
     >

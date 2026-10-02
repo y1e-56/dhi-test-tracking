@@ -3,12 +3,27 @@ import pool from '../config/database.js';
 export async function getMemberIds(campaignId, client = null) {
   const c = client || pool;
   const result = await c.query(
-    'SELECT user_id, team_type FROM campaign_members WHERE campaign_id = $1',
+    `SELECT cm.user_id, cm.team_type, u.first_name, u.last_name
+     FROM campaign_members cm
+     LEFT JOIN users u ON u.id = cm.user_id
+     WHERE cm.campaign_id = $1`,
     [campaignId]
   );
-  const testers = result.rows.filter(m => m.team_type === 'tester').map(m => m.user_id);
-  const developers = result.rows.filter(m => m.team_type === 'developer').map(m => m.user_id);
-  return { testers, developers };
+  const nameOf = (u) => [u.first_name, u.last_name].filter(Boolean).join(' ');
+  const testers = [];
+  const developers = [];
+  const tester_names = [];
+  const developer_names = [];
+  for (const row of result.rows) {
+    if (row.team_type === 'tester') {
+      testers.push(row.user_id);
+      tester_names.push(nameOf(row));
+    } else {
+      developers.push(row.user_id);
+      developer_names.push(nameOf(row));
+    }
+  }
+  return { testers, developers, tester_names, developer_names };
 }
 
 export async function getMembersWithDetails(campaignId, client = null) {

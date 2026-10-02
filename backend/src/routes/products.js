@@ -12,6 +12,7 @@ const productCreateSchema = z.object({
   name: z.string().min(1, 'Nom requis'),
   description: z.string().optional(),
   owner_id: z.number().int().nullable().optional(),
+  owner_name: z.string().max(255).nullable().optional(),
   quality_manager_id: z.number().int().nullable().optional(),
 });
 

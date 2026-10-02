@@ -21,6 +21,7 @@ import { campaignStats, useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 import { useVisibleProducts, useVisibleProjects, useVisibleCampaigns } from "@/lib/use-scope";
 import { api, mapBackendCampaign, type BackendCampaign } from "@/lib/api";
+import { isTesterRole } from "@/lib/access";
 
 export const Route = createFileRoute("/campagnes/ajouter")({
   head: () => ({
@@ -46,10 +47,11 @@ function CreateCampaignPage() {
   const memberOptions: MemberOption[] = users.map((u) => ({
     name: u.name,
     role: u.role,
+    roles: u.roles ?? [u.role],
     active: u.active,
   }));
-  const testerOptions = memberOptions.filter((o) => o.role === "testeur" || o.role === "chef_testeur");
-  const devOptions = memberOptions.filter((o) => o.role === "developpeur");
+  const testerOptions = memberOptions.filter((o) => o.active && isTesterRole(o.roles, o.role));
+  const devOptions = memberOptions.filter((o) => o.active && (o.roles ? o.roles : [o.role]).includes("developpeur"));
 
   const viewableProducts = useVisibleProducts(products);
   const viewableProjects = useVisibleProjects(projects, products);
@@ -90,6 +92,18 @@ function CreateCampaignPage() {
       return;
     }
 
+    // La campagne est une tranche du projet : sa periode doit y tenir, sinon on
+    // obtient une campagne qui se termine apres son projet ou n'y a pas commence.
+    const parentProject = viewableProjects.find((p) => p.id === form.projectId);
+    if (parentProject?.startDate && form.startDate < parentProject.startDate) {
+      toast.error(t("pages.add_campaign.starts_before_project"));
+      return;
+    }
+    if (parentProject?.endDate && form.endDate && form.endDate > parentProject.endDate) {
+      toast.error(t("pages.add_campaign.ends_after_project"));
+      return;
+    }
+
     const localCampaign = {
         productId: form.productId,
         projectId: form.projectId,
@@ -103,6 +117,7 @@ function CreateCampaignPage() {
         endDate: form.endDate || form.startDate,
         testers: [...form.testers],
         developers: [...form.developers],
+        testLeads: [form.owner],
       };
     if (!localStorage.getItem("token") || !/^\d+$/.test(form.projectId)) {
       const id = addCampaign(localCampaign, form.clone ? form.cloneFrom : undefined);
@@ -122,10 +137,11 @@ function CreateCampaignPage() {
           .filter((n): n is number => n !== undefined);
       const testers = toNumericIds(form.testers);
       const developers = toNumericIds(form.developers);
+      const testLeadIds = toNumericIds(new Set([form.owner]));
       const organizationMode = form.type === "Recette" || form.type === "Régression" ? "scenario" : form.type === "Sécurité" || form.type === "Performance" ? "combination" : "exploratory";
       const response = await api<{ campaign: BackendCampaign }>("/campaigns", {
         method: "POST",
-        body: JSON.stringify({ project_id: Number(form.projectId), name: localCampaign.name, objective: `Campagne ${form.type} ${form.version}`, organization_mode: organizationMode, start_date: localCampaign.startDate, end_date: localCampaign.endDate, testers, developers }),
+        body: JSON.stringify({ project_id: Number(form.projectId), name: localCampaign.name, objective: `Campagne ${form.type} ${form.version}`, organization_mode: organizationMode, start_date: localCampaign.startDate, end_date: localCampaign.endDate, test_lead_ids: testLeadIds, testers, developers }),
       });
       const backendCampaign = mapBackendCampaign(response.campaign, projects.find((project) => project.id === form.projectId) ? { id: Number(form.projectId), product_id: Number(form.productId), name: "" } : undefined);
       replaceCampaigns([...campaigns, { ...backendCampaign, ...localCampaign, id: String(response.campaign.id) }]);
@@ -298,7 +314,7 @@ function CreateCampaignPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {memberOptions
-                        .filter((o) => o.active && CAMPAIGN_OWNER_ROLES.includes(o.role as AppRole))
+                        .filter((o) => o.active && (o.roles ? o.roles : [o.role]).some((r) => CAMPAIGN_OWNER_ROLES.includes(r as AppRole)))
                         .map((o) => (
                           <SelectItem key={o.name} value={o.name}>
                             {o.name}

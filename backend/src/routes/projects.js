@@ -3,6 +3,7 @@ import { z } from 'zod';
 import * as projectService from '../services/projectService.js';
 import { authenticate } from '../middleware/auth.js';
 import bus from '../lib/eventBus.js';
+import * as db from '../db/index.js';
 
 const router = Router();
 
@@ -12,7 +13,7 @@ const createSchema = z.object({
   start_date: z.string().optional(),
   end_date: z.string().optional(),
   test_lead_ids: z.array(z.number()).optional(),
-  product_id: z.number().int().nullable().optional(),
+  product_id: z.number().int('Produit requis (identifiant invalide)'),
   description_audio_data: z.string().max(100_000_000).optional(),
   description_audio_type: z.string().max(100).optional(),
   description_transcription: z.string().max(5000).optional(),
@@ -151,6 +152,11 @@ const requireAdmin = (req, res, next) => {
  */
 router.post('/', authenticate, requireAdmin, async (req, res) => {
   const data = createSchema.parse(req.body);
+  const product = await db.products.findById(data.product_id);
+  if (!product) {
+    res.status(400).json({ error: 'Produit introuvable' });
+    return;
+  }
   const project = await projectService.createProject({ ...data, created_by: req.user.id });
   bus.emit('data:changed', { entity: 'projects' });
   res.status(201).json({ project });

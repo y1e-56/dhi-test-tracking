@@ -29,11 +29,10 @@ export const Route = createFileRoute("/produits/ajouter")({
 });
 
 function CreateProductPage() {
-  console.log("[DHI] CreateProductPage RENDERED");
   const { t } = useI18n();
   const navigate = useNavigate();
   const { users, products, addProduct, replaceProducts } = useStore();
-  const activeMembers = users.filter((u) => u.active).map((u) => u.name);
+  const memberNames = users.filter((u) => u.active).map((u) => u.name);
 
   const [form, setForm] = useState({
     name: "",
@@ -44,14 +43,15 @@ function CreateProductPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.owner || !form.qaLead) {
+    const ownerName = form.owner.trim();
+    if (!form.name.trim() || !ownerName || !form.qaLead) {
       toast.error(t("pages.products.required"));
       return;
     }
-    const owner = users.find((user) => user.name === form.owner);
+    const owner = users.find((user) => user.name === ownerName);
     const qaLead = users.find((user) => user.name === form.qaLead);
     if (!localStorage.getItem("token")) {
-      addProduct({ name: form.name.trim(), description: form.description, owner: form.owner, qaLead: form.qaLead, qaTeam: [form.qaLead], versions: ["1.0"], score: 80 });
+      addProduct({ name: form.name.trim(), description: form.description, owner: ownerName, qaLead: form.qaLead, qaTeam: [form.qaLead], versions: ["1.0"], score: 80 });
       toast.success(t("pages.products.created"));
       void navigate({ to: "/produits" });
       return;
@@ -59,9 +59,9 @@ function CreateProductPage() {
     try {
       const response = await api<{ product: BackendProduct }>("/products", {
         method: "POST",
-        body: JSON.stringify({ name: form.name.trim(), description: form.description, owner_id: owner ? Number(owner.id) : null, quality_manager_id: qaLead ? Number(qaLead.id) : null }),
+        body: JSON.stringify({ name: form.name.trim(), description: form.description, owner_id: owner ? Number(owner.id) : null, owner_name: ownerName, quality_manager_id: qaLead ? Number(qaLead.id) : null }),
       });
-      replaceProducts([...products, { ...mapBackendProduct(response.product), owner: form.owner, qaLead: form.qaLead, qaTeam: [form.qaLead] }]);
+      replaceProducts([...products, { ...mapBackendProduct(response.product), owner: ownerName, qaLead: form.qaLead, qaTeam: [form.qaLead] }]);
       toast.success(t("pages.products.created"));
       void navigate({ to: "/produits" });
     } catch (error) {
@@ -126,8 +126,9 @@ function CreateProductPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label className="text-sm font-medium">{t("pages.products.owner")}</Label>
+                  <Label htmlFor="p-owner" className="text-sm font-medium">{t("pages.products.owner")}</Label>
                   <Input
+                    id="p-owner"
                     value={form.owner}
                     onChange={(e) => setForm((f) => ({ ...f, owner: e.target.value }))}
                     placeholder={t("pages.products.owner_placeholder")}
@@ -135,16 +136,16 @@ function CreateProductPage() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label className="text-sm font-medium">{t("pages.products.qa_lead")}</Label>
+                  <Label htmlFor="p-qa" className="text-sm font-medium">{t("pages.products.qa_lead")}</Label>
                   <Select
                     value={form.qaLead}
                     onValueChange={(v) => setForm((f) => ({ ...f, qaLead: v }))}
                   >
-                    <SelectTrigger className="h-11">
+                    <SelectTrigger id="p-qa" className="h-11">
                       <SelectValue placeholder={t("pages.go_live.choose")} />
                     </SelectTrigger>
                     <SelectContent>
-                      {activeMembers.map((p) => (
+                      {memberNames.map((p) => (
                         <SelectItem key={p} value={p}>
                           {p}
                         </SelectItem>

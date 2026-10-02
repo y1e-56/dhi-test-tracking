@@ -8,11 +8,16 @@ const router = Router();
 
 const requireEvidenceUploader = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'tester', 'developer');
 const requireEvidenceManager = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
+// Lecture alignee sur canRead*Doc du front : tout contributeur connecte.
+// Le filtrage par entite (projectVisibleTo) reste applique cote front.
+const requireEvidenceReader = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'tester', 'developer', 'product_owner');
 
 const upload = multer({ dest: 'uploads/evidence/' });
 
 const createSchema = z.object({
-  entity_type: z.enum(['test_execution','anomaly','requirement','feature','campaign','product','project']),
+  // `go_live_decision` est dans l'enum entity_type depuis la migration 026 :
+  // sans lui, impossible de rattacher une capture d'écran à une décision Go/No-Go.
+  entity_type: z.enum(['test_execution','anomaly','requirement','feature','campaign','product','project','go_live_decision']),
   entity_id: z.number().int().positive(),
   file_path: z.string().optional(),
   file_name: z.string().optional(),
@@ -100,6 +105,42 @@ router.get('/:id', authenticate, async (req, res, next) => {
   try {
     const ev = await evidenceService.getEvidence(parseInt(req.params.id));
     res.json(ev);
+  } catch (err) { next(err); }
+});
+
+/**
+ * @swagger
+ * /evidence/{id}/download:
+ *   get:
+ *     tags: [Evidence]
+ *     summary: Télécharger le fichier joint à une preuve
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Fichier téléchargé
+ *         content:
+ *           application/octet-stream:
+ *             schema: { type: string, format: binary }
+ *       400: { description: Chemin de fichier invalide }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       403: { description: Rôle non autorisé }
+ *       404: { description: Preuve introuvable ou fichier absent du serveur }
+ */
+router.get('/:id/download', authenticate, requireEvidenceReader, async (req, res, next) => {
+  try {
+    const { ev, absolutePath } = await evidenceService.getEvidenceFile(parseInt(req.params.id));
+    const downloadName = evidenceService.sanitizeDownloadName(ev.file_name);
+    // multer stocke un nom sans extension : on impose le type MIME d'origine,
+    // sinon le navigateur reçoit un octet-stream indechiffrable.
+    res.download(absolutePath, downloadName, {
+      headers: { 'Content-Type': ev.file_type || 'application/octet-stream' },
+    });
   } catch (err) { next(err); }
 });
 

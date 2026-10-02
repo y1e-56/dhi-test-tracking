@@ -210,3 +210,46 @@ export function campaignCompletedEmail({ adminFirstName, campaignName, projectNa
     ${button(linkUrl, 'Voir la campagne')}
   `);
 }
+
+export function testCaseAssignedEmail({ userFirstName, testCaseName, testCaseId, campaignName, linkUrl }) {
+  return layout('Nouveau cas de test à exécuter', `
+    <p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.5">Bonjour <strong>${escapeHtml(userFirstName)}</strong>,</p>
+    <p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.5">
+      Le cas de test <strong>« ${escapeHtml(testCaseName)} »</strong> (réf. ${escapeHtml(testCaseId)}) de la campagne
+      <em>${escapeHtml(campaignName)}</em> vous a été assigné.
+    </p>
+    <p style="margin:0 0 16px;font-size:14px;color:#64748b;line-height:1.5">
+      Vous pouvez l'exécuter et y joindre vos captures d'écran directement depuis l'application.
+    </p>
+    ${button(linkUrl, 'Exécuter le cas de test')}
+  `);
+}
+
+export function projectArchivedEmail({ userFirstName, projectName, linkUrl }) {
+  return layout('Projet terminé', `
+    <p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.5">Bonjour <strong>${escapeHtml(userFirstName)}</strong>,</p>
+    <p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.5">
+      Le projet <strong>« ${escapeHtml(projectName)} »</strong> a été marqué comme <strong style="color:#16a34a">terminé</strong>.
+    </p>
+    <p style="margin:0 0 16px;font-size:14px;color:#64748b;line-height:1.5">
+      Ses campagnes sont archivées : elles restent consultables, mais ne sont plus modifiables.
+    </p>
+    ${button(linkUrl, 'Voir le projet')}
+  `);
+}
+
+export function goLiveDecisionEmail({ userFirstName, releaseRef, verdict, decider, linkUrl }) {
+  const color = verdict === 'NO_GO' ? '#dc2626' : verdict === 'GO' ? '#16a34a' : '#d97706';
+  const readable = { GO: 'GO', GO_CONDITIONNEL: 'GO conditionnel', NO_GO: 'NO-GO', AJOURNE: 'Ajourné' }[verdict] || verdict;
+  return layout('Décision Go-Live', `
+    <p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.5">Bonjour <strong>${escapeHtml(userFirstName)}</strong>,</p>
+    <p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.5">
+      Une décision Go-Live a été prise pour la release <strong>${escapeHtml(releaseRef)}</strong>&nbsp;:
+      verdict <strong style="color:${color}">${escapeHtml(readable)}</strong>.
+    </p>
+    <p style="margin:0 0 16px;font-size:14px;color:#64748b;line-height:1.5">
+      Décideur&nbsp;: ${escapeHtml(decider)}.
+    </p>
+    ${button(linkUrl, 'Voir la décision Go-Live')}
+  `);
+}

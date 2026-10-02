@@ -83,12 +83,15 @@ C. Les RÔLES et autorisations :
 
 4) LES COMPTES DE TEST (déjà en base)
 -------------------------------------
-   Rôle          Email               Mot de passe
-   admin         admin@test.fr       Admin@DHI2026
-   chef testeur  chef@test.fr        Chef@DHI2026
-   chef testeur  chef2@test.fr       Chef@DHI2026
-   testeur       testeur@test.fr     Testeur@DHI2026
-   développeur   dev@test.fr         Dev@DHI2026
+   Rôle          Email
+   admin         admin@test.fr
+   chef testeur  chef@test.fr
+   chef testeur  chef2@test.fr
+   testeur       testeur@test.fr
+   développeur   dev@test.fr
+
+   La page de connexion propose ces comptes en un clic (le mot de passe est
+   renseigné automatiquement, il n'est pas affiché).
 
 (Pour réinsérer ces comptes si besoin : dans backend > npm run seed,
  mais ça EFFACE les données existantes.)

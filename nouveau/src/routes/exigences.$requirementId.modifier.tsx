@@ -25,7 +25,14 @@ import {
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
 import { useVisibleProducts } from "@/lib/use-scope";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
-import { api, type BackendRequirement } from "@/lib/api";
+import {
+  api,
+  backendIdOf,
+  mapBackendRequirement,
+  toBackendRequirementPriority,
+  toBackendRequirementStatus,
+  type BackendRequirement,
+} from "@/lib/api";
 
 export const Route = createFileRoute("/exigences/$requirementId/modifier")({
   loader: ({ params }) => {
@@ -116,9 +123,20 @@ function EditRequirementPage() {
     try {
       const response = await api<BackendRequirement>(`/requirements/${requirement.id}`, {
         method: "PUT",
-        body: JSON.stringify({ title: patch.title, description: patch.description, status: ({ brouillon: "proposed", validee: "validated", couverte: "approved" } as const)[patch.status] }),
+        body: JSON.stringify({
+          title: patch.title,
+          description: patch.description,
+          status: toBackendRequirementStatus(patch.status),
+          priority: toBackendRequirementPriority(patch.priority),
+          product_id: backendIdOf(patch.productId) ?? null,
+          feature_ids: patch.featureIds
+            .map((id) => backendIdOf(id))
+            .filter((id): id is number => id != null),
+        }),
       });
-      replaceRequirements(requirements.map((item) => item.id === requirement.id ? { ...item, ...patch, ...({ id: String(response.id), featureIds: [String(response.feature_id)] }) } : item));
+      replaceRequirements(
+        requirements.map((item) => (item.id === requirement.id ? mapBackendRequirement(response) : item)),
+      );
       toast.success(t("pages.requirements.updated").replace("{id}", requirement.id));
       void navigate({ to: "/exigences" });
     } catch (error) {
@@ -229,23 +247,19 @@ function EditRequirementPage() {
                   </Select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>{t("pages.requirements.fonctionnalites_couvertes")}</Label>
-                  <span className="text-[11px] text-muted-foreground">
-                    {t("pages.requirements.selection_count").replace(
-                      "{count}",
-                      String(form.featureIds.length),
-                    )}{" "}
-                    / {linkedFeatures.length}
-                  </span>
-                </div>
-                <div className="rounded-md border border-border bg-subtle/50 p-3 max-h-56 overflow-y-auto">
-                  {linkedFeatures.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">
-                      {t("pages.requirements.aucune_feature_produit")}
-                    </p>
-                  ) : (
+              {linkedFeatures.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>{t("pages.requirements.fonctionnalites_couvertes")}</Label>
+                    <span className="text-[11px] text-muted-foreground">
+                      {t("pages.requirements.selection_count").replace(
+                        "{count}",
+                        String(form.featureIds.length),
+                      )}{" "}
+                      / {linkedFeatures.length}
+                    </span>
+                  </div>
+                  <div className="rounded-md border border-border bg-subtle/50 p-3 max-h-56 overflow-y-auto">
                     <div className="grid gap-2 sm:grid-cols-2">
                       {linkedFeatures.map((f) => (
                         <label
@@ -267,9 +281,9 @@ function EditRequirementPage() {
                         </label>
                       ))}
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 

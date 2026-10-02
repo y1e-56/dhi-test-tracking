@@ -26,7 +26,7 @@ import {
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
 import { campaigns as seedCampaigns, TEST_TYPES } from "@/lib/dhi-data";
 import { campaignTabs } from "@/lib/dhi-nav";
-import { canManageOperational } from "@/lib/role-protection";
+import { canManageCampaign } from "@/lib/role-protection";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/campagnes/$campaignId/fonctionnalites")({
@@ -145,7 +145,7 @@ function CampaignFeatures() {
         <section className="panel">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold">{t("pages.campaign_detail.fonctionnalites_importees")}</h3>
-            {canManageOperational() ? (
+            {canManageCampaign() ? (
               <Button size="sm" variant="outline" onClick={() => setPickerOpen(true)}>
                 <Plus className="mr-1.5 h-4 w-4" />
                 {t("pages.campaign_detail.importer_fonctionnalites")}
@@ -181,7 +181,7 @@ function CampaignFeatures() {
                           <FileText className="h-4 w-4" />
                         </Button>
                       </Link>
-                      {canManageOperational() ? (
+{canManageCampaign() ? (
                         <Button variant="ghost" size="icon-sm" onClick={() => remove(f.id)} title={t("pages.campaign_detail.retirer")}>
                           <X className="h-4 w-4" />
                         </Button>

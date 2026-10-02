@@ -9,8 +9,8 @@ export async function listCampaigns(projectId) {
   
   const enriched = await Promise.all(
     campaigns.map(async (campaign) => {
-      const { testers, developers } = await db.campaignMembers.getMemberIds(campaign.id);
-      return { ...campaign, testers, developers };
+      const members = await db.campaignMembers.getMemberIds(campaign.id);
+      return { ...campaign, ...members };
     })
   );
   
@@ -32,8 +32,8 @@ export async function listCampaignsPaginated(filters = {}) {
 
   result.data = await Promise.all(
     result.data.map(async (campaign) => {
-      const { testers, developers } = await db.campaignMembers.getMemberIds(campaign.id);
-      return { ...campaign, testers, developers };
+      const members = await db.campaignMembers.getMemberIds(campaign.id);
+      return { ...campaign, ...members };
     })
   );
 
@@ -60,9 +60,9 @@ export async function getCampaignWithMembers(id, client = null) {
   const campaign = await db.campaigns.findById(id, client);
   if (!campaign) throw new AppError('Campagne non trouvée', 404);
   
-  const { testers, developers } = await db.campaignMembers.getMemberIds(id, client);
+  const members = await db.campaignMembers.getMemberIds(id, client);
   
-  return { ...campaign, testers, developers };
+  return { ...campaign, ...members };
 }
 
 export async function createCampaign(data) {

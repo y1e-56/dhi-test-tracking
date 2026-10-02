@@ -15,14 +15,16 @@ import { cn } from "@/lib/utils";
 export type MemberOption = {
   name: string;
   role: string;
+  roles?: string[];
   active: boolean;
 };
 
 export type MemberSelection = { label: string; labelPlural: string };
 
 const sortMembers = (options: MemberOption[]) => {
-  const activeTesters = options.filter((o) => o.active && o.role === "testeur");
-  const activeOthers = options.filter((o) => o.active && o.role !== "testeur");
+  const isTester = (o: MemberOption) => (o.roles ? o.roles : [o.role]).includes("testeur");
+  const activeTesters = options.filter((o) => o.active && isTester(o));
+  const activeOthers = options.filter((o) => o.active && !isTester(o));
   const inactive = options.filter((o) => !o.active);
   return [...activeTesters, ...activeOthers, ...inactive];
 };

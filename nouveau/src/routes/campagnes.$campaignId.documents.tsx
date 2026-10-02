@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { FileText, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
+import { EvidenceDownloadButton } from "@/components/dhi/EvidenceDownloadButton";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -84,7 +85,7 @@ function CampaignDocuments() {
               <TableHead>{t("pages.documents.file")}</TableHead>
               <TableHead>{t("pages.documents.uploaded_by")}</TableHead>
               <TableHead>{t("pages.documents.uploaded_at")}</TableHead>
-              <TableHead className="text-right">{t("pages.documents.delete")}</TableHead>
+              <TableHead className="text-right">{t("pages.documents.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -107,19 +108,22 @@ function CampaignDocuments() {
                 <TableCell className="text-sm">{d.uploadedBy}</TableCell>
                 <TableCell className="num text-sm">{d.uploadedAt}</TableCell>
                 <TableCell className="text-right">
-                  {canDeleteCampaignDoc(d.type) ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => {
-                        deleteCampaignDocument(d.id);
-                        toast.success(t("pages.documents.deleted"));
-                      }}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  ) : null}
+                  <div className="flex items-center justify-end gap-1">
+                    <EvidenceDownloadButton doc={d} />
+                    {canDeleteCampaignDoc(d.type) ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => {
+                          deleteCampaignDocument(d.id);
+                          toast.success(t("pages.documents.deleted"));
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    ) : null}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

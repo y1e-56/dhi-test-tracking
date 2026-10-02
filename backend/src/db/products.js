@@ -19,13 +19,33 @@ async function attachCounts(rows, c) {
   return rows;
 }
 
+async function attachNames(rows, c) {
+  if (!rows || rows.length === 0) return rows;
+  const qmIds = [...new Set(rows.map((r) => r.quality_manager_id).filter(Boolean))];
+  const nameById = new Map();
+  if (qmIds.length > 0) {
+    const result = await c.query(
+      'SELECT id, first_name, last_name FROM users WHERE id = ANY($1)',
+      [qmIds]
+    );
+    for (const u of result.rows) {
+      nameById.set(u.id, [u.first_name, u.last_name].filter(Boolean).join(' '));
+    }
+  }
+  for (const row of rows) {
+    row.quality_manager_name = row.quality_manager_id ? (nameById.get(row.quality_manager_id) ?? null) : null;
+  }
+  return rows;
+}
+
 export async function list(includeArchived = false, client = null) {
   const c = client || pool;
   let query = 'SELECT * FROM products';
   if (!includeArchived) query += ' WHERE is_archived = FALSE';
   query += ' ORDER BY created_at DESC';
   const result = await c.query(query);
-  return attachCounts(result.rows, c);
+  await attachCounts(result.rows, c);
+  return attachNames(result.rows, c);
 }
 
 export async function listPaginated(filters = {}, client = null) {
@@ -50,17 +70,23 @@ export async function listPaginated(filters = {}, client = null) {
   const countQuery = `SELECT COUNT(*) FROM products p ${where}`;
   const dataQuery = `SELECT p.* FROM products p ${where}`;
 
-  return paginate(c, countQuery, dataQuery, params, {
+  const result = await paginate(c, countQuery, dataQuery, params, {
     page: filters.page,
     limit: filters.limit,
     orderBy: filters.orderBy || 'p.created_at DESC',
   });
+
+  await attachNames(result.data, c);
+  return result;
 }
 
 export async function findById(id, client = null) {
   const c = client || pool;
   const result = await c.query('SELECT * FROM products WHERE id = $1', [id]);
-  return result.rows[0] || null;
+  if (!result.rows[0]) return null;
+  await attachCounts(result.rows, c);
+  const [product] = await attachNames(result.rows, c);
+  return product;
 }
 
 export async function findByIdWithCounts(id, client = null) {
@@ -84,12 +110,13 @@ export async function findByName(name, excludeId = null, client = null) {
 export async function create(data, client = null) {
   const c = client || pool;
   const result = await c.query(
-    `INSERT INTO products (name, description, owner_id, quality_manager_id, created_by)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    `INSERT INTO products (name, description, owner_id, owner_name, quality_manager_id, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
     [
       data.name,
       data.description || null,
       data.owner_id || null,
+      data.owner_name || null,
       data.quality_manager_id || null,
       data.created_by || null,
     ]
@@ -99,7 +126,7 @@ export async function create(data, client = null) {
 
 export async function update(id, data, client = null) {
   const c = client || pool;
-  const allowedFields = ['name', 'description', 'owner_id', 'quality_manager_id', 'is_archived'];
+  const allowedFields = ['name', 'description', 'owner_id', 'owner_name', 'quality_manager_id', 'is_archived'];
   const sets = ['updated_at = NOW()'];
   const values = [];
   let idx = 1;

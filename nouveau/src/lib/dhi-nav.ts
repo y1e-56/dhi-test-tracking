@@ -1,4 +1,5 @@
 import type { TranslationKey } from "@/lib/i18n";
+import { canManageCampaign } from "@/lib/role-protection";
 
 export interface AppShellTab {
   to: string;
@@ -55,9 +56,9 @@ export function projectTabs(projectId: string): AppShellTab[] {
   ];
 }
 
-/** Onglets horizontaux contextuels d'une campagne (Vue d'ensemble → Fonctionnalités → Cas de test → Importer). */
+/** Onglets horizontaux contextuels d'une campagne (Vue d'ensemble → Fonctionnalités → Cas de test → Importer). Seuls les rôles qui pilotent la campagne voient l'onglet Importer. */
 export function campaignTabs(campaignId: string): AppShellTab[] {
-  return [
+  const tabs: AppShellTab[] = [
     {
       to: "/campagnes/$campaignId",
       label: "nav.campaign_overview",
@@ -75,40 +76,17 @@ export function campaignTabs(campaignId: string): AppShellTab[] {
       params: { campaignId },
     },
     {
-      to: "/campagnes/$campaignId/importer",
-      label: "nav.campaign_import",
-      params: { campaignId },
-    },
-    {
       to: "/campagnes/$campaignId/documents",
       label: "nav.campaign_documents",
       params: { campaignId },
     },
   ];
+  if (canManageCampaign()) {
+    tabs.splice(3, 0, {
+      to: "/campagnes/$campaignId/importer",
+      label: "nav.campaign_import",
+      params: { campaignId },
+    });
+  }
+  return tabs;
 }
-
-export const SEARCH_GROUPS: TranslationKey[] = [
-  "nav.pilotage",
-  "nav.qualite",
-  "nav.execution",
-  "nav.decision",
-  "nav.systeme",
-];
-
-export const SEARCH_PAGES: { to: string; label: TranslationKey; group: TranslationKey }[] = [
-  { to: "/", label: "nav.dashboard", group: "nav.pilotage" },
-  { to: "/alertes", label: "nav.alertes", group: "nav.pilotage" },
-  { to: "/notifications", label: "nav.notifications", group: "nav.pilotage" },
-  { to: "/produits", label: "nav.produits", group: "nav.qualite" },
-  { to: "/projets", label: "nav.projets", group: "nav.qualite" },
-  { to: "/fonctionnalites", label: "nav.fonctionnalites", group: "nav.qualite" },
-  { to: "/exigences", label: "nav.exigences", group: "nav.qualite" },
-  { to: "/couverture", label: "nav.couverture", group: "nav.qualite" },
-  { to: "/campagnes", label: "nav.campagnes", group: "nav.execution" },
-  { to: "/go-live", label: "nav.go_live", group: "nav.decision" },
-  { to: "/points-a-surveiller", label: "nav.points_surveiller", group: "nav.decision" },
-  { to: "/anomalies", label: "nav.anomalies", group: "nav.systeme" },
-  { to: "/referentiels", label: "nav.referentiels", group: "nav.systeme" },
-  { to: "/administration", label: "nav.administration", group: "nav.systeme" },
-  { to: "/audit", label: "nav.audit", group: "nav.systeme" },
-];

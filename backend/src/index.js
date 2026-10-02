@@ -5,6 +5,7 @@ import * as Sentry from '@sentry/node';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import { execSync } from 'node:child_process';
 import dotenv from 'dotenv';
 import http from 'http';
 import swaggerUi from 'swagger-ui-express';
@@ -20,7 +21,15 @@ import bcrypt from 'bcryptjs';
 
 dotenv.config();
 
-console.log(`[DHI] boot ${new Date().toISOString()} commit=7bf5f28`);
+function bootCommit() {
+  try {
+    return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+  } catch {
+    return (process.env.RENDER_GIT_COMMIT || 'unknown').slice(0, 7);
+  }
+}
+
+console.log(`[DHI] boot ${new Date().toISOString()} commit=${bootCommit()}`);
 
 const app = express();
 app.set('trust proxy', 1);
@@ -122,12 +131,22 @@ async function autoSeedIfEmpty() {
       const testeurId = users.rows[3].id;
       const devId = users.rows[4].id;
 
-      const projects = await client.query(`
-        INSERT INTO projects (name, description, start_date, end_date, created_by) VALUES
-          ('DHI Logiciel', 'Projet principal de test du logiciel DHI', '2025-01-01', '2025-12-31', $1),
-          ('Mobile App', 'Tests de l''application mobile', '2025-03-01', '2025-09-30', $1)
+      // Le produit doit exister avant les projets : les vues par produit
+      // (exigences, releases, import) ne résolvent rien si project.product_id est NULL.
+      const products = await client.query(`
+        INSERT INTO products (name, description, owner_id, created_by) VALUES
+          ('DHI', 'Produit principal DHI Quality Platform', $1, $1)
         RETURNING id
       `, [adminId]);
+
+      const productId = products.rows[0].id;
+
+      const projects = await client.query(`
+        INSERT INTO projects (name, description, start_date, end_date, created_by, product_id) VALUES
+          ('DHI Logiciel', 'Projet principal de test du logiciel DHI', '2025-01-01', '2025-12-31', $1, $2),
+          ('Mobile App', 'Tests de l''application mobile', '2025-03-01', '2025-09-30', $1, $2)
+        RETURNING id
+      `, [adminId, productId]);
 
       const project1Id = projects.rows[0].id;
       const project2Id = projects.rows[1].id;

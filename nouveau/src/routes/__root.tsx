@@ -110,7 +110,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/icon.svg", type: "image/svg+xml" },
+      { rel: "alternate icon", href: "/favicon.ico" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -143,14 +144,12 @@ function ClientOnly({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    console.log("[DHI] ClientOnly mounting...");
     window.addEventListener("error", (e) => {
       console.error("[DHI] Global error:", e.message, e.filename, e.lineno);
       setError(`Erreur: ${e.message} (${e.filename?.split("/").pop()}:${e.lineno})`);
     });
     setMounted(true);
   }, []);
-  console.log("[DHI] ClientOnly render, mounted=", mounted, "error=", error);
   if (error) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-8">
@@ -186,7 +185,6 @@ function BackendStatusBanner() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  console.log("[DHI] RootComponent RENDERED, queryClient=", !!queryClient);
 
   return (
     <QueryClientProvider client={queryClient}>

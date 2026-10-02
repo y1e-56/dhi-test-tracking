@@ -14,8 +14,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
-import { getUser, campaignVisibleTo } from "@/lib/access";
+import { getUser, campaignVisibleTo, campaignTesterOptions } from "@/lib/access";
 import { CampaignAccessDenied } from "@/components/dhi/AccessDenied";
+import { canManageCampaign } from "@/lib/role-protection";
 import { campaigns as seedCampaigns } from "@/lib/dhi-data";
 import {
   CSV_SEP,
@@ -47,10 +48,16 @@ export const Route = createFileRoute("/campagnes/$campaignId/importer")({
 function ImportTestsPage() {
   const { campaignId } = Route.useParams();
   const store = useStore();
-  const { campaigns, features, products, addTestCase } = store;
+  const { campaigns, features, products, addTestCase, users } = store;
+
+  /** Testeurs sélectionnables : uniquement ceux enregistrés dans la campagne (campaign.testers). */
+  const campaign = campaigns.find((c) => c.id === campaignId);
+  const testerOptions = useMemo(
+    () => campaignTesterOptions(users, campaign?.testers),
+    [users, campaign?.testers],
+  );
   const { t } = useI18n();
   const navigate = useNavigate();
-  const campaign = campaigns.find((c) => c.id === campaignId);
 
   const [importFileName, setImportFileName] = useState("");
   const [importPreview, setImportPreview] = useState<ParsedTestRow[]>([]);
@@ -63,6 +70,9 @@ function ImportTestsPage() {
   );
 
   if (campaign && !campaignVisibleTo(campaign, products, getUser())) {
+    return <CampaignAccessDenied subject={campaign.name} />;
+  }
+  if (campaign && !canManageCampaign()) {
     return <CampaignAccessDenied subject={campaign.name} />;
   }
   if (campaign?.status === "terminee") {
@@ -121,14 +131,21 @@ function ImportTestsPage() {
       return;
     }
     let created = 0;
+    let unassigned = 0;
     for (const row of validRows) {
+      // Résolution du nom de testeur issu du CSV vers un compte réel : sans id
+      // numérique, l'affectation ne peut pas être enregistrée.
+      const wanted = (row.tester ?? "").trim().toLowerCase();
+      const match = testerOptions.find((o) => o.name.toLowerCase() === wanted);
+      if (wanted && !match) unassigned++;
       addTestCase({
         campaignId: campaign.id,
         featureId: row.featureId,
         name: row.name.trim(),
         criticality: row.criticality,
         type: row.type,
-        tester: row.tester || undefined,
+        tester: match?.name,
+        assignedTo: match ? Number(match.id) : null,
         preconditions: row.preconditions,
         steps: row.steps,
         expected: row.expected,
@@ -138,6 +155,11 @@ function ImportTestsPage() {
       created++;
     }
     toast.success(t("pages.campaign_detail.import_success").replace("{n}", String(created)));
+    if (unassigned > 0) {
+      toast.error(
+        `${t("pages.campaign_detail.tester_inconnu")} (${unassigned})`,
+      );
+    }
     navigate({ to: "/campagnes/$campaignId", params: { campaignId: campaign.id } });
   };
 

@@ -45,11 +45,10 @@ ADMIN et CHEF DE TEST.
 3. Ouvrir un navigateur (Chrome ou Edge) et aller sur:
      http://localhost:5173
 4. Se connecter avec le compte ADMIN (tout est permis):
-     Email    : admin@test.fr
-     Mot de passe : Admin@DHI2026
-   (Comptes alternatifs disponibles: chef@test.fr / Chef@DHI2026,
-    testeur@test.fr / Testeur@DHI2026 - mais le testeur ne voit PAS
-    la page Produits.)
+     Email : admin@test.fr
+   (la page de connexion propose le compte admin en un clic, sans afficher
+   le mot de passe ; comptes alternatifs disponibles: chef@test.fr,
+   testeur@test.fr - mais le testeur ne voit PAS la page Produits.)
 
 =================================================================
 3) PARCOURS DE TEST PAS A PAS

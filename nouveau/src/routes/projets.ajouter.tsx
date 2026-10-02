@@ -18,6 +18,7 @@ import { type ProjectStatus } from "@/lib/dhi-data";
 import { useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 import { api, mapBackendProject, type BackendProject } from "@/lib/api";
+import { userHasAnyRole } from "@/lib/access";
 
 export const Route = createFileRoute("/projets/ajouter")({
   head: () => ({
@@ -42,22 +43,34 @@ type ProjectForm = {
 function CreateProjectPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { products, users, projects, addProject, replaceProjects } = useStore();
-  const activeMembers = users.filter((u) => u.active).map((u) => u.name);
-  const managerOptions = users
-    .filter((u) => u.active && ["chef_projet", "quality_manager", "qa_lead"].includes(u.role))
-    .map((u) => u.name);
-  const qaOptions = users
-    .filter((u) => u.active && ["quality_manager", "qa_lead"].includes(u.role))
-    .map((u) => u.name);
+  const { products, users, projects, addProject, replaceProjects, currentUser } = useStore();
+
+  // On ne se propose pas soi-même comme responsable : celui qui cree le projet
+  // le pilote deja. Si personne d'autre ne peut tenir le role, la liste complete
+  // reste proposee plutot que de laisser un menu vide.
+  const withoutMe = (names: string[]) => {
+    const others = names.filter((n) => n !== currentUser?.name);
+    return others.length > 0 ? others : names;
+  };
+
+  const managerOptions = withoutMe(
+    users
+      .filter((u) => u.active && userHasAnyRole(u, "chef_projet", "quality_manager", "qa_lead"))
+      .map((u) => u.name),
+  );
+  const qaOptions = withoutMe(
+    users
+      .filter((u) => u.active && userHasAnyRole(u, "quality_manager", "qa_lead"))
+      .map((u) => u.name),
+  );
 
   const [form, setForm] = useState<ProjectForm>({
     name: "",
     objective: "",
     productId: products[0]?.id ?? "",
     targetVersion: "",
-    manager: activeMembers[0] ?? "",
-    qaLead: activeMembers[1] ?? "",
+    manager: managerOptions[0] ?? "",
+    qaLead: qaOptions.find((n) => n !== managerOptions[0]) ?? qaOptions[0] ?? "",
     status: "planifie",
     startDate: new Date().toISOString().slice(0, 10),
     endDate: "",
@@ -68,6 +81,10 @@ function CreateProjectPage() {
     e.preventDefault();
     if (!form.name.trim() || !form.productId) {
       toast.error(t("pages.projects.required"));
+      return;
+    }
+    if (form.startDate && form.endDate && form.startDate > form.endDate) {
+      toast.error(t("pages.projects.end_date_before_start"));
       return;
     }
     const localProject = {
@@ -89,9 +106,12 @@ function CreateProjectPage() {
       return;
     }
     try {
-      const lead = users.find((user) => user.name === form.qaLead || user.name === form.manager);
-      const leadId = lead ? Number(lead.id) : NaN;
-      const testLeadIds = Number.isInteger(leadId) && leadId > 0 ? [leadId] : [];
+      const testLeadIds = [form.manager, form.qaLead]
+        .map((name) => users.find((user) => user.name === name)?.id)
+        .filter((id): id is string => !!id)
+        .map((id) => Number(id))
+        .filter((id) => Number.isInteger(id) && id > 0)
+        .filter((id, index, all) => all.indexOf(id) === index);
       const response = await api<{ project: BackendProject }>("/projects", {
         method: "POST",
         body: JSON.stringify({

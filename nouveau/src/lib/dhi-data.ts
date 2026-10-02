@@ -109,6 +109,8 @@ export interface Product {
   score: number;
   breakdown: ScoreBreakdown;
   lastUpdate: string;
+  /** Produit archive : reste consultable mais exclu des vues par defaut. */
+  isArchived?: boolean;
 }
 
 export interface Feature {
@@ -118,6 +120,8 @@ export interface Feature {
   description: string;
   criticality: Criticality;
   coverage: Partial<Record<TestType, boolean>>;
+  /** Code de référence du CDC (ex. FCT-01), stocké en base dans features.module. */
+  module?: string | undefined;
   /** Document source de référence (ex. CDC produit) : "Basé sur <document>". */
   sourceDocId?: string | undefined;
 }
@@ -138,8 +142,14 @@ export interface Campaign {
   endDate: string;
   testers: string[];
   developers?: string[] | undefined;
+  /** Chefs de test affectés à la campagne. */
+  testLeads?: string[] | undefined;
   /** Fonctionnalités du registre importées/rattachées explicitement à cette campagne. */
   featureIds?: string[] | undefined;
+  /** Campagne mise en sourdine par l'archivage de son projet. */
+  isArchived?: boolean;
+  /** Statut conserve lors de l'archivage, pour une restauration fidele. */
+  statusBeforeArchive?: CampaignStatus;
 }
 
 export interface TestCase {
@@ -158,6 +168,13 @@ export interface TestCase {
   expectedValue?: string | undefined;
   measuredValue?: string | undefined;
   tester?: string | undefined;
+  /**
+   * Id du testeur affecte (reference users).
+   * `null` = affectation explicitement retiree, `undefined` = non renseigne.
+   * La distinction est necessaire : `null` doit etre envoye au backend pour
+   * effacer l'affectation, alors qu'une cle absente doit la laisser intacte.
+   */
+  assignedTo?: number | null | undefined;
   executedAt?: string | undefined;
   duration?: string | undefined;
   executionId?: string | undefined;
@@ -199,6 +216,10 @@ export interface Project {
   manager: string;
   qaLead: string;
   progress: number;
+  /** Projet archive : reste consultable mais exclu des vues par defaut. */
+  isArchived?: boolean;
+  /** Etat archive d'origine, conserve quand l'archivage vient du produit parent. */
+  isArchivedBeforeProduct?: boolean;
 }
 
 export interface Release {
@@ -243,6 +264,12 @@ export interface GoLiveChecklistItem {
 
 export interface GoLiveDecision {
   id: string;
+  /**
+   * Identifiant de la décision côté base (table go_live_decisions).
+   * Indispensable pour rattacher les captures d'écran : les preuves référencent
+   * l'entité par son id numérique, pas par l'identifiant local `GL-...`.
+   */
+  backendId?: number | null;
   releaseId: string;
   verdict: GoLiveVerdict;
   date: string;

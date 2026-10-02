@@ -136,12 +136,7 @@ async function seed() {
     `, [feat1Id, camp1Id, tcLogin1, testeurId, devId, tcLogin2, feat2Id, tcProjects, testeurId]);
 
     console.log('Seed completed successfully');
-    console.log('Demo accounts:');
-    console.log('  admin@test.fr    / Admin@DHI2026');
-    console.log('  chef@test.fr     / Chef@DHI2026');
-    console.log('  chef2@test.fr    / Chef@DHI2026');
-    console.log('  testeur@test.fr  / Testeur@DHI2026');
-    console.log('  dev@test.fr      / Dev@DHI2026');
+    console.log('Demo accounts: admin@test.fr, chef@test.fr, chef2@test.fr, testeur@test.fr, dev@test.fr');
 
   } catch (err) {
     console.error('Seed failed:', err);

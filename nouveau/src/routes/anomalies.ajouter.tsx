@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { AppShell } from "@/components/dhi/AppShell";
+import { ScreenshotPicker } from "@/components/dhi/ScreenshotPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +17,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { SEVERITY_LABEL, type Severity } from "@/lib/dhi-data";
 
-import { api, mapBackendAnomaly, backendIdOf, type BackendAnomaly } from "@/lib/api";
+import { api, mapBackendAnomaly, backendIdOf, uploadEvidence, type BackendAnomaly } from "@/lib/api";
 import { useStore } from "@/lib/dhi-store";
 import { useI18n } from "@/lib/i18n";
 import { useVisibleProducts } from "@/lib/use-scope";
@@ -47,7 +48,9 @@ function CreateDefectPage() {
   const viewableProducts = useVisibleProducts(products);
 
   const universe = users.filter((u) => u.active).map((u) => u.name);
-  const devs = users.filter((u) => u.active && u.role === "developpeur").map((u) => u.name);
+  const devs = users
+    .filter((u) => u.active && (u.roles ?? [u.role]).includes("developpeur"))
+    .map((u) => u.name);
   const isDev = (currentUser?.role as string) === "developpeur";
   const defaultDeveloper =
     isDev && currentUser && devs.includes(currentUser.name)
@@ -65,6 +68,18 @@ function CreateDefectPage() {
     assignee: currentUser?.name && universe.includes(currentUser.name) ? currentUser.name : universe[0] ?? "",
     developer: defaultDeveloper,
   });
+
+  /** Captures d'écran justifiant le signalement, jointes à la création. */
+  const [proofFiles, setProofFiles] = useState<File[]>([]);
+  const captureLabels = {
+    add: t("pages.anomalies.add_capture"),
+    count: t("pages.anomalies.captures_count"),
+    remove: t("pages.anomalies.remove_capture"),
+    imageOnly: t("pages.anomalies.images_only"),
+    nonImageIgnored: t("pages.anomalies.non_image_ignored"),
+    tooBig: t("pages.anomalies.capture_too_big"),
+    maxReached: t("pages.anomalies.max_captures"),
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,6 +116,12 @@ function CreateDefectPage() {
       numericCampaignId > 0;
 
     if (eligibleForBackend) {
+      // La justification (captures) est exigée avant la création : sans elle,
+      // l'anomalie ne serait pas rattachée à la preuve qui guide le développeur.
+      if (proofFiles.length === 0) {
+        toast.error(t("pages.anomalies.report_requires_captures"));
+        return;
+      }
       try {
         const reportedBy = backendIdOf(reporterBackend?.id);
         const assignedTo = backendIdOf(assigneeBackend?.id);
@@ -115,6 +136,26 @@ function CreateDefectPage() {
             assigned_to: assignedTo,
           }),
         });
+
+        if (proofFiles.length > 0) {
+          const results = await Promise.allSettled(
+            proofFiles.map((file) =>
+              uploadEvidence(
+                "anomaly",
+                String(anomaly.id),
+                file,
+                JSON.stringify({ name: file.name, type: "capture" }),
+              ),
+            ),
+          );
+          const failed = results.filter((r) => r.status === "rejected").length;
+          if (failed > 0) {
+            console.error(
+              `[DHI] ${failed}/${proofFiles.length} capture(s) d'anomalie non enregistrée(s)`,
+            );
+          }
+        }
+
         const mapped = mapBackendAnomaly(anomaly);
         addDefect({ ...mapped, productId: mapped.productId || form.productId });
         toast.success(
@@ -126,6 +167,13 @@ function CreateDefectPage() {
         toast.error(error instanceof Error ? error.message : "Erreur lors de la création de l'anomalie.");
         return;
       }
+    }
+
+    // Hors base (local/démo) : sans connexion, impossible de persister les
+    // captures, on refuse donc d'en garder dans le formulaire.
+    if (proofFiles.length > 0) {
+      toast.error(t("pages.anomalies.login_required_for_captures"));
+      return;
     }
 
     const id = addDefect(base);
@@ -308,6 +356,14 @@ function CreateDefectPage() {
                   </Select>
                 </div>
               </div>
+            </div>
+
+            <div className="space-y-2 rounded-md border border-border p-4">
+              <Label>{t("pages.anomalies.evidence_section")}</Label>
+              <p className="text-sm text-muted-foreground">
+                {t("pages.anomalies.captures_hint")}
+              </p>
+              <ScreenshotPicker onChange={setProofFiles} labels={captureLabels} />
             </div>
           </div>
 

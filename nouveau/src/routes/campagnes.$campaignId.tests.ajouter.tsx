@@ -15,8 +15,9 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
-import { getUser, campaignVisibleTo } from "@/lib/access";
+import { getUser, campaignVisibleTo, campaignTesterOptions } from "@/lib/access";
 import { CampaignAccessDenied } from "@/components/dhi/AccessDenied";
+import { canManageCampaign } from "@/lib/role-protection";
 import { campaigns as seedCampaigns, type Criticality, type TestType } from "@/lib/dhi-data";
 import { exportCsvTemplate, exportNorTemplate, parseImportText } from "@/lib/test-import";
 import { campaignTabs } from "@/lib/dhi-nav";
@@ -85,10 +86,22 @@ function splitLines(s: string): string[] {
 function AddTestPage() {
   const { campaignId } = Route.useParams();
   const store = useStore();
-  const { campaigns, features, products, addTestCase } = store;
+  const { campaigns, features, products, addTestCase, users } = store;
   const { t } = useI18n();
   const navigate = useNavigate();
   const campaign = campaigns.find((c) => c.id === campaignId);
+
+  /**
+   * Testeurs proposés dans le formulaire : uniquement les comptes actifs
+   * enregistrés dans la campagne lors de sa création (campaign.testers).
+   * Le nom seul ne suffit pas — la colonne backend est une référence
+   * users(id) — donc on conserve l'id pour l'enregistrement.
+   * Sans id numérique résolvable, le cas ne peut pas être persisté.
+   */
+  const testerOptions = useMemo(
+    () => campaignTesterOptions(users, campaign?.testers),
+    [users, campaign?.testers],
+  );
 
   const campaignFeatures = useMemo(
     () => features.filter((f) => f.productId === campaign?.productId),
@@ -120,12 +133,24 @@ function AddTestPage() {
         toast.error(t("pages.campaign_detail.fichier_invalide"));
         return;
       }
+      // Un nom de testeur du CSV qui ne correspond à aucun compte existant ne
+      // peut pas être enregistré : on l'ignore et on le signale, plutôt que de
+      // laisser une valeur qui échouera silencieusement à l'enregistrement.
+      const importedTester = (row.tester ?? "").trim();
+      const testerMatch = testerOptions.find(
+        (o) => o.name.toLowerCase() === importedTester.toLowerCase(),
+      );
+      if (importedTester && !testerMatch) {
+        toast.error(
+          `${t("pages.campaign_detail.tester_inconnu")} : « ${importedTester} »`,
+        );
+      }
       setForm({
         name: row.name.trim(),
         featureId: row.featureId || campaignFeatures[0]?.id || "",
         criticality: row.criticality,
         type: row.type,
-        tester: row.tester || "",
+        tester: testerMatch?.name ?? "",
         preconditions: row.preconditions.join("\n"),
         steps: row.steps.join("\n"),
         expected: row.expected.join("\n"),
@@ -144,6 +169,9 @@ function AddTestPage() {
   if (campaign && !campaignVisibleTo(campaign, products, getUser())) {
     return <CampaignAccessDenied subject={campaign.name} />;
   }
+  if (campaign && !canManageCampaign()) {
+    return <CampaignAccessDenied subject={campaign.name} />;
+  }
   if (campaign?.status === "terminee") {
     return <CampaignAccessDenied subject={campaign.name} />;
   }
@@ -155,6 +183,7 @@ function AddTestPage() {
       toast.error(t("pages.campaign_detail.nom_test_obligatoire"));
       return;
     }
+    const selectedTester = testerOptions.find((o) => o.name === form.tester);
     const id = addTestCase({
       campaignId: campaign.id,
       featureId: form.featureId,
@@ -166,7 +195,9 @@ function AddTestPage() {
       expected: splitLines(form.expected),
       observed: form.observed.trim(),
       comment: form.comment.trim(),
-      tester: form.tester.trim() || undefined,
+      tester: selectedTester?.name,
+      // L'id accompagne le nom : sans lui l'affectation ne survit pas au rechargement.
+      assignedTo: selectedTester ? Number(selectedTester.id) : null,
     });
     toast.success(t("pages.campaign_detail.cas_test_creer").replace("{id}", id));
     navigate({ to: "/campagnes/$campaignId", params: { campaignId: campaign.id } });
@@ -283,11 +314,26 @@ function AddTestPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>{t("pages.campaign_detail.testeur_referent")}</Label>
-                  <Input
-                    value={form.tester}
-                    placeholder={t("pages.campaign_detail.tester_placeholder")}
-                    onChange={(e) => setForm({ ...form, tester: e.target.value })}
-                  />
+                  <Select
+                    value={form.tester || "__none__"}
+                    onValueChange={(v) =>
+                      setForm({ ...form, tester: v === "__none__" ? "" : v })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("pages.campaign_detail.tester_placeholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">
+                        {t("pages.campaign_detail.unassigned")}
+                      </SelectItem>
+                      {testerOptions.map((o) => (
+                        <SelectItem key={o.id} value={o.name}>
+                          {o.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">

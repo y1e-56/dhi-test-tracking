@@ -11,7 +11,7 @@ export async function list(projectId, client = null) {
   }
   query += ' ORDER BY c.created_at DESC';
   const result = await c.query(query, params);
-  return attachTestLeadIds(result.rows, c);
+  return attachTeam(result.rows, c);
 }
 
 export async function listPaginated(filters = {}, client = null) {
@@ -60,14 +60,14 @@ export async function listPaginated(filters = {}, client = null) {
     orderBy: filters.orderBy || 'c.created_at DESC',
   });
 
-  result.data = await attachTestLeadIds(result.data, c);
+  result.data = await attachTeam(result.data, c);
   return result;
 }
 
 export async function findById(id, client = null) {
   const c = client || pool;
   const result = await c.query('SELECT * FROM campaigns WHERE id = $1', [id]);
-  const rows = await attachTestLeadIds(result.rows, c);
+  const rows = await attachTeam(result.rows, c);
   return rows[0] || null;
 }
 
@@ -96,8 +96,8 @@ export async function create(data, client = null) {
   if (data.test_lead_ids && data.test_lead_ids.length > 0) {
     await setTestLeads(campaign.id, data.test_lead_ids, c);
   }
-  campaign.test_leads = data.test_lead_ids || [];
-  return campaign;
+  const [withTeam] = await attachTeam([campaign], c);
+  return withTeam;
 }
 
 export async function update(id, data, client = null) {
@@ -130,7 +130,10 @@ export async function update(id, data, client = null) {
 export async function archiveByProject(projectId, client = null) {
   const c = client || pool;
   const result = await c.query(
-    `UPDATE campaigns SET status = 'archived' WHERE project_id = $1 AND status != 'archived' RETURNING id`,
+    `UPDATE campaigns
+        SET status_before_archive = status, status = 'archived'
+      WHERE project_id = $1 AND status != 'archived'
+      RETURNING id`,
     [projectId]
   );
   return result.rows.map(r => r.id);
@@ -138,8 +141,14 @@ export async function archiveByProject(projectId, client = null) {
 
 export async function unarchiveByProject(projectId, client = null) {
   const c = client || pool;
+  // Restaure le statut réel de la campagne, et non un 'planning' générique :
+  // une campagne 'completed' doit le redevenir après un aller-retour.
   const result = await c.query(
-    `UPDATE campaigns SET status = 'planning' WHERE project_id = $1 AND status = 'archived' RETURNING id`,
+    `UPDATE campaigns
+        SET status = COALESCE(status_before_archive, 'planning'::campaign_status),
+            status_before_archive = NULL
+      WHERE project_id = $1 AND status = 'archived'
+      RETURNING id`,
     [projectId]
   );
   return result.rows.map(r => r.id);
@@ -191,20 +200,63 @@ export async function setTestLeads(campaignId, userIds, client = null) {
   }
 }
 
-async function attachTestLeadIds(rows, client) {
+/**
+ * Rattache a chaque campagne son equipe : chefs de test (ids + noms) et membres
+ * (testeurs / developpeurs, ids + noms). Le filtrage d'acces cote interface
+ * compare ces noms a celui de l'utilisateur : sans ces champs, un membre affecte
+ * serait considere comme etranger a sa propre campagne.
+ */
+async function attachTeam(rows, client) {
   if (!rows || rows.length === 0) return rows;
   const ids = rows.map(r => r.id);
-  const result = await client.query(
-    'SELECT campaign_id, user_id FROM campaign_test_leads WHERE campaign_id = ANY($1) ORDER BY campaign_id, id',
+
+  const leads = await client.query(
+    `SELECT ctl.campaign_id, ctl.user_id, u.first_name, u.last_name
+     FROM campaign_test_leads ctl
+     LEFT JOIN users u ON u.id = ctl.user_id
+     WHERE ctl.campaign_id = ANY($1) ORDER BY ctl.campaign_id, ctl.id`,
     [ids]
   );
+
+  const members = await client.query(
+    `SELECT cm.campaign_id, cm.user_id, cm.team_type, u.first_name, u.last_name
+     FROM campaign_members cm
+     LEFT JOIN users u ON u.id = cm.user_id
+     WHERE cm.campaign_id = ANY($1) ORDER BY cm.campaign_id, cm.id`,
+    [ids]
+  );
+
+  const nameOf = (u) => [u.first_name, u.last_name].filter(Boolean).join(' ');
   const map = {};
-  for (const row of result.rows) {
+  const nameMap = {};
+  for (const row of leads.rows) {
     if (!map[row.campaign_id]) map[row.campaign_id] = [];
     map[row.campaign_id].push(row.user_id);
+    if (!nameMap[row.campaign_id]) nameMap[row.campaign_id] = [];
+    nameMap[row.campaign_id].push(nameOf(row));
   }
+
+  const testers = {};
+  const testerNames = {};
+  const developers = {};
+  const developerNames = {};
+  for (const row of members.rows) {
+    const isTester = row.team_type === 'tester';
+    const idBucket = isTester ? testers : developers;
+    const nameBucket = isTester ? testerNames : developerNames;
+    if (!idBucket[row.campaign_id]) idBucket[row.campaign_id] = [];
+    idBucket[row.campaign_id].push(row.user_id);
+    if (!nameBucket[row.campaign_id]) nameBucket[row.campaign_id] = [];
+    nameBucket[row.campaign_id].push(nameOf(row));
+  }
+
   for (const row of rows) {
     row.test_leads = map[row.id] || [];
+    row.test_lead_names = nameMap[row.id] || [];
+    row.testers = testers[row.id] || [];
+    row.tester_names = testerNames[row.id] || [];
+    row.developers = developers[row.id] || [];
+    row.developer_names = developerNames[row.id] || [];
   }
   return rows;
 }

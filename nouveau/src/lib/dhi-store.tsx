@@ -94,13 +94,16 @@ import {
   getGoLiveChecklist,
   getGoLiveDecisions,
   createGoLiveDecision,
+  uploadEvidence,
   updateGoLiveChecklistItem,
   createProduct,
   updateProductById,
   deleteProductById,
+  archiveProductById,
   createProject,
   updateProjectById,
   deleteProjectById,
+  archiveProjectById,
   createCampaign,
   updateCampaignById,
   deleteCampaignById,
@@ -123,10 +126,13 @@ import {
   deleteWatchPointById,
   createRelease,
   updateReleaseById,
+  listReleases,
+  mapBackendRelease,
   toBackendCampaignStatus,
   toBackendPriority,
   toFrontendCriticality,
   toBackendDefectStatus,
+  toBackendRequirementPriority,
   toBackendRequirementStatus,
   toBackendVerdict,
   toBackendReleaseStatus,
@@ -208,15 +214,12 @@ const makeDefaultChecklist = (): Record<string, GoLiveChecklistItem[]> => {
 };
 
 export function loadSnapshot(): PersistedSnapshot | null {
-  console.log("[DHI] loadSnapshot called, window=", typeof window);
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    console.log("[DHI] loadSnapshot localStorage raw=", raw ? raw.substring(0, 80) + "..." : "null");
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PersistedSnapshot;
     if (!parsed || typeof parsed !== "object") return null;
-    console.log("[DHI] loadSnapshot OK, products=", parsed.products?.length);
     return parsed;
   } catch (e) {
     console.error("[DHI] loadSnapshot error:", e);
@@ -233,17 +236,33 @@ function saveSnapshot(snap: PersistedSnapshot) {
   }
 }
 
+/**
+ * Lecture de la session en localStorage.
+ *
+ * Appelée plusieurs dizaines de fois par rendu (une fois par entrée de menu
+ * via `hasAccessToPage`, plus `__root`), on évite de re-parser le JSON à
+ * chaque fois. La relecture des clés reste systématique : `api.ts` supprime
+ * le token sur un 401 sans passer par `saveSession`, un cache de la valeur
+ * deviendrait donc obsolète.
+ */
+let sessionCache: { raw: string; parsed: SessionUser } | null = null;
+
 export function loadSession(): SessionUser | null {
-  console.log("[DHI] loadSession called, window=", typeof window);
   if (typeof window !== "undefined") {
     try {
       if (!window.localStorage.getItem("token")) {
         window.localStorage.removeItem(SESSION_KEY);
+        sessionCache = null;
         return null;
       }
       const raw = window.localStorage.getItem(SESSION_KEY);
-      console.log("[DHI] loadSession localStorage raw=", raw ? raw.substring(0, 80) + "..." : "null");
-      if (raw) return JSON.parse(raw) as SessionUser;
+      if (raw) {
+        if (raw === sessionCache?.raw) return sessionCache.parsed;
+        const parsed = JSON.parse(raw) as SessionUser;
+        sessionCache = { raw, parsed };
+        return parsed;
+      }
+      sessionCache = null;
     } catch {
       /* ignore */
     }
@@ -253,8 +272,14 @@ export function loadSession(): SessionUser | null {
 
 function saveSession(user: SessionUser | null) {
   if (typeof window === "undefined") return;
-  if (user) window.localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-  else window.localStorage.removeItem(SESSION_KEY);
+  if (user) {
+    const raw = JSON.stringify(user);
+    window.localStorage.setItem(SESSION_KEY, raw);
+    sessionCache = { raw, parsed: user };
+  } else {
+    window.localStorage.removeItem(SESSION_KEY);
+    sessionCache = null;
+  }
 }
 
 let currentUserSetter: ((user: SessionUser | null) => void) | null = null;
@@ -267,11 +292,14 @@ export function reconcileSessionFromMe(me: BackendUser): void {
   const session = loadSession();
   if (!session) return;
   const freshUser = mapBackendUser(me) as SessionUser;
+  const sameRoles =
+    (session.roles?.length ?? 0) === (freshUser.roles?.length ?? 0) &&
+    (session.roles ?? []).every((r) => freshUser.roles?.includes(r));
   if (
     session.role !== freshUser.role ||
     session.name !== freshUser.name ||
     session.email !== freshUser.email ||
-    (session.roles?.length ?? 0) !== (freshUser.roles?.length ?? 0)
+    !sameRoles
   ) {
     saveSession(freshUser);
     currentUserSetter?.(freshUser);
@@ -354,10 +382,14 @@ interface Store {
   replaceProducts: (products: Product[]) => void;
   updateProduct: (id: string, patch: Partial<Omit<Product, "id" | "breakdown">>) => void;
   deleteProduct: (id: string) => void;
+  /** Archive (true) ou restaure (false) un produit. */
+  archiveProduct: (id: string, archive: boolean) => void;
   addProject: (p: Omit<Project, "id">) => string;
   replaceProjects: (projects: Project[]) => void;
   updateProject: (id: string, patch: Partial<Project>) => void;
   deleteProject: (id: string) => void;
+  /** Archive (true) ou restaure (false) un projet et ses campagnes liees. */
+  archiveProject: (id: string, archive: boolean) => void;
   addFeature: (f: Omit<Feature, "id"> & { campaignId?: string | undefined }) => string;
   updateFeature: (id: string, patch: Partial<Feature>) => void;
   deleteFeature: (id: string) => void;
@@ -397,12 +429,18 @@ interface Store {
   updateRequirement: (id: string, patch: Partial<Requirement>) => void;
   deleteRequirement: (id: string) => void;
   toggleChecklistItem: (releaseId: string, itemId: string) => void;
+  /**
+   * Enregistre une décision Go Live et rattache les captures d'écran fournies.
+   * Renvoie l'identifiant de la décision côté base, ou null si l'utilisateur
+   * n'est pas connecté (mode local) — les images ne sont alors pas conservées.
+   */
   addGoLiveDecision: (
     releaseId: string,
     verdict: GoLiveVerdict,
     decider: string,
     justification: string,
-  ) => void;
+    screenshots?: File[],
+  ) => Promise<number | null>;
 
   /*  2.8  Mutations : Alertes / Admin / Référentiel --------------------  */
   markAlertRead: (id: string) => void;
@@ -613,8 +651,10 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
     setBackendStatus("checking");
     try {
       const [backendProducts, backendProjects, backendCampaigns] = await Promise.all([
-        api<BackendProduct[]>("/products"),
-        api<BackendProject[]>("/projects"),
+        // includeArchived : les elements archives restent charges pour rester
+        // consultables et restaurables. Le filtrage visuel est fait par les pages.
+        api<BackendProduct[]>("/products?includeArchived=true"),
+        api<BackendProject[]>("/projects?includeArchived=true"),
         api<BackendCampaign[]>("/campaigns"),
       ]);
       let backendUsers: PlatformUser[] | null = null;
@@ -673,14 +713,47 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       );
       const productByProject = new Map(backendProjects.map((project) => [project.id, project.product_id]));
 
+      // Releases : la table base les rattache au produit. On les charge par produit
+      // puis on les attribue à un projet via les campagnes qui les référencent
+      // (campaigns.release_id), en repli sur le projet le plus récent du produit.
+      const releasePages = await Promise.all(
+        backendProducts.map((product) =>
+          listReleases(product.id).then((items) => ({ productId: product.id, items })),
+        ),
+      );
+      const projectByProduct = new Map<number, number[]>();
+      for (const project of backendProjects) {
+        if (project.product_id == null || project.is_archived) continue;
+        const list = projectByProduct.get(project.product_id) ?? [];
+        list.push(project.id);
+        projectByProduct.set(project.product_id, list);
+      }
+      const projectIdForRelease = new Map<number, number>();
+      for (const campaign of backendCampaigns) {
+        if (campaign.release_id != null && !projectIdForRelease.has(campaign.release_id)) {
+          projectIdForRelease.set(campaign.release_id, campaign.project_id);
+        }
+      }
+      const nextReleases: Release[] = [];
+      for (const page of releasePages) {
+        const fallbackProjectId = (projectByProduct.get(page.productId) ?? [])[0];
+        for (const release of page.items) {
+          const projectId =
+            projectIdForRelease.get(release.id) ?? fallbackProjectId;
+          if (projectId == null) continue;
+          nextReleases.push(mapBackendRelease(release, String(projectId)));
+        }
+      }
+
       setProducts(backendProducts.map(mapBackendProduct));
       setProjects(backendProjects.map(mapBackendProject));
       setCampaigns(
         backendCampaigns.map((campaign) => mapBackendCampaign(campaign, projectById.get(campaign.project_id))),
       );
+      setReleases(nextReleases);
 
       // Fonctionnalités : union des fonctions par campagne, rattachées au produit du projet de la campagne.
-const featureById = new Map<string, Feature>();
+      const featureById = new Map<string, Feature>();
       for (const page of featurePages) {
         const campaign = backendCampaigns.find((c) => c.id === page.campaignId);
         const project = campaign ? projectById.get(campaign.project_id) : undefined;
@@ -693,6 +766,7 @@ const featureById = new Map<string, Feature>();
             description: feature.description ?? "",
             criticality: toFrontendCriticality(feature.priority),
             coverage: (feature.coverage ?? {}) as Partial<Record<TestType, boolean>>,
+            module: feature.module ?? undefined,
           });
         }
       }
@@ -1306,6 +1380,32 @@ const featureById = new Map<string, Feature>();
         if (idBackend) attemptBackend("Suppression produit", () => deleteProductById(idBackend));
         pushAudit(asActor("Système"), "Produit supprimé", id, "—");
       },
+      archiveProduct: (id, archive) => {
+        setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, isArchived: archive } : p)));
+        // L'archivage d'un produit etouffe ses projets, mais un projet deja
+        // archive seul doit le rester apres restauration du produit parent.
+        setProjects((prev) =>
+          prev.map((p) => {
+            if (p.productId !== id) return p;
+            if (archive) {
+              return { ...p, isArchived: true, isArchivedBeforeProduct: p.isArchived ?? false };
+            }
+            return {
+              ...p,
+              isArchived: p.isArchivedBeforeProduct ?? false,
+              isArchivedBeforeProduct: undefined,
+            };
+          }),
+        );
+        const idBackend = backendIdOf(id);
+        if (idBackend) {
+          attemptBackend(archive ? "Archivage produit" : "Restauration produit", () =>
+            archiveProductById(idBackend, archive),
+          );
+        }
+        const name = products.find((p) => p.id === id)?.name ?? id;
+        pushAudit(asActor("Système"), archive ? "Produit archivé" : "Produit restauré", id, name);
+      },
       addProject: (p) => {
         const id = `pr-${Date.now()}`;
         setProjects((prev) => [...prev, { ...p, id }]);
@@ -1340,6 +1440,31 @@ const featureById = new Map<string, Feature>();
         const idBackend = backendIdOf(id);
         if (idBackend) attemptBackend("Suppression projet", () => deleteProjectById(idBackend));
         pushAudit(asActor("Système"), "Projet supprimé", id, "—");
+      },
+      archiveProject: (id, archive) => {
+        setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, isArchived: archive } : p)));
+        // Le backend archive aussi les campagnes liees. On memorise le statut
+        // reel pour qu'une restauration ne remette pas tout en 'planifiee'.
+        setCampaigns((prev) =>
+          prev.map((c) => {
+            if (c.projectId !== id) return c;
+            if (archive) return { ...c, isArchived: true, statusBeforeArchive: c.status };
+            return {
+              ...c,
+              isArchived: false,
+              status: c.statusBeforeArchive ?? c.status,
+              statusBeforeArchive: undefined,
+            };
+          }),
+        );
+        const idBackend = backendIdOf(id);
+        if (idBackend) {
+          attemptBackend(archive ? "Archivage projet" : "Restauration projet", () =>
+            archiveProjectById(idBackend, archive),
+          );
+        }
+        const name = projects.find((p) => p.id === id)?.name ?? id;
+        pushAudit(asActor("Système"), archive ? "Projet archivé" : "Projet restauré", id, name);
       },
       addFeature: (f) => {
         const id = `f-${Date.now()}`;
@@ -1531,6 +1656,7 @@ const featureById = new Map<string, Feature>();
               expected_result: t.expected.join(" · "),
               priority: toBackendPriority(t.criticality),
               type: t.type,
+              assigned_to: t.assignedTo ?? null,
             }),
           );
         }
@@ -1581,6 +1707,9 @@ const featureById = new Map<string, Feature>();
               ...(patch.steps !== undefined && { steps: patch.steps }),
               ...(patch.criticality !== undefined && { priority: toBackendPriority(patch.criticality) }),
               ...(patch.type !== undefined && { type: patch.type }),
+              // L'affectation est desormais persistee. `null` retire le testeur,
+              // l'absence de la cle laisse l'affectation existante intacte.
+              ...(patch.assignedTo !== undefined && { assigned_to: patch.assignedTo }),
             };
             if (Object.keys(patchData).length > 0) {
               attemptBackend("Mise à jour cas de test", () => updateTestCaseById(testBackend, patchData));
@@ -1700,17 +1829,20 @@ const featureById = new Map<string, Feature>();
       addRequirement: (r) => {
         const id = `REQ-${100 + requirements.length + 1}`;
         setRequirements((prev) => [...prev, { ...r, id }]);
-        const featureBackend = backendIdOf(r.featureIds[0]);
-        if (featureBackend) {
-          attemptBackend("Création exigence", () =>
-            createRequirement({
-              feature_id: featureBackend,
-              title: r.title,
-              description: r.description,
-              status: toBackendRequirementStatus(r.status),
-            }),
-          );
-        }
+        const productBackend = backendIdOf(r.productId);
+        const featureBackends = r.featureIds
+          .map((fid) => backendIdOf(fid))
+          .filter((fid): fid is number => fid != null);
+        attemptBackend("Création exigence", () =>
+          createRequirement({
+            product_id: productBackend ?? null,
+            feature_ids: featureBackends,
+            title: r.title,
+            description: r.description,
+            status: toBackendRequirementStatus(r.status),
+            priority: toBackendRequirementPriority(r.priority),
+          }),
+        );
         return id;
       },
       replaceRequirements: (nextRequirements) => setRequirements(nextRequirements),
@@ -1722,7 +1854,12 @@ const featureById = new Map<string, Feature>();
             updateRequirementById(idBackend, {
               title: patch.title,
               description: patch.description,
-              status: toBackendRequirementStatus(patch.status),
+              status: patch.status ? toBackendRequirementStatus(patch.status) : undefined,
+              priority: patch.priority ? toBackendRequirementPriority(patch.priority) : undefined,
+              product_id: patch.productId ? backendIdOf(patch.productId) ?? null : undefined,
+              feature_ids: patch.featureIds
+                ? patch.featureIds.map((fid) => backendIdOf(fid)).filter((fid): fid is number => fid != null)
+                : undefined,
             }),
           );
         }
@@ -1748,15 +1885,20 @@ const featureById = new Map<string, Feature>();
           );
         }
       },
-      addGoLiveDecision: (releaseId, verdict, decider, justification) => {
+      addGoLiveDecision: async (releaseId, verdict, decider, justification, screenshots) => {
         const checklist = goLiveChecklist[releaseId] ?? [];
         const totalWeight = checklist.reduce((s, i) => s + i.weight, 0);
         const doneWeight = checklist.filter((i) => i.checked).reduce((s, i) => s + i.weight, 0);
         const completion = totalWeight ? Math.round((doneWeight / totalWeight) * 100) : 0;
         const release = releases.find((r) => r.id === releaseId);
+        const localId = `GL-${Date.now()}`;
+
+        // Optimiste : la décision apparaît immédiatement, l'id backend est
+        // complété dès que la réponse arrive.
         setGoLiveDecisions((prev) => [
           {
-            id: `GL-${Date.now()}`,
+            id: localId,
+            backendId: null,
             releaseId,
             verdict,
             date: today(),
@@ -1766,16 +1908,49 @@ const featureById = new Map<string, Feature>();
           },
           ...prev,
         ]);
+
+        let backendId: number | null = null;
         if (localStorage.getItem("token")) {
-          createGoLiveDecision({
-            release_ref: releaseId,
-            verdict,
-            decider,
-            justification,
-            checklist_completion: completion,
-          }).catch((error) =>
-            console.error("[DHI] Erreur enregistrement décision Go Live", error),
-          );
+          try {
+            const created = await createGoLiveDecision({
+              release_ref: releaseId,
+              verdict,
+              decider,
+              justification,
+              checklist_completion: completion,
+            });
+            backendId = typeof created?.id === "number" ? created.id : null;
+            setGoLiveDecisions((prev) =>
+              prev.map((d) => (d.id === localId ? { ...d, backendId } : d)),
+            );
+          } catch (error) {
+            console.error("[DHI] Erreur enregistrement décision Go Live", error);
+            // L'ajout était optimiste : sans annulation, la décision resterait
+            // visible dans l'historique alors que l'appel a échoué.
+            setGoLiveDecisions((prev) => prev.filter((d) => d.id !== localId));
+            throw error;
+          }
+
+          // Les captures sont rattachées à la décision en base : sans cet id,
+          // les images seraient orphelines et invisibles dans l'historique.
+          if (backendId && screenshots?.length) {
+            const results = await Promise.allSettled(
+              screenshots.map((file) =>
+                uploadEvidence(
+                  "go_live_decision",
+                  String(backendId),
+                  file,
+                  JSON.stringify({ name: file.name, type: "capture" }),
+                ),
+              ),
+            );
+            const failed = results.filter((r) => r.status === "rejected").length;
+            if (failed > 0) {
+              console.error(
+                `[DHI] ${failed} capture(s) Go Live non enregistrée(s) sur ${screenshots.length}`,
+              );
+            }
+          }
         }
         pushAudit(
           decider,
@@ -1783,6 +1958,7 @@ const featureById = new Map<string, Feature>();
           release ? `Release ${release.version}` : releaseId,
           `${verdict} — checklist ${completion} %`,
         );
+        return backendId;
       },
 
       /* Alertes / Admin / Référentiel --------------------------------  */

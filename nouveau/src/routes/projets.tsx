@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate, Outlet, useMatches } from "@tanstack/react-router";
-import { Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Archive, ArchiveRestore } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
 import { HealthBadge, ScoreValue } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,27 +60,42 @@ function ProjectsPage() {
 
 function ProjectsList() {
   const { t } = useI18n();
-  const { products, projects, campaigns, releases, deleteProject } = useStore();
+  const { products, projects, campaigns, releases, deleteProject, archiveProject } = useStore();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [productFilter, setProductFilter] = useState("all");
+  const [showArchived, setShowArchived] = useState(false);
 
   const [toDelete, setToDelete] = useState<Project | null>(null);
+  const [toArchive, setToArchive] = useState<Project | null>(null);
 
   const rows = useMemo(() => {
     return visibleProjects(projects, products, getUser()).filter((pr) => {
+      if (!showArchived && pr.isArchived) return false;
       if (productFilter !== "all" && pr.productId !== productFilter) return false;
       if (!search) return true;
       const q = search.toLowerCase();
       return pr.name.toLowerCase().includes(q) || pr.objective.toLowerCase().includes(q);
     });
-  }, [projects, products, productFilter, search]);
+  }, [projects, products, productFilter, search, showArchived]);
 
   const confirmDelete = () => {
     if (!toDelete) return;
     deleteProject(toDelete.id);
     toast.success(`${t("pages.projects.deleted")} « ${toDelete.name} »`);
     setToDelete(null);
+  };
+
+  const confirmArchive = () => {
+    if (!toArchive) return;
+    const restore = !!toArchive.isArchived;
+    archiveProject(toArchive.id, !restore);
+    toast.success(
+      restore
+        ? `${t("actions.restaurer")} « ${toArchive.name} »`
+        : `${t("actions.archiver")} « ${toArchive.name} »`,
+    );
+    setToArchive(null);
   };
 
   return (
@@ -114,13 +130,22 @@ function ProjectsList() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("pages.projects.all_products")}</SelectItem>
-              {products.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
+              {products
+                .filter((p) => showArchived || !p.isArchived)
+                .map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox
+              checked={showArchived}
+              onCheckedChange={(v) => setShowArchived(v === true)}
+            />
+            {t("pages.projects.show_archived")}
+          </label>
           <p className="ml-auto text-sm text-muted-foreground">
             {rows.length} {t("common.projet")}
             {rows.length > 1 ? "s" : ""}
@@ -162,7 +187,16 @@ function ProjectsList() {
                   </TableCell>
                   <TableCell className="text-sm">{product?.name ?? "—"}</TableCell>
                   <TableCell className="num">{pr.targetVersion}</TableCell>
-                  <TableCell className="text-sm">{PROJECT_STATUS_LABEL[pr.status]}</TableCell>
+                  <TableCell className="text-sm">
+                    {pr.isArchived ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                        <Archive className="size-3" />
+                        {t("common.archive")}
+                      </span>
+                    ) : (
+                      PROJECT_STATUS_LABEL[pr.status]
+                    )}
+                  </TableCell>
                   <TableCell className="num">{nCamp}</TableCell>
                   <TableCell className="num">{nRel}</TableCell>
                   <TableCell>
@@ -185,6 +219,20 @@ function ProjectsList() {
                               <Pencil className="size-3.5" />
                             </Button>
                           </Link>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-7"
+                            onClick={() => setToArchive(pr)}
+                            aria-label={`${pr.isArchived ? t("actions.restaurer") : t("actions.archiver")} ${pr.name}`}
+                            title={pr.isArchived ? t("actions.restaurer") : t("actions.archiver")}
+                          >
+                            {pr.isArchived ? (
+                              <ArchiveRestore className="size-3.5" />
+                            ) : (
+                              <Archive className="size-3.5" />
+                            )}
+                          </Button>
                           <Button
                             size="icon"
                             variant="ghost"
@@ -211,6 +259,28 @@ function ProjectsList() {
           </TableBody>
         </Table>
       </div>
+
+      <AlertDialog open={!!toArchive} onOpenChange={(o) => !o && setToArchive(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {toArchive?.isArchived
+                ? `${t("actions.restaurer")} « ${toArchive?.name} » ?`
+                : t("pages.projects.archive_title").replace("{name}", toArchive?.name ?? "")}
+            </AlertDialogTitle>            <AlertDialogDescription>
+              {toArchive?.isArchived
+                ? t("pages.projects.restore_description")
+                : t("pages.projects.archive_description")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("actions.annuler")}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmArchive}>
+              {toArchive?.isArchived ? t("actions.restaurer") : t("actions.archiver")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>

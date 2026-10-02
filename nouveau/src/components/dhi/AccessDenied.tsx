@@ -26,13 +26,13 @@ export function AccessDenied({ subject }: { subject?: string }) {
 }
 
 export function ProductAccessDenied({ subject }: { subject?: string }) {
-  return <AccessDenied subject={subject} />;
+  return <AccessDenied {...(subject !== undefined ? { subject } : {})} />;
 }
 
 export function ProjectAccessDenied({ subject }: { subject?: string }) {
-  return <AccessDenied subject={subject} />;
+  return <AccessDenied {...(subject !== undefined ? { subject } : {})} />;
 }
 
 export function CampaignAccessDenied({ subject }: { subject?: string }) {
-  return <AccessDenied subject={subject} />;
+  return <AccessDenied {...(subject !== undefined ? { subject } : {})} />;
 }

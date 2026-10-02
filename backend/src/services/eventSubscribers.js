@@ -11,6 +11,9 @@ import {
   projectCreatedEmail,
   campaignCreatedEmail,
   campaignCompletedEmail,
+  testCaseAssignedEmail,
+  projectArchivedEmail,
+  goLiveDecisionEmail,
   loginNotificationEmail,
   userCreatedEmail,
   passwordForgotAdminEmail,
@@ -262,6 +265,87 @@ export function setupEventSubscribers(io) {
     }
   });
 
+  bus.on('testCase:assigned', async ({ test_case_id, test_name, campaign_id, assigned_to, reassigned }) => {
+    const label = reassigned ? 'Cas de test réassigné' : 'Nouveau cas de test à exécuter';
+    try {
+      const campaign = campaign_id ? await db.campaigns.findById(campaign_id).catch(() => null) : null;
+      const campaignName = campaign?.name || '';
+      const linkUrl = `${process.env.APP_URL || 'http://localhost:5173'}/execution/${test_case_id}`;
+
+      try {
+        const notification = await notificationService.createNotification({
+          notified_user_id: assigned_to,
+          anomaly_id: null,
+          notification_type: 'test_case_assigned',
+          description: reassigned
+            ? `Le cas de test « ${test_name} » vous a été réassigné`
+            : `Le cas de test « ${test_name} » vous a été assigné`,
+          link_url: `/execution/${test_case_id}`,
+        });
+        if (io) emitNotification(io, assigned_to, notification);
+      } catch (e) {
+        console.error('[events] Erreur notification testCase:assigned', e);
+      }
+
+      const tester = await db.users.findById(assigned_to);
+      if (!tester?.email) return;
+      await sendEmail({
+        to: tester.email,
+        subject: `${label} — ${test_name}`,
+        html: testCaseAssignedEmail({
+          userFirstName: tester.first_name,
+          testCaseName: test_name || '',
+          testCaseId: String(test_case_id),
+          campaignName,
+          linkUrl,
+        }),
+      });
+    } catch (e) {
+      console.error('[email] Erreur envoi testCase:assigned', e);
+    }
+  });
+
+  bus.on('anomaly:assigned', async ({ anomaly, assigned_to }) => {
+    try {
+      const linkUrl = `${process.env.APP_URL || 'http://localhost:5173'}/developpeur/anomalies`;
+      let featureName = `#${anomaly.feature_id}`;
+      try {
+        const feat = await db.features.findById(anomaly.feature_id);
+        if (feat) featureName = feat.name;
+      } catch {}
+
+      try {
+        const notification = await notificationService.createNotification({
+          notified_user_id: assigned_to,
+          anomaly_id: anomaly.id,
+          notification_type: 'anomaly_reported',
+          // `description` est la seule colonne persistée et affichée côté front :
+          // sans elle la notification arrive vide.
+          description: `L'anomalie « ${(anomaly.description || '').slice(0, 80)} » (${featureName}) vous a été assignée`,
+          anomaly_description: anomaly.description,
+        });
+        if (io) emitNotification(io, assigned_to, notification);
+      } catch (e) {
+        console.error('[events] Erreur notification anomaly:assigned', e);
+      }
+
+      const developer = await db.users.findById(assigned_to);
+      if (!developer?.email) return;
+      await sendEmail({
+        to: developer.email,
+        subject: `Anomalie assignée — ${anomaly.description?.slice(0, 60)}`,
+        html: anomalyAssignedEmail({
+          userFirstName: developer.first_name,
+          anomalyDescription: anomaly.description || '',
+          featureName,
+          linkUrl,
+        }),
+      });
+    } catch (e) {
+      console.error('[email] Erreur envoi anomaly:assigned', e);
+    }
+  });
+
   // ── Socket data-changed ─────────────────────────────────
 
   bus.on('campaign:created', async ({ campaign, project_name }) => {
@@ -318,40 +402,57 @@ export function setupEventSubscribers(io) {
 
   bus.on('campaign:completed', async ({ campaign }) => {
     try {
-      const admins = await db.users.listByRole('admin');
-      const projectName = campaign.project_name || `Projet #${campaign.project_id}`;
       const linkUrl = `${process.env.APP_URL || 'http://localhost:5173'}/campagnes/${campaign.id}`;
+      // `campaign.project_name` n'est pas une colonne de `campaigns` : on résout le
+      // projet pour afficher son vrai nom plutôt qu'un « Projet #id ».
+      const project = campaign.project_id
+        ? await db.projects.findById(campaign.project_id).catch(() => null)
+        : null;
+      const projectName = campaign.project_name || project?.name || `Projet #${campaign.project_id}`;
 
-      for (const admin of admins) {
+      // Destinataires : toute l'équipe de la campagne (chefs de test, testeurs,
+      // développeurs) plus les administrateurs, sans doublon.
+      const { testers, developers } = await db.campaignMembers
+        .getMembersWithDetails(campaign.id)
+        .catch(() => ({ testers: [], developers: [] }));
+      const recipients = new Map();
+      for (const member of [...testers, ...developers]) recipients.set(member.id, member);
+      for (const leadId of campaign.test_leads || []) if (!recipients.has(leadId)) recipients.set(leadId, null);
+      for (const admin of await db.users.listByRole('admin').catch(() => [])) recipients.set(admin.id, admin);
+
+      for (const [userId, known] of recipients) {
+        const user = known || await db.users.findById(userId).catch(() => null);
+        if (!user) continue;
+
         // Notification in-app
         try {
           const notification = await notificationService.createNotification({
-            notified_user_id: admin.id,
+            notified_user_id: user.id,
             anomaly_id: null,
             notification_type: 'campaign_completed',
             description: `La campagne « ${campaign.name} » (${projectName}) a été marquée comme terminée`,
             link_url: `/campagnes/${campaign.id}`,
           });
-          if (io) emitNotification(io, admin.id, notification);
+          if (io) emitNotification(io, user.id, notification);
         } catch (e) {
-          console.error('[events] Erreur notification campaign:completed admin', e);
+          console.error('[events] Erreur notification campaign:completed', e);
         }
 
         // Email
-        if (admin.email) {
+        if (user.email) {
           try {
             await sendEmail({
-              to: admin.email,
+              to: user.email,
               subject: `Campagne terminée — ${campaign.name}`,
               html: campaignCompletedEmail({
-                adminFirstName: admin.first_name,
+                adminFirstName: user.first_name,
                 campaignName: campaign.name,
                 projectName,
                 linkUrl,
               }),
             });
           } catch (e) {
-            console.error('[email] Erreur envoi campaign:completed admin', e);
+            console.error('[email] Erreur envoi campaign:completed à', user.email, e.message);
           }
         }
       }
@@ -405,7 +506,59 @@ export function setupEventSubscribers(io) {
     }
   });
   bus.on('project:updated', async () => { if (io) emitDataChanged(io, 'projects'); });
-  bus.on('project:archived', async () => { if (io) { emitDataChanged(io, 'projects'); emitDataChanged(io, 'campaigns'); } });
+  bus.on('project:archived', async ({ project, campaign_ids = [] }) => {
+    if (io) { emitDataChanged(io, 'projects'); emitDataChanged(io, 'campaigns'); }
+    if (!project) return;
+    try {
+      const linkUrl = `${process.env.APP_URL || 'http://localhost:5173'}/projets`;
+      // « Tous les membres » : chefs de test du projet, équipes des campagnes
+      // archivées, responsables qualité et administrateurs.
+      const recipients = new Map();
+      const remember = (user) => { if (user?.id) recipients.set(user.id, user); };
+      for (const leadId of project.test_lead_ids || []) remember(await db.users.findById(leadId).catch(() => null));
+      for (const campaignId of campaign_ids) {
+        const { testers, developers } = await db.campaignMembers
+          .getMembersWithDetails(campaignId)
+          .catch(() => ({ testers: [], developers: [] }));
+        for (const member of [...testers, ...developers]) remember(member);
+      }
+      for (const role of ['admin', 'quality_manager']) {
+        for (const user of await db.users.listByRole(role).catch(() => [])) remember(user);
+      }
+
+      for (const user of recipients.values()) {
+        try {
+          const notification = await notificationService.createNotification({
+            notified_user_id: user.id,
+            anomaly_id: null,
+            notification_type: 'project_archived',
+            description: `Le projet « ${project.name} » a été marqué comme terminé`,
+            link_url: '/projets',
+          });
+          if (io) emitNotification(io, user.id, notification);
+        } catch (e) {
+          console.error('[events] Erreur notification project:archived', e);
+        }
+
+        if (!user.email) continue;
+        try {
+          await sendEmail({
+            to: user.email,
+            subject: `Projet terminé — ${project.name}`,
+            html: projectArchivedEmail({
+              userFirstName: user.first_name,
+              projectName: project.name,
+              linkUrl,
+            }),
+          });
+        } catch (e) {
+          console.error('[email] Erreur envoi project:archived à', user.email, e.message);
+        }
+      }
+    } catch (e) {
+      console.error('[events] Erreur project:archived', e);
+    }
+  });
   bus.on('project:deleted', async () => { if (io) emitDataChanged(io, 'projects'); });
 
   // ── Portefeuille produits / releases / environnements ────
@@ -537,6 +690,52 @@ export function setupEventSubscribers(io) {
     } catch (e) {
       console.error('[events] Erreur history go-live:decision_created', e);
     }
+
+    // Notification in-app + email au comité Go-Live. `go_live_decisions` n'a pas de
+    // lien produit (seulement `release_ref`), on cible donc les rôles de gouvernance.
+    try {
+      const linkUrl = `${process.env.APP_URL || 'http://localhost:5173'}/go-live`;
+      const readable = { GO: 'GO', GO_CONDITIONNEL: 'GO conditionnel', NO_GO: 'NO-GO', AJOURNE: 'Ajourné' }[decision.verdict] || decision.verdict;
+      const recipients = new Map();
+      for (const role of ['admin', 'quality_manager', 'qa_lead']) {
+        for (const user of await db.users.listByRole(role).catch(() => [])) recipients.set(user.id, user);
+      }
+
+      for (const user of recipients.values()) {
+        try {
+          const notification = await notificationService.createNotification({
+            notified_user_id: user.id,
+            anomaly_id: null,
+            notification_type: 'go_live_decision',
+            description: `Décision Go-Live « ${readable} » pour la release ${decision.release_ref} (par ${decision.decider})`,
+            link_url: '/go-live',
+          });
+          if (io) emitNotification(io, user.id, notification);
+        } catch (e) {
+          console.error('[events] Erreur notification go_live_decision', e);
+        }
+
+        if (!user.email) continue;
+        try {
+          await sendEmail({
+            to: user.email,
+            subject: `Décision Go-Live ${readable} — ${decision.release_ref}`,
+            html: goLiveDecisionEmail({
+              userFirstName: user.first_name,
+              releaseRef: decision.release_ref,
+              verdict: decision.verdict,
+              decider: decision.decider,
+              linkUrl,
+            }),
+          });
+        } catch (e) {
+          console.error('[email] Erreur envoi go_live_decision à', user.email, e.message);
+        }
+      }
+    } catch (e) {
+      console.error('[events] Erreur notification go_live_decision', e);
+    }
+
     if (io) emitDataChanged(io, 'go-live');
   });
   bus.on('go-live:checklist_updated', async () => {
@@ -562,6 +761,7 @@ export function setupEventSubscribers(io) {
   bus.on('campaignMember:removed', async () => { if (io) emitDataChanged(io, 'campaigns'); });
 
   bus.on('testCase:created', async () => { if (io) emitDataChanged(io, 'features'); });
+  bus.on('testCase:updated', async () => { if (io) emitDataChanged(io, 'features'); });
   bus.on('testCase:deleted', async () => { if (io) emitDataChanged(io, 'features'); });
 
   // ── Data changed générique (routes) ──────────────────────

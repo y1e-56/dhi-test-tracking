@@ -62,13 +62,15 @@ La **documentation Swagger** est disponible sur `http://localhost:5000/api-docs`
 
 ### Comptes de démo
 
-| Rôle          | Email           | Mot de passe     |
-| ------------- | --------------- | ---------------- |
-| Admin         | `admin@test.fr` | `Admin@DHI2026`  |
-| Chef testeur  | `chef@test.fr`  | `Chef@DHI2026`   |
-| Chef testeur  | `chef2@test.fr` | `Chef@DHI2026`   |
-| Testeur       | `testeur@test.fr` | `Testeur@DHI2026` |
-| Développeur   | `dev@test.fr`   | `Dev@DHI2026`    |
+Les comptes ci-dessous sont proposés en un clic sur la page de connexion : le mot de passe est renseigné automatiquement et n'est pas affiché dans l'application.
+
+| Rôle          | Email             |
+| ------------- | ----------------- |
+| Admin         | `admin@test.fr`   |
+| Chef testeur  | `chef@test.fr`    |
+| Chef testeur  | `chef2@test.fr`   |
+| Testeur       | `testeur@test.fr` |
+| Développeur   | `dev@test.fr`     |
 
 ## Structure du projet
 

@@ -19,13 +19,14 @@ Vérifier que les 2 serveurs tournent :
     Ouvrir : http://localhost:8080
 
 Compte d'administration :
-  - Email      : admin@test.fr
-  - Mot de passe : Admin@DHI2026
+  - Email : admin@test.fr
+  (la page de connexion propose le compte admin en un clic, sans afficher
+  le mot de passe)
 
 CRÉER L'UTILISATEUR DE DÉMO "Sophie Lemaire" :
 La règle de séparation se déclenche quand l'utilisateur connecté porte le
 MÊME NOM que le responsable d'une campagne (ex. "Sophie Lemaire").
- 1. Se connecter avec le compte admin (admin@test.fr / Admin@DHI2026).
+ 1. Se connecter avec le compte admin (admin@test.fr).
  2. Menu "Administration" -> "Ajouter un utilisateur".
  3. Remplir :
       Prénom      : Sophie

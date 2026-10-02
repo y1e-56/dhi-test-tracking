@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate, Outlet, useMatches } from "@tanstack/react-router";
-import { Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Archive, ArchiveRestore } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
 import { HealthBadge, ScoreValue } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,18 +63,22 @@ function ProductsPage() {
 
 function ProductsList() {
   const { t } = useI18n();
-  const { products, projects, deleteProduct } = useStore();
+  const { products, projects, deleteProduct, archiveProduct } = useStore();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("score");
   const [healthFilter, setHealthFilter] = useState<string>("all");
+  const [showArchived, setShowArchived] = useState(false);
 
   const [toDelete, setToDelete] = useState<Product | null>(null);
+  const [toArchive, setToArchive] = useState<Product | null>(null);
   const healthOf = useHealthOf();
 
   const rows = useMemo(() => {
     const viewable = visibleProducts(products, getUser());
-    let list = viewable.map((p) => ({ p, score: productScore(p) }));
+    let list = viewable
+      .filter((p) => showArchived || !p.isArchived)
+      .map((p) => ({ p, score: productScore(p) }));
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -89,13 +94,25 @@ function ProductsList() {
           : b.p.lastUpdate.localeCompare(a.p.lastUpdate),
     );
     return list;
-  }, [products, search, sort, healthFilter, healthOf]);
+  }, [products, search, sort, healthFilter, healthOf, showArchived]);
 
   const confirmDelete = () => {
     if (!toDelete) return;
     deleteProduct(toDelete.id);
     toast.success(t("pages.products.deleted"));
     setToDelete(null);
+  };
+
+  const confirmArchive = () => {
+    if (!toArchive) return;
+    const restore = !!toArchive.isArchived;
+    archiveProduct(toArchive.id, !restore);
+    toast.success(
+      restore
+        ? `${t("actions.restaurer")} « ${toArchive.name} »`
+        : `${t("actions.archiver")} « ${toArchive.name} »`,
+    );
+    setToArchive(null);
   };
 
   return (
@@ -146,6 +163,10 @@ function ProductsList() {
               <SelectItem value="lastUpdate">{t("pages.products.last_update")}</SelectItem>
             </SelectContent>
           </Select>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox checked={showArchived} onCheckedChange={(v) => setShowArchived(v === true)} />
+            {t("pages.products.show_archived")}
+          </label>
           <p className="ml-auto text-sm text-muted-foreground">
             {rows.length} {t("common.produit")}
             {rows.length > 1 ? "s" : ""}
@@ -175,6 +196,12 @@ function ProductsList() {
                 >
                   <p className="font-medium">{p.name}</p>
                   <p className="max-w-md truncate text-xs text-muted-foreground">{p.description}</p>
+                  {p.isArchived ? (
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      <Archive className="size-3" />
+                      {t("common.archive")}
+                    </span>
+                  ) : null}
                 </TableCell>
                 <TableCell>
                   <ScoreValue score={score} size="sm" />
@@ -203,6 +230,20 @@ function ProductsList() {
                         <Button
                           size="icon"
                           variant="ghost"
+                          className="size-7"
+                          aria-label={`${p.isArchived ? t("actions.restaurer") : t("actions.archiver")} ${p.name}`}
+                          title={p.isArchived ? t("actions.restaurer") : t("actions.archiver")}
+                          onClick={() => setToArchive(p)}
+                        >
+                          {p.isArchived ? (
+                            <ArchiveRestore className="size-3.5" />
+                          ) : (
+                            <Archive className="size-3.5" />
+                          )}
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
                           className="size-7 text-danger hover:text-danger"
                           aria-label={`${t("pages.products.delete")} ${p.name}`}
                           onClick={() => setToDelete(p)}
@@ -225,6 +266,29 @@ function ProductsList() {
           </TableBody>
         </Table>
       </div>
+
+      <AlertDialog open={!!toArchive} onOpenChange={(o) => !o && setToArchive(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {toArchive?.isArchived
+                ? `${t("actions.restaurer")} « ${toArchive?.name} » ?`
+                : t("pages.products.archive_title").replace("{name}", toArchive?.name ?? "")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {toArchive?.isArchived
+                ? t("pages.products.restore_description")
+                : t("pages.products.archive_description")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("actions.annuler")}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmArchive}>
+              {toArchive?.isArchived ? t("actions.restaurer") : t("actions.archiver")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>

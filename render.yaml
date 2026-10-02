@@ -45,8 +45,11 @@ services:
         value: https://dhi-test-tracking-app-pe2x.onrender.com
       - key: PORT
         value: "10000"
-      # ── Email (alerte des administrateurs hors poste, mot de passe oublié, réinitialisation) ──
+      # ── Email (affectations, clôtures de campagne, projets terminés, décisions Go-Live) ──
       # À renseigner dans le dashboard Render (Environment) avec les mêmes valeurs que backend/.env
+      # Resend est prioritaire : renseigner RESEND_API_KEY suffit, SMTP reste le repli.
+      - key: RESEND_API_KEY
+        sync: false
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT

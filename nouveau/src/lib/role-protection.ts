@@ -146,6 +146,20 @@ export function canManageOperational(): boolean {
   return roles.some((r) => !OPERATIONAL_READ_ONLY_ROLES.includes(r));
 }
 
+/** Rôles autorisés à piloter une campagne : créer/éditer/supprimer des cas de test, importer, gérer les membres, démarrer/clôturer. */
+export const MANAGE_CAMPAIGN_ROLES: AppRole[] = [
+  "admin",
+  "quality_manager",
+  "qa_lead",
+  "chef_projet",
+  "chef_testeur",
+];
+
+/** L'utilisateur connecté peut-il piloter une campagne de tests (écriture/gestion) ? */
+export function canManageCampaign(): boolean {
+  return roleIs(...MANAGE_CAMPAIGN_ROLES);
+}
+
 /** Rôles autorisés à paramétrer les référentiels / règles métier (seuls à avoir la page). */
 export const MANAGE_REFERENTIALS_ROLES: AppRole[] = ["admin", "quality_manager", "qa_lead"];
 

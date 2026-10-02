@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env["VITE_API_URL"] ?? "http://localhost:5000/api";
+export const API_BASE_URL = import.meta.env["VITE_API_URL"] ?? "http://localhost:5000/api";
 
 import type {
   AppNotification,
@@ -13,6 +13,8 @@ import type {
   PlatformUser,
   Requirement,
   RequirementStatus,
+  Release,
+  ReleaseStatus,
   TestCase,
   TestType,
   WatchLevel,
@@ -92,6 +94,11 @@ export type BackendTestCase = {
   expected_result?: string | null;
   priority?: string | null;
   test_type?: string | null;
+  /** Testeur affecte, reference users(id) — null si non affecte. */
+  assigned_to?: number | null;
+  /** Nom resolu par jointure cote backend : on ne le stocke pas en double. */
+  assigned_to_first_name?: string | null;
+  assigned_to_last_name?: string | null;
 };
 
 export type BackendTestExecution = {
@@ -116,6 +123,12 @@ export type BackendCampaign = {
   end_date?: string | null;
   testers?: Array<number | string>;
   developers?: Array<number | string>;
+  tester_names?: Array<number | string>;
+  developer_names?: Array<number | string>;
+  test_leads?: Array<number | string>;
+  test_lead_names?: Array<number | string>;
+  release_id?: number | null;
+  environment_id?: number | null;
 };
 
 export type BackendProject = {
@@ -126,12 +139,18 @@ export type BackendProject = {
   start_date?: string | null;
   end_date?: string | null;
   is_archived?: boolean;
+  test_lead_ids?: Array<number>;
+  test_lead_names?: Array<number | string>;
 };
 
 export type BackendProduct = {
   id: number;
   name: string;
   description?: string | null;
+  owner_name?: string | null;
+  quality_manager_id?: number | null;
+  quality_manager_name?: string | null;
+  is_archived?: boolean;
 };
 
 export type BackendAnomaly = {
@@ -156,7 +175,10 @@ export type BackendAnomaly = {
 
 export type BackendRequirement = {
   id: number;
-  feature_id: number;
+  feature_id: number | null;
+  feature_ids?: number[] | null;
+  product_id: number | null;
+  priority: string | null;
   title: string;
   description?: string | null;
   category?: string | null;
@@ -190,7 +212,7 @@ export type BackendEvidence = {
 };
 
 export async function uploadEvidence(
-  entityType: "product" | "project" | "campaign" | "feature",
+  entityType: "product" | "project" | "campaign" | "feature" | "go_live_decision" | "anomaly",
   entityId: string,
   file: File,
   description: string,
@@ -211,6 +233,43 @@ export async function uploadEvidence(
     throw new ApiError(error?.message ?? "Impossible d'envoyer le document", response.status);
   }
   return response.json() as Promise<BackendEvidence>;
+}
+
+/**
+ * Telecharge le fichier joint a une preuve. Passe par fetch plutot qu'un lien
+ * direct : la route est protegee par Bearer, le navigateur n'enverrait pas le jeton.
+ */
+export async function downloadEvidence(id: number, fileName?: string | null) {
+  const token = localStorage.getItem("token");
+  const response = await fetch(`${API_BASE_URL}/evidence/${id}/download`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new ApiError(error?.message ?? "Téléchargement impossible", response.status);
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName || "preuve";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Recupere une preuve en blob authentifie pour l'afficher en vignette. Le
+ * jeton est transmis par en-tete : un <img src> ne l'enverrait pas.
+ */
+export async function fetchEvidenceObjectUrl(id: number): Promise<string> {
+  const token = localStorage.getItem("token");
+  const response = await fetch(`${API_BASE_URL}/evidence/${id}/download`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!response.ok) throw new Error("evidence blob");
+  return URL.createObjectURL(await response.blob());
 }
 
 export function mapBackendEvidence(evidence: BackendEvidence) {
@@ -245,6 +304,13 @@ export function mapBackendTestCase(test: BackendTestCase, execution?: BackendTes
       : test.priority === "low"
         ? "basse"
         : "moyenne";
+  // L'affectation et l'execution sont deux informations distinctes :
+  // l'affectation dit QUI doit faire le test, l'execution dit QUI l'a fait.
+  // Ecraser l'une par l'autre faisait disparaitre toute repartition du travail.
+  const assignedName =
+    test.assigned_to_first_name && test.assigned_to_last_name
+      ? `${test.assigned_to_first_name} ${test.assigned_to_last_name}`
+      : undefined;
   return {
     id: String(test.id),
     campaignId: String(test.campaign_id),
@@ -258,7 +324,8 @@ export function mapBackendTestCase(test: BackendTestCase, execution?: BackendTes
     verdict,
     observed: execution?.actual_behavior ?? "",
     comment: execution?.notes ?? test.description ?? "",
-    tester: execution?.executed_by_name ?? undefined,
+    tester: assignedName ?? execution?.executed_by_name ?? undefined,
+    assignedTo: test.assigned_to ?? undefined,
     executedAt: execution?.execution_date,
     duration: execution?.duration_seconds ? `${execution.duration_seconds} s` : undefined,
     evidence: [],
@@ -300,6 +367,7 @@ export function mapBackendUser(user: BackendUser): PlatformUser {
 }
 
 export function mapBackendCampaign(campaign: BackendCampaign, project?: BackendProject) {
+  const testLeads = (campaign.test_lead_names ?? []).map(String);
   return {
     id: String(campaign.id),
     productId: project?.product_id ? String(project.product_id) : "",
@@ -308,7 +376,7 @@ export function mapBackendCampaign(campaign: BackendCampaign, project?: BackendP
     type: campaign.organization_mode ?? "exploratoire",
     version: "",
     environment: "",
-    owner: "",
+    owner: testLeads[0] ?? "",
     status: campaign.status === "in_progress"
       ? "encours"
       : campaign.status === "completed"
@@ -316,21 +384,25 @@ export function mapBackendCampaign(campaign: BackendCampaign, project?: BackendP
         : campaign.status === "planning"
           ? "planifiee"
           : "avenir",
+    isArchived: campaign.status === "archived",
     startDate: campaign.start_date ?? "",
     endDate: campaign.end_date ?? "",
-    testers: (campaign.testers ?? []).map(String),
-    developers: (campaign.developers ?? []).map(String),
+    testers: (campaign.tester_names ?? []).map(String),
+    developers: (campaign.developer_names ?? []).map(String),
+    testLeads,
   } as const;
 }
 
 export function mapBackendProduct(product: BackendProduct) {
+  const qaLead = product.quality_manager_name ?? "";
   return {
     id: String(product.id),
     name: product.name,
     description: product.description ?? "",
-    owner: "",
-    qaLead: "",
-    qaTeam: [],
+    isArchived: product.is_archived ?? false,
+    owner: product.owner_name ?? "",
+    qaLead,
+    qaTeam: qaLead ? [qaLead] : [],
     versions: [],
     score: 0,
     breakdown: {
@@ -347,6 +419,7 @@ export function mapBackendProduct(product: BackendProduct) {
 }
 
 export function mapBackendProject(project: BackendProject) {
+  const leads = (project.test_lead_names ?? []).map(String);
   return {
     id: String(project.id),
     productId: project.product_id ? String(project.product_id) : "",
@@ -354,10 +427,11 @@ export function mapBackendProject(project: BackendProject) {
     objective: project.description ?? "",
     targetVersion: "",
     status: project.is_archived ? "termine" : "encours",
+    isArchived: project.is_archived ?? false,
     startDate: project.start_date ?? "",
     endDate: project.end_date ?? "",
-    manager: "",
-    qaLead: "",
+    manager: leads[0] ?? "",
+    qaLead: leads[1] ?? leads[0] ?? "",
     progress: 0,
   } as const;
 }
@@ -400,14 +474,15 @@ export function mapBackendRequirement(requirement: BackendRequirement): Requirem
   } as const;
   const status: RequirementStatus =
     statusMap[requirement.status as keyof typeof statusMap] ?? "brouillon";
+  const ids = requirement.feature_ids?.length ? requirement.feature_ids : [requirement.feature_id];
   return {
     id: String(requirement.id),
-    productId: "",
+    productId: requirement.product_id != null ? String(requirement.product_id) : "",
     title: requirement.title,
     description: requirement.description ?? "",
-    priority: "moyenne",
+    priority: fromBackendPriority(requirement.priority),
     status,
-    featureIds: [String(requirement.feature_id)],
+    featureIds: ids.filter((id): id is number => id != null).map(String),
   };
 }
 
@@ -482,6 +557,16 @@ export async function updateGoLiveChecklistItem(releaseRef: string, itemId: stri
 export async function getGoLiveDecisions(releaseRef?: string) {
   const query = releaseRef ? `?releaseRef=${encodeURIComponent(releaseRef)}` : "";
   return api<{ data: BackendGoLiveDecision[] }>(`/go-live/decisions${query}`);
+}
+
+/** Preuves (captures d'écran, images) rattachées à une décision Go Live. */
+export async function getEvidenceByEntity(
+  entityType: string,
+  entityId: number,
+) {
+  return api<{ data: BackendEvidence[] }>(
+    `/evidence/by-entity/${encodeURIComponent(entityType)}/${entityId}`,
+  );
 }
 
 export async function createGoLiveDecision(payload: {
@@ -592,6 +677,26 @@ export function toBackendRequirementStatus(status?: string | null): string {
   return map[status ?? ""] ?? "proposed";
 }
 
+export function toBackendRequirementPriority(priority?: string | null): string {
+  const map: Record<string, string> = {
+    basse: "low",
+    moyenne: "medium",
+    haute: "high",
+    critique: "critical",
+  };
+  return map[priority ?? ""] ?? "medium";
+}
+
+export function fromBackendPriority(priority?: string | null): Criticality {
+  const map: Record<string, Criticality> = {
+    low: "basse",
+    medium: "moyenne",
+    high: "haute",
+    critical: "critique",
+  };
+  return map[priority ?? ""] ?? "moyenne";
+}
+
 export function toBackendRequirementCategory(category?: string | null): string | undefined {
   const allowed = [
     "fonctionnelle",
@@ -635,6 +740,36 @@ export function toBackendReleaseStatus(status?: string | null): string {
   return map[status ?? ""] ?? "planned";
 }
 
+/** Convertit un statut backend (enum SQL) en statut de release du front. */
+export function fromBackendReleaseStatus(status?: string | null): ReleaseStatus {
+  switch (status) {
+    case "in_progress":
+      return "in_test";
+    case "released":
+      return "released";
+    case "cancelled":
+      return "archived";
+    default:
+      return "planning";
+  }
+}
+
+/**
+ * Mappe une release backend vers le modèle du front.
+ * `projectId` vient du rattachement produit → projet, la table releases n'ayant pas
+ * de colonne projet côté base.
+ */
+export function mapBackendRelease(release: BackendRelease, projectId: string): Release {
+  return {
+    id: String(release.id),
+    projectId,
+    version: release.version,
+    plannedDate: release.planned_date?.slice(0, 10) ?? "",
+    environment: "",
+    status: fromBackendReleaseStatus(release.status),
+  };
+}
+
 export function toBackendWatchStatus(status?: string | null): string {
   const map: Record<string, string> = {
     ouvert: "open",
@@ -655,16 +790,21 @@ export function toBackendWatchCriticality(level?: string | null): string {
 
 /* ── Produits ---------------------------------------------------------------- */
 
-export async function createProduct(payload: { name: string | undefined; description: string | undefined; owner_id?: number | null; quality_manager_id?: number | null }) {
+export async function createProduct(payload: { name: string | undefined; description: string | undefined; owner_id?: number | null; owner_name?: string | null; quality_manager_id?: number | null }) {
   return api<{ product: BackendProduct }>("/products", { method: "POST", body: JSON.stringify(payload) });
 }
 
-export async function updateProductById(id: number, patch: { name: string | undefined; description: string | undefined; owner_id?: number | null; quality_manager_id?: number | null }) {
+export async function updateProductById(id: number, patch: { name: string | undefined; description: string | undefined; owner_id?: number | null; owner_name?: string | null; quality_manager_id?: number | null }) {
   return api<{ product: BackendProduct }>(`/products/${id}`, { method: "PUT", body: JSON.stringify(patch) });
 }
 
 export async function deleteProductById(id: number) {
   return api<void>(`/products/${id}`, { method: "DELETE" });
+}
+
+/** Archive ou restaure un produit. L'archivage est reversible. */
+export async function archiveProductById(id: number, archive: boolean) {
+  return api<{ product: BackendProduct }>(`/products/${id}/${archive ? "archive" : "unarchive"}`, { method: "PATCH" });
 }
 
 /* ── Projets ----------------------------------------------------------------- */
@@ -686,6 +826,10 @@ export async function updateProjectById(id: number, patch: BackendProjectPayload
   return api<{ project: BackendProject }>(`/projects/${id}`, { method: "PUT", body: JSON.stringify(patch) });
 }
 
+/**
+ * Archive ou restaure un projet. L'archivage est reversible et met en sourdine
+ * les campagnes liees ; contrairement au DELETE, il ne detruit rien.
+ */
 export async function archiveProjectById(id: number, archive: boolean) {
   return api<{ project: BackendProject }>(`/projects/${id}/${archive ? "archive" : "unarchive"}`, { method: "PATCH" });
 }
@@ -749,6 +893,7 @@ export async function createTestCase(payload: {
   steps_text?: string;
   priority?: string;
   type?: string;
+  assigned_to?: number | null;
 }) {
   const body: Record<string, unknown> = {
     campaign_id: payload.campaign_id,
@@ -758,13 +903,27 @@ export async function createTestCase(payload: {
     expected_result: payload.expected_result,
     priority: payload.priority,
     test_type: payload.type,
+    assigned_to: payload.assigned_to ?? null,
   };
   if (payload.steps) body["steps"] = payload.steps.join("\n");
   else if (payload.steps_text) body["steps"] = payload.steps_text;
   return api<BackendTestCase>("/test-cases", { method: "POST", body: JSON.stringify(body) });
 }
 
-export async function updateTestCaseById(id: number, patch: { name?: string; description?: string; expected_result?: string; steps?: string[]; steps_text?: string; priority?: string; type?: string }) {
+export async function updateTestCaseById(
+  id: number,
+  patch: {
+    name?: string;
+    description?: string;
+    expected_result?: string;
+    steps?: string[];
+    steps_text?: string;
+    priority?: string;
+    type?: string;
+    /** `null` retire le testeur affecte ; absent = ne pas toucher a l'affectation. */
+    assigned_to?: number | null;
+  },
+) {
   const body: Record<string, unknown> = {
     name: patch.name,
     description: patch.description,
@@ -772,6 +931,9 @@ export async function updateTestCaseById(id: number, patch: { name?: string; des
     priority: patch.priority,
     type: patch.type,
   };
+  // La cle n'est presente que si l'appelant l'a fournie : envoyer `undefined`
+  // la transformerait en `null` apres serialisation et effacerait l'affectation.
+  if (patch.assigned_to !== undefined) body["assigned_to"] = patch.assigned_to;
   if (patch.steps) body["steps"] = patch.steps.join("\n");
   else if (patch.steps_text) body["steps"] = patch.steps_text;
   return api<BackendTestCase>(`/test-cases/${id}`, { method: "PUT", body: JSON.stringify(body) });
@@ -828,11 +990,22 @@ export async function deleteAnomalyById(id: number) {
 
 /* ── Exigences --------------------------------------------------------------- */
 
-export async function createRequirement(payload: { feature_id: number; title: string; description?: string; category?: string; status?: string }) {
+export type RequirementPayload = {
+  feature_id?: number | null | undefined;
+  feature_ids?: number[] | undefined;
+  product_id?: number | null | undefined;
+  title?: string | undefined;
+  description?: string | undefined;
+  category?: string | undefined;
+  status?: string | undefined;
+  priority?: string | undefined;
+};
+
+export async function createRequirement(payload: RequirementPayload) {
   return api<BackendRequirement>("/requirements", { method: "POST", body: JSON.stringify(payload) });
 }
 
-export async function updateRequirementById(id: number, patch: { title: string | undefined; description: string | undefined; status: string | undefined }) {
+export async function updateRequirementById(id: number, patch: Partial<RequirementPayload>) {
   return api<BackendRequirement>(`/requirements/${id}`, { method: "PUT", body: JSON.stringify(patch) });
 }
 
@@ -864,6 +1037,10 @@ export async function deleteWatchPointById(id: number) {
 }
 
 /* ── Releases (rattachées à un produit) -------------------------------------- */
+
+export async function listReleases(productId: number) {
+  return api<BackendRelease[]>(`/products/${productId}/releases`);
+}
 
 export async function createRelease(productId: number, payload: { version: string | undefined; description?: string; status: string | undefined; planned_date: string | undefined }) {
   return api<{ release: BackendRelease }>(`/products/${productId}/releases`, { method: "POST", body: JSON.stringify(payload) });
@@ -971,11 +1148,14 @@ export const NOTIFICATION_TYPES_BACKEND_TO_FRONT: Record<string, NotificationTyp
   reopened: "defect_status",
   feature_conforme: "defect_status",
   task_assigned: "test_assign",
+  test_case_assigned: "test_assign",
   member_added: "campaign",
   campaign_created: "campaign",
   campaign_completed: "campaign",
   product_created: "product",
   project_created: "project",
+  project_archived: "project",
+  go_live_decision: "golive",
   password_forgot: "system",
 };
 
