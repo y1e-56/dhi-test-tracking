@@ -60,21 +60,35 @@ export function projectVisibleTo(
 }
 
 /**
- * Acces a une campagne : les roles qualite (vue complete) voient tout, sinon
- * l'utilisateur doit etre membre de la campagne — chef testeur, testeur ou
- * developpeur. Le produit ne donne plus acces a lui seul : etre owner ou QA d'un
- * produit ne doit pas ouvrir toutes les campagnes de ce produit a un chef
- * testeur qui n'y est pas affecte.
+ * Roles transverses : ils n'exercent pas de role operationnel sur une campagne
+ * mais ont une vue d'ensemble (le lecteur est en lecture seule partout). Sans
+ * cette exception, ils ne verraient aucune campagne du tout, puisque l'acces
+ * campagne passe par l'affectation.
+ */
+const TRANSVERSE_ROLES: AppRole[] = ["lecteur"];
+
+/**
+ * Acces a une campagne : les roles qualite (vue complete) voient tout, les roles
+ * transverses voient les campagnes de leurs produits, sinon l'utilisateur doit
+ * etre membre de la campagne — chef testeur, testeur ou developpeur. Etre owner
+ * ou QA d'un produit ne suffit pas pour un role operationnel : sinon un chef
+ * testeur voyait toutes les campagnes du produit.
  */
 export function campaignVisibleTo(
   campaign: Campaign,
-  _products: Product[],
+  products: Product[],
   user: SessionUser | null,
 ): boolean {
   if (!user) return false;
   if (userCanAccessAll(user)) return true;
   const name = user.name;
   if (!name) return false;
+  if (
+    hasAnyRole(user, ...TRANSVERSE_ROLES) &&
+    products.some((p) => p.id === campaign.productId && productVisibleTo(p, user))
+  ) {
+    return true;
+  }
   return (
     campaign.owner === name ||
     (Array.isArray(campaign.testLeads) && campaign.testLeads.includes(name)) ||

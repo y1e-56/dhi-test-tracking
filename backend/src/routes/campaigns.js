@@ -17,13 +17,23 @@ const userHasAnyRole = (req, roles) => getUserRoles(req.user).some((r) => roles.
 const FULL_ACCESS_ROLES = ['admin', 'quality_manager', 'product_owner', 'qa_lead'];
 
 /**
- * L'utilisateur est-il membre de la campagne ? Chef testeur affecte, testeur ou
- * developpeur. C'est le seul moyen d'acceder a une campagne pour qui n'a pas la
- * vue complete : etre owner ou QA d'un produit ne suffit pas.
+ * Roles transverses : pas de role operationnel sur les campagnes, mais une vue
+ * d'ensemble attendue (le lecteur est en lecture seule sur tout). Ils voient les
+ * campagnes des produits dont ils sont owner ou QA.
  */
-function isCampaignMember(campaign, userId) {
+const TRANSVERSE_ROLES = ['lecteur'];
+
+const isTransverse = (req) => userHasAnyRole(req, TRANSVERSE_ROLES);
+
+/**
+ * L'utilisateur peut-il voir cette campagne ? Chef testeur affecte, testeur ou
+ * developpeur. Pour les roles transverses, l'affectation au produit suffit.
+ */
+function canSeeCampaign(req, campaign) {
   if (!campaign) return false;
-  const contains = (list) => Array.isArray(list) && list.map(Number).includes(Number(userId));
+  if (isTransverse(req)) return true;
+  const userId = Number(req.user.id);
+  const contains = (list) => Array.isArray(list) && list.map(Number).includes(userId);
   return contains(campaign.test_leads) || contains(campaign.testers) || contains(campaign.developers);
 }
 
@@ -88,8 +98,9 @@ const createSchema = z.object({
  *       401: { $ref: '#/components/responses/Unauthorized' }
  */
 router.get('/', authenticate, async (req, res) => {
-  // Hors roles qualite, on ne renvoie que les campagnes ou l'utilisateur est membre.
-  const scoped = !userHasAnyRole(req, FULL_ACCESS_ROLES);
+  // Hors roles qualite et transverses, on ne renvoie que les campagnes ou
+  // l'utilisateur est membre.
+  const scoped = !userHasAnyRole(req, FULL_ACCESS_ROLES) && !isTransverse(req);
   const { page, limit, ...filters } = req.query;
   if (page || limit || filters.recherche || filters.statut || filters.chefTesteurId || filters.project_id || filters.projectId) {
     const result = await campaignService.listCampaignsPaginated({
@@ -103,7 +114,7 @@ router.get('/', authenticate, async (req, res) => {
       dateFin: filters.dateFin || undefined,
     });
     if (!scoped) return res.json(result);
-    const items = result.data.filter((c) => isCampaignMember(c, req.user.id));
+    const items = result.data.filter((c) => canSeeCampaign(req, c));
     return res.json({
       data: items,
       pagination: { ...result.pagination, total: items.length, totalPages: 1 },
@@ -111,7 +122,7 @@ router.get('/', authenticate, async (req, res) => {
   }
   const projectId = filters.project_id ? Number(filters.project_id) : filters.projectId ? Number(filters.projectId) : undefined;
   const campaigns = await campaignService.listCampaigns(projectId);
-  res.json(scoped ? campaigns.filter((c) => isCampaignMember(c, req.user.id)) : campaigns);
+  res.json(scoped ? campaigns.filter((c) => canSeeCampaign(req, c)) : campaigns);
 });
 
 /**
@@ -137,7 +148,7 @@ router.get('/', authenticate, async (req, res) => {
  */
 router.get('/:id', authenticate, async (req, res) => {
   const campaign = await campaignService.getCampaign(Number(req.params.id));
-  if (!userHasAnyRole(req, FULL_ACCESS_ROLES) && !isCampaignMember(campaign, req.user.id)) {
+  if (!userHasAnyRole(req, FULL_ACCESS_ROLES) && !canSeeCampaign(req, campaign)) {
     return res.status(403).json({ error: 'Vous n\'êtes pas membre de cette campagne' });
   }
   res.json(campaign);
@@ -180,10 +191,12 @@ router.get('/:id', authenticate, async (req, res) => {
 router.post('/', authenticate, requireCampaignCreator, async (req, res) => {
   const data = createSchema.parse(req.body);
 
-  // Le chef testeur qui crée la campagne est automatiquement chef de cette campagne
-  const chefTesteurRoles = ['chef_testeur', 'test_lead'];
+  // Le createur est automatiquement chef de la campagne qu'il cree. Sans cela il
+  // la creerait puis ne pourrait plus y acceder : l'acces campagne passe par
+  // l'affectation. Un chef testeur simple cree aussi, il doit donc y etre inscrit.
+  const creatorRoles = ['chef_testeur', 'test_lead', 'chef_projet'];
   let test_lead_ids = data.test_lead_ids || [];
-  if (userHasAnyRole(req, chefTesteurRoles)) {
+  if (userHasAnyRole(req, creatorRoles)) {
     test_lead_ids = [...new Set([...test_lead_ids, req.user.id])];
   }
 
