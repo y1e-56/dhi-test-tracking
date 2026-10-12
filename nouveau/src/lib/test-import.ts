@@ -40,6 +40,25 @@ export type ParsedTestRow = {
   errors: string[];
 };
 
+/** Une ligne importable ne doit porter aucune erreur de validation. */
+export function isImportableRow(row: ParsedTestRow): boolean {
+  return row.errors.length === 0 && row.name.trim().length > 0 && row.featureId.length > 0;
+}
+
+/** Normalise une valeur : minuscules, sans accents, sans espaces superflus. */
+function normalizeToken(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .toLowerCase();
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export function parseCsvLine(line: string): string[] {
   const result: string[] = [];
   let cur = "";
@@ -53,7 +72,7 @@ export function parseCsvLine(line: string): string[] {
       } else {
         inQuotes = !inQuotes;
       }
-    } else if (c === CSV_SEP && !inQuotes) {
+    } else if ((c === CSV_SEP || c === "\t") && !inQuotes) {
       result.push(cur);
       cur = "";
     } else {
@@ -64,41 +83,112 @@ export function parseCsvLine(line: string): string[] {
   return result;
 }
 
+/** Découpe l'intégralité d'un CSV en enregistrements (gère les guillemets, `;`/tabulations et retours à la ligne encadrés). */
+function parseCsvRecords(text: string): string[][] {
+  const records: string[][] = [];
+  let cells: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cur += c;
+      }
+    } else if (c === '"') {
+      inQuotes = true;
+    } else if (c === CSV_SEP || c === "\t") {
+      cells.push(cur);
+      cur = "";
+    } else if (c === "\n") {
+      cells.push(cur);
+      records.push(cells);
+      cells = [];
+      cur = "";
+    } else if (c === "\r") {
+      if (text[i + 1] !== "\n") {
+        cells.push(cur);
+        records.push(cells);
+        cells = [];
+        cur = "";
+      }
+    } else {
+      cur += c;
+    }
+  }
+  cells.push(cur);
+  records.push(cells);
+  return records.filter((r) => r.some((c) => c.trim().length > 0));
+}
+
 function normalizeCrit(value: string, errors: string[]): Criticality {
-  const c = value.trim().toLowerCase() as Criticality;
+  const c = normalizeToken(value) as Criticality;
+  if (!c) return "moyenne";
   if (CRITICALITIES.includes(c)) return c;
-  if (c) errors.push(`Criticité invalide: ${c}`);
+  errors.push(`Criticité invalide: ${value.trim()}`);
   return "moyenne";
 }
 
 function normalizeType(value: string, errors: string[]): TestType {
-  const c = value.trim().toLowerCase().replace(/[\s-]+/g, "_") as TestType;
+  const c = normalizeToken(value).replace(/[\s-]+/g, "_") as TestType;
+  if (!c) return "fonctionnel";
   if (TEST_TYPES.includes(c)) return c;
-  if (c) errors.push(`Type invalide: ${c.replace(/_/g, " ")}`);
+  errors.push(`Type invalide: ${value.trim().replace(/_/g, " ")}`);
   return "fonctionnel";
 }
 
+/**
+ * Résout une fonctionnalité à partir d'un ID exact (`f-auth`), d'un nom,
+ * d'un code CDC (`FCT-01`, stocké dans `module`), du format « Nom (ID) »
+ * (même imbriqué) ou d'une correspondance partielle.
+ * Renvoie "" si la valeur non vide ne correspond à aucune fonctionnalité.
+ */
 export function resolveFeatureId(value: string, features: Feature[]): string {
   const v = value.trim();
   if (!v) return features[0]?.id ?? "";
-  const byModule = features.find((f) => f.module && f.module.trim().toLowerCase() === v.toLowerCase());
-  if (byModule) return byModule.id;
-  const byId = features.find((f) => f.id.toLowerCase() === v.toLowerCase());
+  const lv = normalizeToken(v);
+
+  const byId = features.find((f) => normalizeToken(f.id) === lv);
   if (byId) return byId.id;
-  const m = v.match(/\(([^)]+)\)\s*$/);
-  if (m && m[1]) {
-    const innerId = m[1].trim();
-    const byInnerModule = features.find(
-      (f) => f.module && f.module.trim().toLowerCase() === innerId.toLowerCase(),
-    );
-    if (byInnerModule) return byInnerModule.id;
-    const byInner = features.find((f) => f.id.toLowerCase() === innerId.toLowerCase());
-    if (byInner) return byInner.id;
-  }
-  const byName = features.find((f) => f.name.toLowerCase() === v.toLowerCase());
+
+  const byModule = features.find((f) => f.module && normalizeToken(f.module) === lv);
+  if (byModule) return byModule.id;
+
+  const byParen = features.find(
+    (f) =>
+      new RegExp(`\\(\\s*${escapeRegExp(f.id)}\\s*\\)`, "i").test(v) ||
+      (f.module ? new RegExp(`\\(\\s*${escapeRegExp(f.module)}\\s*\\)`, "i").test(v) : false),
+  );
+  if (byParen) return byParen.id;
+
+  const byName = features.find((f) => normalizeToken(f.name) === lv);
   if (byName) return byName.id;
-  const byPartial = features.find((f) => f.name.toLowerCase().includes(v.toLowerCase()));
-  return byPartial?.id ?? features[0]?.id ?? "";
+
+  const byContains = features.find(
+    (f) =>
+      lv.includes(normalizeToken(f.id)) ||
+      lv.includes(normalizeToken(f.name)) ||
+      (f.module ? lv.includes(normalizeToken(f.module)) : false),
+  );
+  return byContains?.id ?? "";
+}
+
+function hasFeatureRef(value: string, features: Feature[]): boolean {
+  const lv = normalizeToken(value);
+  if (!lv) return false;
+  return features.some(
+    (f) =>
+      lv.includes(normalizeToken(f.id)) ||
+      lv.includes(normalizeToken(f.name)) ||
+      (f.module ? lv.includes(normalizeToken(f.module)) : false),
+  );
 }
 
 function splitPipe(s: string): string[] {
@@ -108,71 +198,61 @@ function splitPipe(s: string): string[] {
     .filter(Boolean);
 }
 
-function splitLines(s: string): string[] {
-  return s
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
+function stripBullet(line: string): string {
+  return line.replace(/^[-*●•]\s+/, "").replace(/^\d+[.)]\s*/, "").trim();
 }
 
-function isNorHeader(line: string): string {
-  const l = line.trim().toLowerCase();
-  for (const k of [
-    "préconditions:",
-    "preconditions:",
-    "étapes:",
-    "etapes:",
-    "résultats attendus:",
-    "resultats attendus:",
-    "résultat attendu:",
-    "résultat obtenu:",
-    "resultat obtenu:",
-    "commentaire:",
-  ]) {
-    if (l.startsWith(k)) return k;
+type NorSection = "preconditions" | "steps" | "expected" | "observed" | "comment";
+
+function norSection(line: string): NorSection | null {
+  const l = normalizeToken(line);
+  if (/^preconditions?\s*:/.test(l)) return "preconditions";
+  if (/^etapes?\s*:/.test(l)) return "steps";
+  if (/^resultats?\s+obtenus?\s*:/.test(l)) return "observed";
+  if (/^resultats?\s+attendus?\s*:/.test(l)) return "expected";
+  if (/^commentaires?\s*:/.test(l)) return "comment";
+  return null;
+}
+
+function norMeta(line: string): { key: "criticality" | "type" | "tester"; value: string } | null {
+  const m = line.match(/^\s*(criticité|criticite|type|testeur|tester)\s*[:=]\s*(.*)$/i);
+  if (!m) return null;
+  const k = normalizeToken(m[1] ?? "");
+  const key = k === "criticite" ? "criticality" : k === "type" ? "type" : "tester";
+  return { key, value: (m[2] ?? "").trim() };
+}
+
+function nextNonEmptyLine(lines: string[], from: number): string | null {
+  for (let j = from + 1; j < lines.length; j++) {
+    const s = (lines[j] ?? "").trim();
+    if (s) return s;
   }
-  return "";
+  return null;
 }
 
 function parseNor(text: string, features: Feature[]): ParsedTestRow[] {
   const lines = text.split(/\r?\n/);
   const rows: ParsedTestRow[] = [];
-  let errors: string[] = [];
-  let cur = "";
+
+  let curTitle = "";
+  let section: NorSection | null = null;
+  let criticality: Criticality = "moyenne";
+  let type: TestType = "fonctionnel";
+  let tester = "";
+  let draftErrors: string[] = [];
   let preconditions: string[] = [];
   let steps: string[] = [];
   let expected: string[] = [];
   let observed: string[] = [];
   let comment = "";
-  let section = "";
 
-  const flush = () => {
-    if (cur.trim()) {
-      const normalizedP = splitLines(preconditions.join("\n"));
-      const normalizedS = steps
-        .map((s) => s.replace(/^\d+[.)]\s*/, ""))
-        .filter(Boolean);
-      const rowErrors = [...errors];
-      if (!cur.trim()) rowErrors.push("Nom vide");
-      const fid = resolveFeatureId(cur, features);
-      if (!fid) rowErrors.push("Fonctionnalité introuvable");
-      rows.push({
-        name: cur.trim(),
-        featureId: fid,
-        criticality: "moyenne",
-        type: "fonctionnel",
-        tester: "",
-        preconditions: normalizedP,
-        steps: normalizedS,
-        expected: splitLines(expected.join("\n")),
-        observed: splitLines(observed.join("\n")),
-        comment: comment.trim(),
-        _raw: {},
-        errors: rowErrors,
-      });
-    }
-    errors = [];
-    cur = "";
+  const resetDraft = () => {
+    curTitle = "";
+    section = null;
+    criticality = "moyenne";
+    type = "fonctionnel";
+    tester = "";
+    draftErrors = [];
     preconditions = [];
     steps = [];
     expected = [];
@@ -180,82 +260,114 @@ function parseNor(text: string, features: Feature[]): ParsedTestRow[] {
     comment = "";
   };
 
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line) continue;
-    const header = isNorHeader(line);
-    if (header) {
-      section = header;
+  const flush = () => {
+    const title = curTitle.trim();
+    if (!title) {
+      resetDraft();
+      return;
+    }
+    const rowErrors = [...draftErrors];
+    let fid = resolveFeatureId(title, features);
+    if (!fid && features.length === 1) fid = features[0]?.id ?? "";
+    if (!fid) rowErrors.push("Fonctionnalité introuvable");
+    rows.push({
+      name: title,
+      featureId: fid,
+      criticality,
+      type,
+      tester,
+      preconditions: [...preconditions],
+      steps: [...steps],
+      expected: [...expected],
+      observed: [...observed],
+      comment: comment.trim(),
+      _raw: {},
+      errors: rowErrors,
+    });
+    resetDraft();
+  };
+
+  let afterBlank = true;
+  for (let i = 0; i < lines.length; i++) {
+    const line = (lines[i] ?? "").trim();
+    if (!line) {
+      afterBlank = true;
       continue;
     }
-    const horiz = /^[-=_*+#]{3,}$/.test(line);
-    if (horiz) continue;
-    const numbered = /^\d+[.)]\s+/.test(line);
+    if (/^[-=_*+#]{3,}$/.test(line)) {
+      afterBlank = false;
+      continue;
+    }
+
+    const meta = norMeta(line);
+    if (meta) {
+      if (meta.key === "criticality") criticality = normalizeCrit(meta.value, draftErrors);
+      else if (meta.key === "type") type = normalizeType(meta.value, draftErrors);
+      else tester = meta.value;
+      afterBlank = false;
+      continue;
+    }
+
+    const sec = norSection(line);
+    if (sec) {
+      section = sec;
+      afterBlank = false;
+      continue;
+    }
+
     const bullet = /^[-*●•]\s+/.test(line);
+    const numbered = /^\d+[.)]\s+/.test(line);
 
-    // Simple "titre de test" = ligne "Texte (id-feature)" au niveau 1
-    if (!section && !bullet && !numbered) {
-      flush();
-      cur = line;
+    if (!bullet && !numbered) {
+      const next = nextNonEmptyLine(lines, i);
+      const startsBlock =
+        !curTitle.trim() ||
+        (afterBlank &&
+          (hasFeatureRef(line, features) ||
+            (next !== null && (norSection(next) !== null || norMeta(next) !== null))));
+      if (startsBlock) {
+        flush();
+        curTitle = line;
+        afterBlank = false;
+        continue;
+      }
+    }
+
+    const content = stripBullet(line);
+    if (!content) {
+      afterBlank = false;
       continue;
     }
-
-    if (section.startsWith("pré") || section.startsWith("pre")) {
-      if (bullet) preconditions.push(line.replace(/^[-*●•]\s+/, ""));
-      else preconditions.push(line.replace(/^\d+[.)]\s*/, ""));
-    } else if (section.startsWith("ét") || section.startsWith("et")) {
-      if (bullet) steps.push(line.replace(/^[-*●•]\s+/, ""));
-      else steps.push(line);
-    } else if (section.startsWith("rés") || section.startsWith("res")) {
-      if (bullet) expected.push(line.replace(/^[-*●•]\s+/, ""));
-      else expected.push(line.replace(/^\d+[.)]\s*/, ""));
-    } else if (section.startsWith("résultat obtenu") || section.startsWith("resultat obtenu")) {
-      if (bullet) observed.push(line.replace(/^[-*●•]\s+/, ""));
-      else observed.push(line.replace(/^\d+[.)]\s*/, ""));
-    } else if (section.startsWith("commentaire")) {
-      comment = comment ? `${comment}\n${line}` : line;
+    switch (section) {
+      case "preconditions":
+        preconditions.push(content);
+        break;
+      case "steps":
+        steps.push(content);
+        break;
+      case "expected":
+        expected.push(content);
+        break;
+      case "observed":
+        observed.push(content);
+        break;
+      case "comment":
+        comment = comment ? `${comment}\n${content}` : content;
+        break;
+      default:
+        break;
     }
+    afterBlank = false;
   }
+
   flush();
   return rows;
 }
 
-/**
- * Résolution stricte, utilisée par le parseur CSV qui dispose d'une colonne
- * fonctionnalité : une référence non vide mais inconnue renvoie "" pour que la
- * ligne soit signalée en erreur, plutôt que rattachée à la première
- * fonctionnalité du produit. Un code FCT-99 mal saisi ne doit pas devenir
- * silencieusement le test d'une autre fonctionnalité.
- */
-function resolveFeatureStrict(value: string, features: Feature[]): string {
-  const v = value.trim();
-  if (!v) return features[0]?.id ?? "";
-  const direct = features.find(
-    (f) =>
-      (f.module && f.module.trim().toLowerCase() === v.toLowerCase()) ||
-      f.id.toLowerCase() === v.toLowerCase() ||
-      f.name.toLowerCase() === v.toLowerCase(),
-  );
-  if (direct) return direct.id;
-  const inner = v.match(/\(([^)]+)\)\s*$/);
-  if (inner?.[1]) {
-    const innerValue = inner[1].trim().toLowerCase();
-    const byInner = features.find(
-      (f) =>
-        (f.module && f.module.trim().toLowerCase() === innerValue) ||
-        f.id.toLowerCase() === innerValue,
-    );
-    if (byInner) return byInner.id;
-  }
-  const target = v.toLowerCase();
-  const byPartial = features.find((f) => f.name.toLowerCase().includes(target));
-  return byPartial?.id ?? "";
-}
-
 function parseCsv(text: string, features: Feature[]): ParsedTestRow[] {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  if (lines.length < 2) return [];
-  const headerCells = parseCsvLine(lines[0] ?? "").map((h) => h.trim().toLowerCase());
+  const records = parseCsvRecords(text);
+  if (records.length < 2) return [];
+  const headerCells = (records[0] ?? []).map((h) => normalizeToken(h));
   const idx = (name: string) => headerCells.indexOf(name);
   const iNom = idx("nom");
   const iFeat = idx("fonctionnalite");
@@ -265,23 +377,21 @@ function parseCsv(text: string, features: Feature[]): ParsedTestRow[] {
   const iPrec = idx("preconditions");
   const iSteps = idx("steps");
   const iExp = idx("resultat_attendu") >= 0 ? idx("resultat_attendu") : idx("expected");
-  const iObs =
-    idx("resultat_obtenu") >= 0 ? idx("resultat_obtenu") : idx("observed");
-  const iComment =
-    idx("commentaires") >= 0 ? idx("commentaires") : idx("comment");
+  const iObs = idx("resultat_obtenu") >= 0 ? idx("resultat_obtenu") : idx("observed");
+  const iComment = idx("commentaires") >= 0 ? idx("commentaires") : idx("comment");
   if (iNom < 0) return [];
 
   const rows: ParsedTestRow[] = [];
-  for (let ln = 1; ln < lines.length; ln++) {
-    const cells = parseCsvLine(lines[ln] ?? "");
+  for (let ln = 1; ln < records.length; ln++) {
+    const cells = records[ln] ?? [];
     const errors: string[] = [];
     const raw: Record<string, string> = {};
     headerCells.forEach((h, i) => (raw[h] = (cells[i] ?? "").trim()));
-    const name = raw["nom"] ?? "";
+    const name = (cells[iNom] ?? "").trim();
     if (!name) errors.push("Nom vide");
     const featureVal = iFeat >= 0 ? cells[iFeat] ?? "" : "";
-    const fid = resolveFeatureStrict(featureVal, features);
-    if (!fid) errors.push(`Fonctionnalité introuvable : ${featureVal.trim()}`);
+    const fid = resolveFeatureId(featureVal, features);
+    if (!fid) errors.push("Fonctionnalité introuvable");
     const criticality = normalizeCrit(iCrit >= 0 ? cells[iCrit] ?? "" : "moyenne", errors);
     const type = normalizeType(iType >= 0 ? cells[iType] ?? "" : "fonctionnel", errors);
     const tester = iTesteur >= 0 ? (cells[iTesteur] ?? "").trim() : "";
@@ -308,12 +418,20 @@ function parseCsv(text: string, features: Feature[]): ParsedTestRow[] {
   return rows;
 }
 
+/**
+ * Détecte le format à partir du contenu (avec l'extension comme indice) :
+ * un fichier CSV possède un en-tête contenant la colonne « nom ».
+ */
 export function parseImportText(text: string, features: Feature[], filename: string): ParsedTestRow[] {
+  const clean = text.replace(/^\uFEFF/, "");
   const lower = filename.toLowerCase();
-  if (lower.endsWith(".txt")) {
-    return parseNor(text, features);
-  }
-  return parseCsv(text, features);
+  const headerCells = (parseCsvRecords(clean)[0] ?? []).map((h) => normalizeToken(h));
+  const looksCsv = headerCells.length > 1 && headerCells.includes("nom");
+
+  if (looksCsv) return parseCsv(clean, features);
+  if (/\.(txt|text|md|log|tab|nor)$/.test(lower)) return parseNor(clean, features);
+  const csvRows = parseCsv(clean, features);
+  return csvRows.length > 0 ? csvRows : parseNor(clean, features);
 }
 
 export function exportCsvTemplate(featureList: Feature[]): void {

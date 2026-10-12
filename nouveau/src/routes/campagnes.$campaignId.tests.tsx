@@ -1,8 +1,9 @@
 import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-router";
-import { Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/dhi/AppShell";
 import { CriticalityBadge, VerdictBadge } from "@/components/dhi/indicators";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -112,9 +113,22 @@ function CampaignTests() {
     >
       <div className="panel">
         <div className="border-b border-border px-4 py-3">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("pages.campaign_detail.rechercher_cas_test")} className="pl-8" />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="relative w-full max-w-sm">
+              <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("pages.campaign_detail.rechercher_cas_test")} className="pl-8" />
+            </div>
+            {!locked && canManageCampaign() ? (
+              <Button asChild size="sm">
+                <Link
+                  to="/campagnes/$campaignId/tests/ajouter"
+                  params={{ campaignId }}
+                  className="[&_svg]:size-3.5"
+                >
+                  <Plus /> {t("pages.campaign_detail.ajouter_un_test")}
+                </Link>
+              </Button>
+            ) : null}
           </div>
         </div>
         <Table>

@@ -19,7 +19,12 @@ import { getUser, campaignVisibleTo, campaignTesterOptions } from "@/lib/access"
 import { CampaignAccessDenied } from "@/components/dhi/AccessDenied";
 import { canManageCampaign } from "@/lib/role-protection";
 import { campaigns as seedCampaigns, type Criticality, type TestType } from "@/lib/dhi-data";
-import { exportCsvTemplate, exportNorTemplate, parseImportText } from "@/lib/test-import";
+import {
+  exportCsvTemplate,
+  exportNorTemplate,
+  isImportableRow,
+  parseImportText,
+} from "@/lib/test-import";
 import { campaignTabs } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
 
@@ -128,10 +133,15 @@ function AddTestPage() {
     reader.onload = () => {
       const text = String(reader.result ?? "");
       const rows = parseImportText(text, campaignFeatures, file.name);
-      const row = rows.find((r) => r.name.trim()) ?? rows[0];
+      const row = rows.find(isImportableRow) ?? rows.find((r) => r.name.trim()) ?? rows[0];
       if (!row) {
         toast.error(t("pages.campaign_detail.fichier_invalide"));
         return;
+      }
+      if (rows.length > 0 && !rows.some(isImportableRow)) {
+        toast.error(t("pages.campaign_detail.import_ok_bad")
+          .replace("{ok}", "0")
+          .replace("{bad}", String(rows.length)));
       }
       // Un nom de testeur du CSV qui ne correspond à aucun compte existant ne
       // peut pas être enregistré : on l'ignore et on le signale, plutôt que de
