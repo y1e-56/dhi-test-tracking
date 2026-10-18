@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/dhi/AppShell";
 import { DefectStatusBadge, KpiCard, SeverityBadge } from "@/components/dhi/indicators";
+import { isCorrectionOverdue } from "@/lib/rules";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -149,14 +150,17 @@ function DefectsPage() {
 }
 
 function DefectsList() {
-  const { defects, tests, campaigns } = useStore();
+  const { defects, tests, campaigns, products } = useStore();
   const { t } = useI18n();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const viewable = useMemo(() => visibleDefects(defects, getUser()), [defects]);
+  const viewable = useMemo(
+    () => visibleDefects(defects, getUser(), campaigns, products),
+    [defects, campaigns, products],
+  );
 
   const rows = useMemo(
     () =>
@@ -282,6 +286,14 @@ function DefectsList() {
                 </TableCell>
                 <TableCell>
                   <DefectStatusBadge status={d.status} />
+                  {isCorrectionOverdue(d) ? (
+                    <span
+                      className="ml-1.5 mt-1 inline-flex whitespace-nowrap rounded-full border border-danger/30 bg-danger-soft px-2 py-0.5 text-[11px] font-medium text-danger"
+                      title={t("pages.anomalies.overdue_hint")}
+                    >
+                      {t("pages.anomalies.overdue")}
+                    </span>
+                  ) : null}
                 </TableCell>
                 <TableCell className="text-sm">{d.assignee}</TableCell>
                 <TableCell className="num text-sm text-muted-foreground">{d.createdAt}</TableCell>

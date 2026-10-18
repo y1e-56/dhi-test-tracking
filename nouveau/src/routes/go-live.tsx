@@ -9,6 +9,16 @@ import { AppShell } from "@/components/dhi/AppShell";
 import { KpiCard, Panel } from "@/components/dhi/indicators";
 import { GoLiveScreenshots } from "@/components/dhi/GoLiveScreenshots";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -17,6 +27,8 @@ import { GOLIVE_VERDICT_LABEL, type GoLiveVerdict } from "@/lib/dhi-data";
 
 import { useI18n } from "@/lib/i18n";
 import { campaignStats, useStore } from "@/lib/dhi-store";
+import { goLiveCheck, releaseOpenHighDefects, type GoLiveCheck } from "@/lib/go-live";
+import { RULE_MODE_LABEL } from "@/lib/rules";
 import { cn } from "@/lib/utils";
 
 /* ==============================
@@ -46,6 +58,7 @@ function GoLivePage() {
     defects,
     goLiveChecklist,
     goLiveDecisions,
+    rules,
     currentUser,
     toggleChecklistItem,
     addGoLiveDecision,
@@ -53,17 +66,23 @@ function GoLivePage() {
 
   const pending = releases.filter((r) => r.status !== "released");
   const { releaseId: releaseIdParam } = Route.useSearch();
-  const [releaseId, setReleaseId] = useState(
-    releaseIdParam && releases.some((r) => r.id === releaseIdParam)
+  // Release dérivée tant que l'utilisateur n'a rien choisi : les versions
+  // arrivent du serveur après le premier rendu, un état figé à l'ouverture
+  // perdait le lien `?releaseId=` (sélecteur vide, historique de toutes les releases).
+  const [pickedRelease, setReleaseId] = useState<string | null>(null);
+  const releaseId =
+    pickedRelease ??
+    (releaseIdParam && releases.some((r) => r.id === releaseIdParam)
       ? releaseIdParam
-      : (pending[0]?.id ?? releases[0]?.id ?? ""),
-  );
+      : (pending[0]?.id ?? releases[0]?.id ?? ""));
   const [verdict, setVerdict] = useState<GoLiveVerdict>("GO");
   const [decider, setDecider] = useState<string>(currentUser?.name ?? "Jean Dupont");
   const [justification, setJustification] = useState("");
   /** Captures d'écran jointes à la décision, avec leur aperçu local. */
   const [shots, setShots] = useState<{ file: File; url: string }[]>([]);
   const [saving, setSaving] = useState(false);
+  /** Contrôle RG-9 / RG-10 à afficher (refus ou réserves à confirmer). */
+  const [ruleCheck, setRuleCheck] = useState<GoLiveCheck | null>(null);
   const shotsInputRef = useRef<HTMLInputElement | null>(null);
   // Lu uniquement au démontage : un cleanup dépendant de `shots` révoquerait
   // les aperçus déjà affichés à chaque nouvel ajout.
@@ -140,9 +159,9 @@ function GoLivePage() {
       t.verdict === "FAIL" &&
       t.criticality === "critique",
   );
-  const openHigh = defects.filter(
-    (d) => d.productId === product?.id && d.status !== "fermee" && d.severity === "haute",
-  );
+  // RG-9 : anomalies hautes ouvertes sur les campagnes qui visent cette version.
+  const openHigh = releaseOpenHighDefects(defects, campaigns, product?.id, release?.version);
+  const ruleVerdicts = goLiveCheck("GO", openHigh.length, completion, rules).verdicts;
   const execAvg = projCampaigns.length
     ? Math.round(
         projCampaigns.reduce((s, c) => s + campaignStats(tests, c.id).executionRate, 0) /
@@ -160,23 +179,16 @@ function GoLivePage() {
           : "OK",
       },
       {
-        ok: openHigh.length === 0,
-        label: t("pages.go_live.no_high_open"),
-        detail: openHigh.length
-          ? t("pages.go_live.open_count").replace("{count}", String(openHigh.length))
-          : "OK",
-      },
-      {
         ok: execAvg >= 95 || projCampaigns.length === 0,
         label: t("pages.go_live.exec_campaigns"),
         detail: `${execAvg} %`,
       },
     ],
-    [failedCritical.length, openHigh.length, execAvg, projCampaigns.length, t],
+    [failedCritical.length, execAvg, projCampaigns.length, t],
   );
   const blocked = gates.some((g) => !g.ok);
 
-  const decide = async () => {
+  const decide = () => {
     if (saving) return;
     if (!releaseId) {
       toast.error(t("pages.go_live.select_release"));
@@ -196,6 +208,16 @@ function GoLivePage() {
       toast.error(t("pages.go_live.login_required_for_images"));
       return;
     }
+    // RG-9 / RG-10 : refus ou réserves présentés avant tout envoi.
+    const check = goLiveCheck(verdict, openHigh.length, completion, rules);
+    if (check.refused.length > 0 || check.warnings.length > 0) {
+      setRuleCheck(check);
+      return;
+    }
+    void submit(false);
+  };
+
+  const submit = async (confirmed: boolean) => {
     setSaving(true);
     try {
       await addGoLiveDecision(
@@ -204,6 +226,7 @@ function GoLivePage() {
         decider,
         justification.trim(),
         shots.map((s) => s.file),
+        confirmed,
       );
       toast.success(`${t("pages.go_live.decision_saved")} ${GOLIVE_VERDICT_LABEL[verdict]}.`);
       setJustification("");
@@ -317,6 +340,24 @@ function GoLivePage() {
               >
                 <span>{g.label}</span>
                 <span className="num font-medium">{g.detail}</span>
+              </li>
+            ))}
+            {ruleVerdicts.map((v) => (
+              <li
+                key={v.id}
+                className={cn(
+                  "flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm",
+                  v.ok
+                    ? "border-success/30 bg-success-soft"
+                    : v.mode === "blocking"
+                      ? "border-danger/30 bg-danger-soft"
+                      : "border-warning/40 bg-warning-soft",
+                )}
+              >
+                <span>{v.message}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {RULE_MODE_LABEL[v.mode]}
+                </span>
               </li>
             ))}
           </ul>
@@ -461,7 +502,7 @@ function GoLivePage() {
                 </p>
               </div>
             </div>
-            <Button className="mt-4" onClick={() => void decide()} disabled={saving}>
+            <Button className="mt-4" onClick={decide} disabled={saving}>
               {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
               {t("pages.go_live.record_decision")}
             </Button>
@@ -470,6 +511,56 @@ function GoLivePage() {
           <p className="text-sm text-muted-foreground">{t("pages.go_live.no_permission")}</p>
         )}
       </Panel>
+
+      <AlertDialog open={ruleCheck !== null} onOpenChange={(o) => !o && setRuleCheck(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {ruleCheck?.refused.length
+                ? t("pages.go_live.decision_refused_title")
+                : t("pages.go_live.decision_confirm_title")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {ruleCheck?.refused.length
+                ? t("pages.go_live.decision_refused_hint")
+                : t("pages.go_live.decision_confirm_hint")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="space-y-1.5 text-sm">
+            {(ruleCheck?.refused.length
+              ? ruleCheck.refused.map((v) => v.message)
+              : (ruleCheck?.warnings ?? [])
+            ).map((reason) => (
+              <li
+                key={reason}
+                className={cn(
+                  "rounded-md border px-3 py-2",
+                  ruleCheck?.refused.length
+                    ? "border-danger/30 bg-danger-soft"
+                    : "border-warning/40 bg-warning-soft",
+                )}
+              >
+                {reason}
+              </li>
+            ))}
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRuleCheck(null)}>
+              {ruleCheck?.refused.length ? t("actions.fermer") : t("actions.annuler")}
+            </AlertDialogCancel>
+            {ruleCheck?.refused.length ? null : (
+              <AlertDialogAction
+                onClick={() => {
+                  setRuleCheck(null);
+                  void submit(true);
+                }}
+              >
+                {t("pages.go_live.decision_confirm_action")}
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Panel title={t("pages.go_live.history_title")}>
         {history.length === 0 ? (

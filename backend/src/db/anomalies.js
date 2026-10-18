@@ -62,6 +62,7 @@ export async function list(filters = {}, client = null) {
     LEFT JOIN features feat ON feat.id = a.feature_id
     INNER JOIN campaigns camp ON camp.id = a.campaign_id
     INNER JOIN projects proj ON proj.id = camp.project_id
+    LEFT JOIN releases rel ON rel.id = camp.release_id
     LEFT JOIN users reporter ON reporter.id = a.reported_by
     LEFT JOIN users assignee ON assignee.id = a.assigned_to
     LEFT JOIN users resolver ON resolver.id = a.resolved_by
@@ -75,6 +76,7 @@ export async function list(filters = {}, client = null) {
     camp.project_id,
     proj.name AS project_name,
     proj.product_id,
+    rel.version AS release_version,
     reporter.first_name AS reporter_first_name,
     reporter.last_name AS reporter_last_name,
     assignee.first_name AS assignee_first_name,
@@ -104,6 +106,7 @@ export async function findById(id, client = null) {
             camp.project_id,
             proj.name AS project_name,
             proj.product_id,
+            rel.version AS release_version,
       reporter.first_name AS reporter_first_name,
       reporter.last_name AS reporter_last_name,
       assignee.first_name AS assignee_first_name,
@@ -116,6 +119,7 @@ export async function findById(id, client = null) {
      LEFT JOIN features feat ON feat.id = a.feature_id
      LEFT JOIN campaigns camp ON camp.id = a.campaign_id
      LEFT JOIN projects proj ON proj.id = camp.project_id
+     LEFT JOIN releases rel ON rel.id = camp.release_id
      LEFT JOIN users reporter ON reporter.id = a.reported_by
      LEFT JOIN users assignee ON assignee.id = a.assigned_to
      LEFT JOIN users resolver ON resolver.id = a.resolved_by
@@ -130,10 +134,12 @@ export async function create(data, client = null) {
   const c = client || pool;
   const result = await c.query(
     `INSERT INTO anomalies (feature_id, campaign_id, test_case_id, description, reported_by, assigned_to, correction_due_date,
-       description_audio_data, description_audio_type, description_transcription, description_duration_seconds)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+       description_audio_data, description_audio_type, description_transcription, description_duration_seconds,
+       severity, priority)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
     [data.feature_id, data.campaign_id, data.test_case_id || null, data.description, data.reported_by || null, data.assigned_to || null, data.correction_due_date || null,
-     data.description_audio_data || null, data.description_audio_type || null, data.description_transcription || null, data.description_duration_seconds || null]
+     data.description_audio_data || null, data.description_audio_type || null, data.description_transcription || null, data.description_duration_seconds || null,
+     data.severity || 'medium', data.priority || 'medium']
   );
   return result.rows[0];
 }
@@ -142,7 +148,7 @@ export async function update(id, data, client = null) {
   const c = client || pool;
   const allowedFields = ['description', 'assigned_to', 'status', 'resolution_description', 'test_case_id', 'correction_due_date',
     'description_audio_data', 'description_audio_type', 'description_transcription', 'description_duration_seconds',
-    'resolved_by', 'validated_by'];
+    'resolved_by', 'validated_by', 'severity', 'priority'];
   const sets = [];
   const values = [];
   let idx = 1;
@@ -189,6 +195,24 @@ export async function syncCorrectionDueDateForFeature(featureId, dueDate, client
  * Nombre d'anomalies encore ouvertes (ni validees) d'une fonctionnalite ou
  * d'une campagne. Une anomalie rejetee est rouverte : elle compte comme ouverte.
  */
+/**
+ * RG-9 : anomalies de gravite haute (high, critical) encore ouvertes sur les
+ * campagnes qui visent cette release.
+ */
+export async function countOpenHighForRelease(releaseId, client = null) {
+  const c = client || pool;
+  const result = await c.query(
+    `SELECT COUNT(*)::int AS count
+     FROM anomalies a
+     INNER JOIN campaigns camp ON camp.id = a.campaign_id
+     WHERE camp.release_id = $1
+       AND a.severity IN ('high', 'critical')
+       AND a.status <> 'validated'`,
+    [releaseId]
+  );
+  return result.rows[0]?.count ?? 0;
+}
+
 export async function countOpen({ featureId = null, campaignId = null }, client = null) {
   const c = client || pool;
   const conditions = [`status <> 'validated'`];

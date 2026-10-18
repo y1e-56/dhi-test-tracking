@@ -25,6 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { loadSnapshot, useStore } from "@/lib/dhi-store";
+import { backendIdOf, createFeature, toBackendPriority } from "@/lib/api";
 import { isInteractiveClick } from "@/lib/clickable-row";
 import { campaigns as seedCampaigns, TEST_TYPES } from "@/lib/dhi-data";
 import { campaignTabs } from "@/lib/dhi-nav";
@@ -80,7 +81,9 @@ function CampaignFeatures() {
   const { campaignId } = Route.useParams();
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { campaigns, tests, features, updateCampaign } = useStore();
+  const { campaigns, tests, features, updateCampaign, deleteFeature, reloadFromBackend } =
+    useStore();
+  const [copying, setCopying] = useState(false);
   const campaign = campaigns.find((c) => c.id === campaignId);
 
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -119,24 +122,80 @@ function CampaignFeatures() {
     });
   };
 
-  const attach = () => {
+  /**
+   * Une fonctionnalité appartient à une seule campagne côté serveur : « rattacher »
+   * crée dans cette campagne une copie (nom, priorité, types de tests requis).
+   * La campagne d'origine garde son historique intact.
+   */
+  const attach = async () => {
     if (selected.size === 0) {
       toast.info(t("pages.campaign_detail.aucune_selectionnee"));
       return;
     }
-    const merged = new Set([...importedIds, ...selected]);
-    updateCampaign(campaignId, { featureIds: [...merged] });
-    toast.success(
-      t("pages.campaign_detail.import_fonctionnalites_ok").replace("{n}", String(selected.size)),
+    const campaignBackend = backendIdOf(campaignId);
+    if (!campaignBackend) {
+      // Hors base : comportement local d'origine.
+      const merged = new Set([...importedIds, ...selected]);
+      updateCampaign(campaignId, { featureIds: [...merged] });
+      toast.success(
+        t("pages.campaign_detail.import_fonctionnalites_ok").replace("{n}", String(selected.size)),
+      );
+      setSelected(new Set());
+      setPickerOpen(false);
+      return;
+    }
+    // Déjà présente dans la campagne (même nom) : pas de doublon.
+    const present = new Set(importedRows.map((f) => f.name.trim().toLowerCase()));
+    const toCopy = features.filter(
+      (f) =>
+        selected.has(f.id) && !importedIds.has(f.id) && !present.has(f.name.trim().toLowerCase()),
     );
-    setSelected(new Set());
-    setPickerOpen(false);
+    setCopying(true);
+    try {
+      const results = await Promise.allSettled(
+        toCopy.map((f) =>
+          createFeature({
+            campaign_id: campaignBackend,
+            name: f.name,
+            description: f.description,
+            priority: toBackendPriority(f.criticality),
+            coverage: f.coverage,
+            ...(f.module ? { module: f.module } : {}),
+          }),
+        ),
+      );
+      const copied = results.filter((r) => r.status === "fulfilled").length;
+      reloadFromBackend();
+      toast.success(
+        t("pages.campaign_detail.import_fonctionnalites_ok").replace("{n}", String(copied)),
+      );
+      if (copied < results.length) {
+        toast.error(
+          t("pages.campaign_detail.import_fonctionnalites_ko").replace(
+            "{n}",
+            String(results.length - copied),
+          ),
+        );
+      }
+      setSelected(new Set());
+      setPickerOpen(false);
+    } finally {
+      setCopying(false);
+    }
   };
 
+  /** Retirer = supprimer la copie de cette campagne, tant qu'elle n'a aucun cas de test. */
   const remove = (id: string) => {
-    const merged = new Set(importedIds);
-    merged.delete(id);
-    updateCampaign(campaignId, { featureIds: [...merged] });
+    if (tests.some((x) => x.campaignId === campaignId && x.featureId === id)) {
+      toast.error(t("pages.campaign_detail.retrait_fonctionnalite_cas"));
+      return;
+    }
+    if (backendIdOf(id)) deleteFeature(id);
+    else {
+      const merged = new Set(importedIds);
+      merged.delete(id);
+      updateCampaign(campaignId, { featureIds: [...merged] });
+    }
     toast.success(t("pages.campaign_detail.retrait_fonctionnalite_ok"));
   };
 
@@ -378,7 +437,9 @@ function CampaignFeatures() {
             <Button variant="outline" onClick={() => setPickerOpen(false)}>
               {t("pages.campaign_detail.fermer")}
             </Button>
-            <Button onClick={attach}>{t("pages.campaign_detail.rattacher")}</Button>
+            <Button onClick={() => void attach()} disabled={copying}>
+              {t("pages.campaign_detail.rattacher")}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

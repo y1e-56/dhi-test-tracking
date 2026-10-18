@@ -6,8 +6,10 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
-const requireEvidenceUploader = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'tester', 'developer');
-const requireEvidenceManager = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet');
+// Le product owner porte le cahier des charges et les specifications : il les
+// depose et les supprime (matrice nouveau/src/lib/document-permissions.ts).
+const requireEvidenceUploader = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'tester', 'developer', 'product_owner');
+const requireEvidenceManager = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'product_owner');
 // Lecture alignee sur canRead*Doc du front : tout contributeur connecte.
 // Le filtrage par entite (projectVisibleTo) reste applique cote front.
 const requireEvidenceReader = requireRole('chef_testeur', 'quality_manager', 'qa_lead', 'chef_projet', 'tester', 'developer', 'product_owner');

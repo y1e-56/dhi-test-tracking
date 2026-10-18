@@ -24,6 +24,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useStore } from "@/lib/dhi-store";
 import { isInteractiveClick } from "@/lib/clickable-row";
+import { campaignDevelopers } from "@/lib/access";
 import { useI18n } from "@/lib/i18n";
 import {
   VERDICT_LABEL,
@@ -34,6 +35,7 @@ import {
   type Severity,
 } from "@/lib/dhi-data";
 import { canExecuteTest, canManageCampaign, canManageOperational } from "@/lib/role-protection";
+import { defaultCorrectionDate } from "@/lib/rules";
 import {
   api,
   ApiError,
@@ -599,7 +601,7 @@ function ReassignPanel({
 function ExecutionPage() {
   const { testId } = Route.useParams();
   const { t } = useI18n();
-  const { tests, features, campaigns, defects, users, currentUser, updateTest, addDefect } =
+  const { tests, features, campaigns, defects, users, currentUser, updateTest, addDefect, rules } =
     useStore();
   const localTest = tests.find((t) => t.id === testId);
   const [backendTest, setBackendTest] = useState<ReturnType<typeof mapBackendTestCase> | null>(
@@ -660,14 +662,12 @@ function ExecutionPage() {
     description: string;
     severity: Severity;
     priority: Severity;
-    assignee: string;
     developer: string;
   }>({
     title: "",
     description: "",
     severity: "moyenne",
     priority: "moyenne",
-    assignee: "",
     developer: "",
   });
 
@@ -972,15 +972,12 @@ function ExecutionPage() {
     toast.success(t("pages.execution_detail.evidence_added").replace("{name}", file.name));
   };
 
-  const campaignTesters = campaign?.testers ?? [];
-
   const sevOfCriticality = (c?: TestCase["criticality"]): Severity =>
     c === "critique" || c === "haute" ? "haute" : c === "basse" ? "basse" : "moyenne";
 
-  const devs = users.filter((u) => u.active && (u.roles ?? [u.role]).includes("developpeur"));
-  // L'anomalie est affectée à un testeur de la campagne uniquement : on ne
-  // propose pas tous les testeurs de l'application.
-  const assigneeOptions = campaignTesters;
+  // L'anomalie est affectée à un développeur de l'équipe de la campagne,
+  // jamais à un développeur extérieur (le serveur refuse aussi).
+  const devs = campaignDevelopers(campaign, users);
 
   const openCreateDialog = () => {
     const severity = sevOfCriticality(test.criticality);
@@ -991,11 +988,7 @@ function ExecutionPage() {
       description: current.observed || "",
       severity,
       priority: severity,
-      assignee:
-        currentUser?.name && assigneeOptions.includes(currentUser.name)
-          ? currentUser.name
-          : (assigneeOptions[0] ?? ""),
-      developer: devs[0]?.name ?? "",
+      developer: devs[0] ?? "",
     });
     setCreateOpen(true);
   };
@@ -1023,10 +1016,11 @@ function ExecutionPage() {
       version: campaign?.version ?? "4.12",
       testId: test.id,
       reporter: currentUser?.name ?? "Marie Martin",
-      assignee: draftAnomaly.assignee,
+      assignee: draftAnomaly.developer,
       developer: draftAnomaly.developer,
       createdAt: new Date().toISOString().slice(0, 10),
-      targetDate: new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10),
+      // RG-8 : delai de correction des anomalies hautes (7 jours sinon).
+      targetDate: defaultCorrectionDate(draftAnomaly.severity, rules),
     });
     setCreateOpen(false);
     toast.success(t("pages.execution_detail.defect_created").replace("{id}", id));
@@ -1167,26 +1161,14 @@ function ExecutionPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>{t("pages.anomalies.assignee")}</Label>
-                <SearchableSelect
-                  value={draftAnomaly.assignee}
-                  onValueChange={(v) => setDraftAnomaly((d) => ({ ...d, assignee: v }))}
-                  options={
-                    assigneeOptions.length > 0
-                      ? assigneeOptions.map((p) => ({ value: p, label: p }))
-                      : [{ value: "", label: t("pages.execution_detail.awaiting_assign") }]
-                  }
-                />
-              </div>
-              <div className="space-y-2">
                 <Label>{t("pages.anomalies.developer")}</Label>
                 <SearchableSelect
                   value={draftAnomaly.developer}
                   onValueChange={(v) => setDraftAnomaly((d) => ({ ...d, developer: v }))}
                   options={
                     devs.length > 0
-                      ? devs.map((p) => ({ value: p.name, label: p.name }))
-                      : [{ value: "", label: t("pages.execution_detail.awaiting_assign") }]
+                      ? devs.map((p) => ({ value: p, label: p }))
+                      : [{ value: "", label: t("pages.anomalies.no_campaign_dev") }]
                   }
                 />
               </div>

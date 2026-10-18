@@ -15,6 +15,7 @@ import type {
   RequirementStatus,
   Release,
   ReleaseStatus,
+  Severity,
   TestCase,
   TestType,
   WatchLevel,
@@ -170,6 +171,11 @@ export type BackendAnomaly = {
   status: string;
   created_at: string;
   correction_due_date?: string | null;
+  /** Gravite / priorite (low | medium | high | critical). */
+  severity?: string | null;
+  priority?: string | null;
+  /** Version visee par la campagne de l'anomalie (releases.version). */
+  release_version?: string | null;
   product_id?: number | null;
   feature_name?: string | null;
   campaign_name?: string | null;
@@ -487,14 +493,18 @@ export function mapBackendAnomaly(anomaly: BackendAnomaly): Defect {
     campaignId: String(anomaly.campaign_id),
     title: anomaly.description.slice(0, 80),
     description: anomaly.description,
-    severity: "moyenne",
-    priority: "moyenne",
+    severity: toFrontendSeverity(anomaly.severity),
+    priority: toFrontendSeverity(anomaly.priority),
     status,
     featureId: String(anomaly.feature_id),
-    version: "",
+    version: anomaly.release_version ?? "",
     testId: anomaly.test_case_id ? String(anomaly.test_case_id) : undefined,
     reporter: fullName(anomaly.reporter_first_name, anomaly.reporter_last_name) || "—",
     assignee: fullName(anomaly.assignee_first_name, anomaly.assignee_last_name) || "—",
+    // Le responsable côté serveur est le développeur qui corrige.
+    ...(anomaly.assignee_first_name || anomaly.assignee_last_name
+      ? { developer: fullName(anomaly.assignee_first_name, anomaly.assignee_last_name) }
+      : {}),
     createdAt: anomaly.created_at,
     targetDate: anomaly.correction_due_date ?? "",
   };
@@ -631,6 +641,8 @@ export async function createGoLiveDecision(payload: {
   decider: string;
   justification?: string;
   checklist_completion: number;
+  /** Décision confirmée malgré des règles en avertissement (RG-9 / RG-10). */
+  confirmed?: boolean;
 }) {
   return api<BackendGoLiveDecision>("/go-live/decisions", {
     method: "POST",
@@ -1127,6 +1139,8 @@ export async function createAnomaly(payload: {
   assigned_to?: number;
   test_case_id?: number;
   correction_due_date?: string;
+  severity?: string;
+  priority?: string;
 }) {
   return api<{ anomaly: BackendAnomaly }>("/anomalies", {
     method: "POST",
@@ -1140,6 +1154,9 @@ export async function updateAnomalyById(
     description: string | undefined;
     status: string | undefined;
     correction_due_date: string | undefined;
+    severity?: string;
+    priority?: string;
+    assigned_to?: number;
   },
 ) {
   return api<{ anomaly: BackendAnomaly }>(`/anomalies/${id}`, {
@@ -1415,4 +1432,14 @@ export function mapBackendNotificationToApp(
     createdAt,
   };
   return n.link_url ? { ...base, link: n.link_url } : base;
+}
+
+/** Gravite / priorite d'anomalie : interface (haute | moyenne | basse) -> serveur. */
+export function toBackendSeverity(level?: string | null): "low" | "medium" | "high" {
+  return level === "haute" ? "high" : level === "basse" ? "low" : "medium";
+}
+
+/** Gravite / priorite d'anomalie : serveur -> interface (critical compte comme haute). */
+export function toFrontendSeverity(level?: string | null): Severity {
+  return level === "high" || level === "critical" ? "haute" : level === "low" ? "basse" : "moyenne";
 }

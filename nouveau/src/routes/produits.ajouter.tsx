@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
+import { AccessDenied } from "@/components/dhi/AccessDenied";
 import { AppShell } from "@/components/dhi/AppShell";
 import { Button } from "@/components/ui/button";
 import { EntityForm } from "@/lib/forms/engine";
 import { productForm } from "@/lib/forms/product-form";
 import { useI18n } from "@/lib/i18n";
+import { canCreateProduct } from "@/lib/role-protection";
 
 export const Route = createFileRoute("/produits/ajouter")({
   head: () => ({
@@ -20,6 +22,9 @@ function CreateProductPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const goToPortfolio = () => void navigate({ to: "/produits" });
+  // Meme regle que le bouton « Nouveau produit » : l'URL directe ne doit pas
+  // ouvrir un formulaire que le serveur refuserait.
+  if (!canCreateProduct()) return <AccessDenied subject={t("nav.produits")} />;
 
   return (
     <AppShell

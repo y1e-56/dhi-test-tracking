@@ -3,11 +3,14 @@ import {
   api,
   backendIdOf,
   mapBackendAnomaly,
+  toBackendSeverity,
   uploadEvidence,
   type BackendAnomaly,
 } from "@/lib/api";
 import { SEVERITY_LABEL, canReportDefect, type Severity } from "@/lib/dhi-data";
 import type { EntityFormSchema, FormRunContext } from "./types";
+import { campaignDevelopers } from "@/lib/access";
+import { defaultCorrectionDate } from "@/lib/rules";
 
 export type DefectFormValues = {
   title: string;
@@ -18,14 +21,10 @@ export type DefectFormValues = {
   campaignId: string;
   featureId: string;
   testId: string;
-  assignee: string;
+  /** Développeur affecté : un membre de l'équipe développeurs de la campagne. */
   developer: string;
   proofFiles: File[];
 };
-
-/** Utilisateurs actifs, par nom — l'univers « qui peut porter l'anomalie ». */
-const universeOf = (store: FormRunContext<DefectFormValues>["store"]) =>
-  store.users.filter((u) => u.active).map((u) => u.name);
 
 /**
  * Produit d'une campagne : une anomalie appartient au produit de sa campagne,
@@ -39,15 +38,15 @@ const productIdOf = (store: FormRunContext<DefectFormValues>["store"], campaignI
  * Cas de test d'une campagne sur lesquels une anomalie peut etre declaree :
  * seulement ceux dont le verdict est en echec ou bloque.
  */
-const reportableTestsOf = (
-  store: FormRunContext<DefectFormValues>["store"],
-  campaignId: string,
-) => store.tests.filter((tc) => tc.campaignId === campaignId && canReportDefect(tc.verdict));
+const reportableTestsOf = (store: FormRunContext<DefectFormValues>["store"], campaignId: string) =>
+  store.tests.filter((tc) => tc.campaignId === campaignId && canReportDefect(tc.verdict));
 
-const devsOf = (store: FormRunContext<DefectFormValues>["store"]) =>
-  store.users
-    .filter((u) => u.active && (u.roles ?? [u.role]).includes("developpeur"))
-    .map((u) => u.name);
+/** Développeurs de l'équipe de la campagne, seuls affectables. */
+const devsOf = (store: FormRunContext<DefectFormValues>["store"], campaignId: string) =>
+  campaignDevelopers(
+    store.campaigns.find((c) => c.id === campaignId),
+    store.users,
+  );
 
 /**
  * Formulaire d'anomalie (creation seule) : le signalement exige une
@@ -107,6 +106,8 @@ export const defectForm: EntityFormSchema<DefectFormValues> = {
       onChange: ({ value, ctx: run, setValue }) => {
         setValue("productId", productIdOf(run.store, String(value)));
         setValue("testId", "");
+        // Le développeur doit appartenir à la nouvelle campagne.
+        setValue("developer", devsOf(run.store, String(value))[0] ?? "");
       },
     },
     {
@@ -152,18 +153,15 @@ export const defectForm: EntityFormSchema<DefectFormValues> = {
         })),
     },
     {
-      name: "assignee",
-      type: "select",
-      width: "half",
-      label: (c) => c.t("pages.anomalies.assignee"),
-      options: (c) => universeOf(c.store).map((name) => ({ value: name, label: name })),
-    },
-    {
       name: "developer",
       type: "select",
-      width: "half",
       label: (c) => c.t("pages.anomalies.developer"),
-      options: (c) => devsOf(c.store).map((name) => ({ value: name, label: name })),
+      options: (c) =>
+        devsOf(c.store, c.values.campaignId).map((name) => ({ value: name, label: name })),
+      helpText: (c) =>
+        devsOf(c.store, c.values.campaignId).length === 0
+          ? c.t("pages.anomalies.no_campaign_dev")
+          : undefined,
     },
     {
       name: "proofFiles",
@@ -192,16 +190,12 @@ export const defectForm: EntityFormSchema<DefectFormValues> = {
       campaignId: z.string(),
       featureId: z.string(),
       testId: z.string().min(1, "pages.anomalies.test_required"),
-      assignee: z.string(),
       developer: z.string(),
       proofFiles: z.custom<File[]>((v) => Array.isArray(v)),
     }),
 
   defaults: ({ ctx }) => {
     const { store } = ctx;
-    const universe = universeOf(store);
-    const devs = devsOf(store);
-    const isDev = (store.currentUser?.role as string) === "developpeur";
     const currentUser = store.currentUser;
     // Part du premier cas en echec ou bloque d'une campagne en cours : la
     // campagne et la fonctionnalite en decoulent.
@@ -210,28 +204,21 @@ export const defectForm: EntityFormSchema<DefectFormValues> = {
         canReportDefect(tc.verdict) &&
         store.campaigns.some((c) => c.id === tc.campaignId && c.status === "encours"),
     );
+    const campaignId = firstReportable?.campaignId ?? store.campaigns[0]?.id ?? "";
+    const devs = devsOf(store, campaignId);
     return {
       title: "",
       description: "",
       severity: "moyenne",
       priority: "moyenne",
-      productId: productIdOf(
-        store,
-        firstReportable?.campaignId ?? store.campaigns[0]?.id ?? "",
-      ),
+      productId: productIdOf(store, firstReportable?.campaignId ?? store.campaigns[0]?.id ?? ""),
       // La campagne initiale vient de la liste complete (parite de la page
       // d'origine) : un filtre « en cours » ne retire que les options.
       campaignId: firstReportable?.campaignId ?? store.campaigns[0]?.id ?? "",
       featureId: firstReportable?.featureId ?? store.features[0]?.id ?? "",
       testId: firstReportable?.id ?? "",
-      assignee:
-        currentUser?.name && universe.includes(currentUser.name)
-          ? currentUser.name
-          : (universe[0] ?? ""),
       developer:
-        isDev && currentUser && devs.includes(currentUser.name)
-          ? currentUser.name
-          : (devs[0] ?? ""),
+        currentUser?.name && devs.includes(currentUser.name) ? currentUser.name : (devs[0] ?? ""),
       proofFiles: [],
     };
   },
@@ -254,17 +241,18 @@ export const defectForm: EntityFormSchema<DefectFormValues> = {
       testId: values.testId,
       version: "4.12",
       reporter: store.currentUser?.name ?? "Marie Martin",
-      assignee: values.assignee,
+      assignee: values.developer,
       developer: values.developer,
       createdAt: new Date().toISOString().slice(0, 10),
-      targetDate: new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10),
+      // RG-8 : delai de correction des anomalies hautes (7 jours sinon).
+      targetDate: defaultCorrectionDate(values.severity, store.rules),
     };
 
     const numericFeatureId = Number(values.featureId);
     const numericCampaignId = Number(values.campaignId);
     const numericTestId = Number(values.testId);
     const reporterBackend = store.users.find((u) => u.active && u.name === base.reporter);
-    const assigneeBackend = store.users.find((u) => u.active && u.name === values.assignee);
+    const assigneeBackend = store.users.find((u) => u.active && u.name === values.developer);
     const eligibleForBackend =
       online &&
       Number.isInteger(numericFeatureId) &&
@@ -286,6 +274,8 @@ export const defectForm: EntityFormSchema<DefectFormValues> = {
           test_case_id: numericTestId,
           description: base.title,
           correction_due_date: base.targetDate,
+          severity: toBackendSeverity(values.severity),
+          priority: toBackendSeverity(values.priority),
           reported_by: backendIdOf(reporterBackend?.id),
           assigned_to: backendIdOf(assigneeBackend?.id),
         }),

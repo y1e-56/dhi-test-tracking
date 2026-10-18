@@ -141,15 +141,24 @@ export function canCreateRequirement(): boolean {
   return roleIs(...CREATE_REQUIREMENT_ROLES);
 }
 
-/** Rôles en lecture seule sur l'opérationnel (vue partout, écriture interdite). */
-const OPERATIONAL_READ_ONLY_ROLES: AppRole[] = ["admin", "lecteur"];
+/**
+ * Rôles qui travaillent l'opérationnel : exécuter les cas de test et ouvrir des
+ * points à surveiller. Aligné sur `requireExecutionEditor` et
+ * `requireWatchPointEditor` du backend ; avant, tout rôle hors admin/lecteur
+ * passait (développeur, product owner, approbateur) et le serveur refusait.
+ * L'admin reste en lecture seule sur l'opérationnel côté interface.
+ */
+export const OPERATIONAL_ROLES: AppRole[] = [
+  "chef_testeur",
+  "quality_manager",
+  "qa_lead",
+  "chef_projet",
+  "testeur",
+];
 
 /** L'utilisateur connecté peut-il modifier des données opérationnelles ? */
 export function canManageOperational(): boolean {
-  const roles = getSessionRoles();
-  if (roles.length === 0) return false;
-  // Union : possible dès qu'aucun de ses rôles n'est en lecture seule.
-  return roles.some((r) => !OPERATIONAL_READ_ONLY_ROLES.includes(r));
+  return getSessionRoles().some((r) => OPERATIONAL_ROLES.includes(r));
 }
 
 /**

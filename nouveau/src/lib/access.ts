@@ -23,7 +23,10 @@ export function hasAnyRole(user: SessionUser | null | undefined, ...roles: AppRo
 }
 
 /** Vérification multi-rôles pour un utilisateur de la plateforme (union). */
-export function userHasAnyRole(user: PlatformUser | null | undefined, ...roles: AppRole[]): boolean {
+export function userHasAnyRole(
+  user: PlatformUser | null | undefined,
+  ...roles: AppRole[]
+): boolean {
   if (!user) return false;
   const assigned = Array.isArray(user.roles) && user.roles.length > 0 ? user.roles : [user.role];
   return assigned.some((r) => roles.includes(r));
@@ -160,16 +163,50 @@ export function visibleCampaigns(
   return campaigns.filter((c) => campaignVisibleTo(c, products, user));
 }
 
-export function defectVisibleTo(defect: Defect, user: SessionUser | null): boolean {
+/**
+ * Acces a une anomalie : les roles qualite voient tout ; chacun voit celles
+ * qu'il a declarees ou qui lui sont confiees. Le responsable ou un chef testeur
+ * de la campagne voit toutes les anomalies de sa campagne (il les pilote), et un
+ * role transverse celles des campagnes qui lui sont visibles (lecture seule).
+ */
+export function defectVisibleTo(
+  defect: Defect,
+  user: SessionUser | null,
+  campaigns: Campaign[] = [],
+  products: Product[] = [],
+): boolean {
   if (!user) return false;
   if (userCanAccessAll(user)) return true;
   const name = user.name;
-  return defect.reporter === name || defect.assignee === name || defect.developer === name;
+  if (defect.reporter === name || defect.assignee === name || defect.developer === name) {
+    return true;
+  }
+  const campaign = campaigns.find((c) => c.id === defect.campaignId);
+  if (!campaign || !name) return false;
+  if (campaign.owner === name || (campaign.testLeads ?? []).includes(name)) return true;
+  return hasAnyRole(user, ...TRANSVERSE_ROLES) && campaignVisibleTo(campaign, products, user);
 }
 
-export function visibleDefects(defects: Defect[], user: SessionUser | null): Defect[] {
+/**
+ * Développeurs affectables à une anomalie : uniquement les membres actifs de
+ * l'équipe développeurs de sa campagne (le serveur applique la même règle).
+ */
+export function campaignDevelopers(
+  campaign: Pick<Campaign, "developers"> | undefined,
+  users: PlatformUser[],
+): string[] {
+  const team = new Set(campaign?.developers ?? []);
+  return users.filter((u) => u.active && team.has(u.name)).map((u) => u.name);
+}
+
+export function visibleDefects(
+  defects: Defect[],
+  user: SessionUser | null,
+  campaigns: Campaign[] = [],
+  products: Product[] = [],
+): Defect[] {
   if (!user || userCanAccessAll(user)) return defects;
-  return defects.filter((d) => defectVisibleTo(d, user));
+  return defects.filter((d) => defectVisibleTo(d, user, campaigns, products));
 }
 
 /**

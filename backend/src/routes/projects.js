@@ -113,7 +113,7 @@ router.get('/:id', authenticate, async (req, res) => {
   res.json(project);
 });
 
-const requireAdmin = (req, res, next) => {
+const requireProjectManager = (req, res, next) => {
   // admin = super-utilisateur : toujours autorisé (aligné sur le super-rôle front).
   const roles = Array.isArray(req.user?.roles) && req.user.roles.length ? req.user.roles : [req.user?.role];
   if (!['admin', 'chef_projet', 'quality_manager', 'qa_lead', 'product_owner'].some((r) => roles.includes(r))) {
@@ -153,7 +153,7 @@ const requireAdmin = (req, res, next) => {
  *       401: { $ref: '#/components/responses/Unauthorized' }
  *       403: { $ref: '#/components/responses/Forbidden' }
  */
-router.post('/', authenticate, requireAdmin, async (req, res) => {
+router.post('/', authenticate, requireProjectManager, async (req, res) => {
   const data = createSchema.parse(req.body);
   const product = await db.products.findById(data.product_id);
   if (!product) {
@@ -201,7 +201,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
  *       403: { $ref: '#/components/responses/Forbidden' }
  *       404: { $ref: '#/components/responses/NotFound' }
  */
-router.put('/:id', authenticate, requireAdmin, async (req, res) => {
+router.put('/:id', authenticate, requireProjectManager, async (req, res) => {
   const data = updateSchema.parse(req.body);
   const project = await projectService.updateProject(Number(req.params.id), data);
   bus.emit('data:changed', { entity: 'projects' });
@@ -232,7 +232,7 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
  *       403: { $ref: '#/components/responses/Forbidden' }
  *       404: { $ref: '#/components/responses/NotFound' }
  */
-router.patch('/:id/archive', authenticate, requireAdmin, async (req, res) => {
+router.patch('/:id/archive', authenticate, requireProjectManager, async (req, res) => {
   const project = await projectService.archiveProject(Number(req.params.id));
   bus.emit('data:changed', { entity: 'projects' });
   res.json({ project });
@@ -262,7 +262,7 @@ router.patch('/:id/archive', authenticate, requireAdmin, async (req, res) => {
  *       403: { $ref: '#/components/responses/Forbidden' }
  *       404: { $ref: '#/components/responses/NotFound' }
  */
-router.patch('/:id/unarchive', authenticate, requireAdmin, async (req, res) => {
+router.patch('/:id/unarchive', authenticate, requireProjectManager, async (req, res) => {
   const project = await projectService.unarchiveProject(Number(req.params.id));
   bus.emit('data:changed', { entity: 'projects' });
   res.json({ project });
@@ -286,7 +286,7 @@ router.patch('/:id/unarchive', authenticate, requireAdmin, async (req, res) => {
  *       403: { $ref: '#/components/responses/Forbidden' }
  *       404: { $ref: '#/components/responses/NotFound' }
  */
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, requireProjectManager, async (req, res) => {
   await projectService.deleteProject(Number(req.params.id));
   bus.emit('data:changed', { entity: 'projects' });
   res.status(204).send();

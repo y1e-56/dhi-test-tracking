@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { ReferentialRule } from "@/lib/dhi-data";
-import { evaluateRule, formatThreshold, thresholdLabel } from "@/lib/rules";
+import {
+  defaultCorrectionDate,
+  evaluateRule,
+  formatThreshold,
+  isCorrectionOverdue,
+  thresholdLabel,
+} from "@/lib/rules";
 
 const rule = (over: Partial<ReferentialRule> = {}): ReferentialRule => ({
   id: "RG-4",
@@ -41,5 +47,24 @@ describe("rules (miroir du moteur serveur)", () => {
     expect(evaluateRule(rule({ active: false }), 1)).toBeNull();
     expect(evaluateRule(rule({ value: null }), 1)).toBeNull();
     expect(evaluateRule(undefined, 1)).toBeNull();
+  });
+});
+
+describe("RG-8 - delai de correction des anomalies hautes", () => {
+  const today = new Date("2026-10-01T09:00:00Z");
+  const rg8 = rule({ id: "RG-8", value: 3, unit: "days", comparator: "lte" });
+
+  it("propose creation + RG-8 jours pour une gravite haute, 7 jours sinon", () => {
+    expect(defaultCorrectionDate("haute", [rg8], today)).toBe("2026-10-04");
+    expect(defaultCorrectionDate("moyenne", [rg8], today)).toBe("2026-10-08");
+    expect(defaultCorrectionDate("haute", [{ ...rg8, active: false }], today)).toBe("2026-10-08");
+  });
+
+  it("signale une anomalie haute non fermee dont l'echeance est depassee", () => {
+    const d = { severity: "haute", status: "ouverte", targetDate: "2026-09-30" };
+    expect(isCorrectionOverdue(d, today)).toBe(true);
+    expect(isCorrectionOverdue({ ...d, targetDate: "2026-10-01" }, today)).toBe(false);
+    expect(isCorrectionOverdue({ ...d, status: "fermee" }, today)).toBe(false);
+    expect(isCorrectionOverdue({ ...d, severity: "moyenne" }, today)).toBe(false);
   });
 });

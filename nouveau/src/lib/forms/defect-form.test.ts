@@ -22,6 +22,7 @@ const t = (key: string) => key;
 
 function fakeStore(overrides: Record<string, unknown> = {}) {
   return {
+    rules: [],
     products: [
       { id: "42", name: "Ancien" },
       { id: "77", name: "Nouveau" },
@@ -37,7 +38,13 @@ function fakeStore(overrides: Record<string, unknown> = {}) {
     ],
     campaigns: [
       { id: "88", name: "Campagne terminee", status: "terminee", productId: "42" },
-      { id: "77", name: "Campagne en cours", status: "encours", productId: "77" },
+      {
+        id: "77",
+        name: "Campagne en cours",
+        status: "encours",
+        productId: "77",
+        developers: ["Dan", "Bob"],
+      },
     ],
     tests: [
       { id: "301", campaignId: "77", featureId: "55", name: "Export paysage", verdict: "FAIL" },
@@ -61,7 +68,6 @@ const values: DefectFormValues = {
   campaignId: "77",
   featureId: "55",
   testId: "301",
-  assignee: "Alice",
   developer: "Dan",
   proofFiles: [],
 };
@@ -138,7 +144,12 @@ describe("defectForm adaptation au contexte", () => {
     const store = fakeStore();
     const field = defectForm.fields(ctx("create", store)).find((f) => f.name === "campaignId");
     const setValue = vi.fn();
-    field?.onChange?.({ value: "88", ctx: ctx("create", store), setValue, getValues: () => values });
+    field?.onChange?.({
+      value: "88",
+      ctx: ctx("create", store),
+      setValue,
+      getValues: () => values,
+    });
     expect(setValue).toHaveBeenCalledWith("productId", "42");
     expect(setValue).toHaveBeenCalledWith("testId", "");
   });
@@ -181,7 +192,7 @@ describe("defectForm adaptation au contexte", () => {
     expect(setValue).toHaveBeenCalledWith("featureId", "f1");
   });
 
-  it("propose les gravites et l'univers des utilisateurs actifs", () => {
+  it("propose les gravites et seulement les developpeurs actifs de la campagne", () => {
     const store = fakeStore();
     const fields = defectForm.fields(ctx("create", store));
     const severity = fields.find((f) => f.name === "severity");
@@ -190,11 +201,7 @@ describe("defectForm adaptation au contexte", () => {
       { value: "moyenne", label: SEVERITY_LABEL.moyenne },
       { value: "basse", label: SEVERITY_LABEL.basse },
     ]);
-    const assignee = fields.find((f) => f.name === "assignee");
-    expect(assignee?.options?.(ctx("create", store))).toEqual([
-      { value: "Alice", label: "Alice" },
-      { value: "Dan", label: "Dan" },
-    ]);
+    expect(fields.some((f) => (f.name as string) === "assignee")).toBe(false);
     const developer = fields.find((f) => f.name === "developer");
     expect(developer?.options?.(ctx("create", store))).toEqual([{ value: "Dan", label: "Dan" }]);
   });
@@ -220,7 +227,6 @@ describe("defectForm adaptation au contexte", () => {
       campaignId: "77",
       featureId: "55",
       testId: "301",
-      assignee: "Alice",
       developer: "Dan",
       proofFiles: [],
     });
@@ -277,7 +283,7 @@ describe("defectForm.save", () => {
         featureId: "55",
         version: "4.12",
         reporter: "Alice",
-        assignee: "Alice",
+        assignee: "Dan",
         developer: "Dan",
       }),
     );
@@ -352,7 +358,7 @@ describe("defectForm.save", () => {
       test_case_id: 301,
       description: "Export crash",
       reported_by: 7,
-      assigned_to: 7,
+      assigned_to: 5, // Dan, développeur de la campagne
     });
     expect(body.correction_due_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(uploadEvidence).toHaveBeenCalledWith(

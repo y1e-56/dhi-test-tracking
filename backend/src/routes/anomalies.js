@@ -23,6 +23,9 @@ const createSchema = z.object({
   // Obligatoire : une anomalie se déclare sur un cas de test en échec ou bloqué.
   test_case_id: z.number({ required_error: 'Une anomalie doit être rattachée à un cas de test.' }),
   correction_due_date: z.string().optional(),
+  // Gravite / priorite (enum priority_level) ; la gravite haute declenche RG-8.
+  severity: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
   description_audio_data: z.string().max(100_000_000).optional(),
   description_audio_type: z.string().max(100).optional(),
   description_transcription: z.string().max(5000).optional(),

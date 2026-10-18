@@ -13,6 +13,8 @@ const decideSchema = z.object({
   decider: z.string().min(1, 'Décideur requis'),
   justification: z.string().optional(),
   checklist_completion: z.number().int().min(0).max(100).optional(),
+  // Le décideur confirme une décision malgré des règles en avertissement (RG-9 / RG-10).
+  confirmed: z.boolean().optional(),
 });
 
 /**

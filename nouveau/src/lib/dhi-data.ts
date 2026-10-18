@@ -757,11 +757,17 @@ export const SCORE_LABELS: Record<keyof ScoreBreakdown, string> = {
 
 /*  5.2  Workflow cycle de vie d'une anomalie -----------------------------  */
 
+/**
+ * Transitions autorisées, identiques au serveur (anomalyService) : le rejet
+ * (« réouverte ») n'existe qu'après une résolution signalée, et une anomalie
+ * validée (« fermée ») ne se rouvre pas — une régression fait l'objet d'une
+ * nouvelle anomalie.
+ */
 export const DEFECT_TRANSITIONS: Record<DefectStatus, DefectStatus[]> = {
   nouvelle: ["encorrection"],
-  encorrection: ["a_retester", "reouverte"],
+  encorrection: ["a_retester"],
   a_retester: ["fermee", "reouverte"],
-  fermee: ["reouverte"],
+  fermee: [],
   reouverte: ["encorrection"],
 };
 

@@ -53,8 +53,17 @@ export type RuleVerdict = {
 };
 
 /** null si la regle est absente, inactive ou sans seuil structure. */
-export function evaluateRule(rule: ReferentialRule | undefined, actual: number): RuleVerdict | null {
-  if (!rule || !rule.active || rule.value === null || rule.value === undefined || !rule.comparator) {
+export function evaluateRule(
+  rule: ReferentialRule | undefined,
+  actual: number,
+): RuleVerdict | null {
+  if (
+    !rule ||
+    !rule.active ||
+    rule.value === null ||
+    rule.value === undefined ||
+    !rule.comparator
+  ) {
     return null;
   }
   const ok = rule.comparator === "gte" ? actual >= rule.value : actual <= rule.value;
@@ -88,3 +97,28 @@ export const RULE_SCOPES: Record<string, { where: string; control: boolean }> = 
   "RG-9": { where: "Décision Go-Live", control: true },
   "RG-10": { where: "Décision Go-Live", control: true },
 };
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Echeance de correction proposee a la creation d'une anomalie : RG-8 jours
+ * pour une gravite haute (si la regle est active), 7 jours sinon.
+ */
+export function defaultCorrectionDate(
+  severity: string,
+  rules: ReferentialRule[],
+  today: Date = new Date(),
+): string {
+  const rg8 = rules.find((r) => r.id === "RG-8");
+  const days = severity === "haute" && rg8?.active && typeof rg8.value === "number" ? rg8.value : 7;
+  return new Date(today.getTime() + days * DAY_MS).toISOString().slice(0, 10);
+}
+
+/** Anomalie de gravite haute, non fermee, dont l'echeance de correction est depassee. */
+export function isCorrectionOverdue(
+  defect: { severity: string; status: string; targetDate?: string | undefined },
+  today: Date = new Date(),
+): boolean {
+  if (defect.severity !== "haute" || defect.status === "fermee" || !defect.targetDate) return false;
+  return today.toISOString().slice(0, 10) > defect.targetDate.slice(0, 10);
+}

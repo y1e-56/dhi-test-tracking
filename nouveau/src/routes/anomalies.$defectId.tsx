@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -6,6 +6,7 @@ import { AppShell } from "@/components/dhi/AppShell";
 import { EvidenceThumbnails } from "@/components/dhi/EvidenceThumbnails";
 import { ScreenshotPicker } from "@/components/dhi/ScreenshotPicker";
 import { DefectStatusBadge, SeverityBadge } from "@/components/dhi/indicators";
+import { isCorrectionOverdue } from "@/lib/rules";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -17,6 +18,7 @@ import {
   type DefectStatus,
 } from "@/lib/dhi-data";
 
+import { campaignDevelopers } from "@/lib/access";
 import { useI18n } from "@/lib/i18n";
 import { api, uploadEvidence } from "@/lib/api";
 import { canResolveAnomaly, canValidateAnomaly } from "@/lib/role-protection";
@@ -26,9 +28,10 @@ export const Route = createFileRoute("/anomalies/$defectId")({
   loader: ({ params }) => {
     const snapshot = loadSnapshot();
     const defects = snapshot?.defects ?? seedDefects;
+    // Pas de 404 ici : la copie locale peut ignorer une anomalie toute recente
+    // (lien de notification, F5) ; la fiche s'affiche une fois le serveur lu.
     const d = defects.find((x) => x.id === params.defectId);
-    if (!d) throw notFound();
-    return { title: d.title };
+    return { title: d?.title ?? "Anomalie" };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -46,6 +49,16 @@ function DefectDetailPage() {
   const { defectId } = Route.useParams();
   const { t } = useI18n();
   const { defects, features, users, tests, campaigns, updateDefect } = useStore();
+  // Hooks avant tout retour anticipe : l'anomalie peut n'arriver qu'apres le
+  // chargement du serveur, et React exige le meme ordre de hooks a chaque rendu.
+  /** Captures justifiant l'anomalie ou confirmant une correction en attente d'envoi. */
+  const [proofFiles, setProofFiles] = useState<File[]>([]);
+  const [serverProofCount, setServerProofCount] = useState(0);
+  const [savingProof, setSavingProof] = useState(false);
+  const [evidenceRefresh, setEvidenceRefresh] = useState(0);
+  const [pickerKey, setPickerKey] = useState(0);
+  /** Développeur choisi dans la liste, affecté seulement au clic sur « Affecter ». */
+  const [pendingDev, setPendingDev] = useState<string | null>(null);
   const defect = defects.find((d) => d.id === defectId);
   if (!defect) return null;
   const linkedTest = defect.testId ? tests.find((test) => test.id === defect.testId) : undefined;
@@ -55,15 +68,11 @@ function DefectDetailPage() {
   const fallbackCampaign =
     linkedCampaign ??
     (linkedTest ? campaigns.find((campaign) => campaign.id === linkedTest.campaignId) : undefined);
+  // Version visee : celle de l'anomalie, a defaut celle de sa campagne.
+  const version = defect.version || fallbackCampaign?.version || "—";
   // Id hébergé en base : les preuves nécessitent un serveur et un jeton.
   const backendId = /^\d+$/.test(defect.id) ? Number(defect.id) : null;
 
-  /** Captures justifiant l'anomalie ou confirmant une correction en attente d'envoi. */
-  const [proofFiles, setProofFiles] = useState<File[]>([]);
-  const [serverProofCount, setServerProofCount] = useState(0);
-  const [savingProof, setSavingProof] = useState(false);
-  const [evidenceRefresh, setEvidenceRefresh] = useState(0);
-  const [pickerKey, setPickerKey] = useState(0);
   const captureLabels = {
     add: t("pages.anomalies.add_capture"),
     count: t("pages.anomalies.captures_count"),
@@ -106,19 +115,18 @@ function DefectDetailPage() {
       setSavingProof(false);
     }
   };
-  const universe = users.filter((u) => u.active).map((u) => u.name);
-  const devs = users
-    .filter((u) => u.active && (u.roles ?? [u.role]).includes("developpeur"))
-    .map((u) => u.name);
+  // Seuls les développeurs de l'équipe de la campagne sont affectables.
+  const devs = campaignDevelopers(fallbackCampaign, users);
+  const currentDev = defect.developer ?? (defect.assignee !== "—" ? defect.assignee : "");
+  const devOptions = currentDev && !devs.includes(currentDev) ? [currentDev, ...devs] : devs;
+  const selectedDev = pendingDev ?? currentDev;
+  const canSubmitAssign = !!pendingDev && pendingDev !== currentDev;
 
-  const reassign = (v: string) => {
-    updateDefect(defect.id, { assignee: v });
-    toast.success(`${defect.id} ${t("pages.anomalies.reassigned")} ${v}.`);
-  };
-
-  const setDeveloper = (v: string) => {
-    updateDefect(defect.id, { developer: v });
-    toast.success(`${defect.id} ${t("pages.anomalies.assigned_to_developer")} ${v}.`);
+  const assignDeveloper = () => {
+    if (!pendingDev || pendingDev === currentDev) return;
+    updateDefect(defect.id, { assignee: pendingDev, developer: pendingDev });
+    toast.success(`${defect.id} ${t("pages.anomalies.assigned_to_developer")} ${pendingDev}.`);
+    setPendingDev(null);
   };
 
   const changeStatus = async (v: DefectStatus) => {
@@ -229,6 +237,14 @@ function DefectDetailPage() {
         <div className="flex flex-wrap gap-2">
           <SeverityBadge level={defect.severity} />
           <DefectStatusBadge status={defect.status} />
+          {isCorrectionOverdue(defect) ? (
+            <span
+              className="inline-flex whitespace-nowrap rounded-full border border-danger/30 bg-danger-soft px-2 py-0.5 text-[11px] font-medium text-danger"
+              title={t("pages.anomalies.overdue_hint")}
+            >
+              {t("pages.anomalies.overdue")}
+            </span>
+          ) : null}
           <span className="rounded-full border border-border px-2.5 py-0.5 text-xs font-medium">
             {features.find((f) => f.id === defect.featureId)?.name ?? defect.featureId}
           </span>
@@ -236,7 +252,7 @@ function DefectDetailPage() {
         <p className="mt-4 text-sm text-muted-foreground">
           {t("pages.anomalies.detail_detected_by")} {defect.reporter}{" "}
           {t("pages.anomalies.detail_detected_on")} {defect.createdAt} · {t("common.version")}{" "}
-          {defect.version}
+          {version}
           {defect.testId ? ` · ${t("pages.anomalies.detail_test")} ${defect.testId}` : ""}
         </p>
         {fallbackCampaign ? (
@@ -255,33 +271,26 @@ function DefectDetailPage() {
         <p className="text-sm text-muted-foreground">{defect.description}</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="panel grid gap-1.5">
-          <Label>{t("pages.anomalies.assignee")}</Label>
-          {canAssign ? (
-            <SearchableSelect
-              value={defect.assignee}
-              onValueChange={reassign}
-              options={universe.map((p) => ({ value: p, label: p }))}
-            />
-          ) : (
-            <div className="flex h-9 items-center rounded-md border border-border px-3">
-              <span className="text-sm font-medium">{defect.assignee}</span>
-            </div>
-          )}
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="panel grid gap-1.5">
           <Label>{t("pages.anomalies.developer")}</Label>
           {canAssign ? (
-            <SearchableSelect
-              value={defect.developer ?? ""}
-              onValueChange={setDeveloper}
-              options={devs.map((p) => ({ value: p, label: p }))}
-              placeholder={t("pages.anomalies.developer_placeholder")}
-            />
+            <div className="flex gap-2">
+              <SearchableSelect
+                value={selectedDev}
+                onValueChange={setPendingDev}
+                options={devOptions.map((p) => ({ value: p, label: p }))}
+                emptyMessage={t("pages.anomalies.no_campaign_dev")}
+                placeholder={t("pages.anomalies.assignee_placeholder")}
+                className="min-w-0 flex-1"
+              />
+              <Button type="button" onClick={assignDeveloper} disabled={!canSubmitAssign}>
+                {t("pages.anomalies.assign_action")}
+              </Button>
+            </div>
           ) : (
             <div className="flex h-9 items-center rounded-md border border-border px-3">
-              <span className="text-sm font-medium">{defect.developer ?? "—"}</span>
+              <span className="text-sm font-medium">{currentDev || "—"}</span>
             </div>
           )}
         </div>
@@ -290,8 +299,14 @@ function DefectDetailPage() {
           {canChangeStatus ? (
             <SearchableSelect
               value={defect.status}
-              onValueChange={(v) => void changeStatus(v as DefectStatus)}
-              options={allowedForUser.map((s) => ({ value: s, label: DEFECT_STATUS_LABEL[s] }))}
+              onValueChange={(v) => {
+                if (v !== defect.status) void changeStatus(v as DefectStatus);
+              }}
+              // Le statut courant reste dans la liste : sinon le champ paraissait vide.
+              options={[defect.status, ...allowedForUser].map((s) => ({
+                value: s,
+                label: DEFECT_STATUS_LABEL[s],
+              }))}
             />
           ) : (
             <div className="flex h-9 items-center rounded-md border border-border px-3">
@@ -345,7 +360,7 @@ function DefectDetailPage() {
       <div className="rounded-md border border-border bg-muted/50 p-3 text-sm">
         <p className="font-medium">{t("pages.anomalies.capitalization")}</p>
         <p className="mt-1 text-muted-foreground">
-          {t("pages.anomalies.regression_note")} : « {defect.title} » (version {defect.version}).
+          {t("pages.anomalies.regression_note")} : « {defect.title} » (version {version}).
         </p>
       </div>
     </AppShell>

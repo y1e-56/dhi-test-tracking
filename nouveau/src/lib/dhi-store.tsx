@@ -119,6 +119,7 @@ import {
   createAnomaly,
   updateAnomalyById,
   deleteAnomalyById,
+  deleteEvidence,
   createRequirement,
   updateRequirementById,
   deleteRequirementById,
@@ -133,6 +134,7 @@ import {
   toBackendPriority,
   toFrontendCriticality,
   toBackendDefectStatus,
+  toBackendSeverity,
   toBackendRequirementPriority,
   toBackendRequirementStatus,
   toBackendVerdict,
@@ -163,13 +165,16 @@ import {
 } from "./api";
 
 /**
- * Interrupteur du moteur d'alertes/notifications calculées localement par le
- * store (règles sur tests, anomalies, campagnes…).
- * `false` = aucune alerte ni notification locale n'est générée (utile en tests).
- * Les notifications émises par le backend (chargement + temps réel) ne
- * dépendent pas de cet interrupteur : elles restent toujours actives.
+ * Moteur d'alertes calculées localement par le store (anomalie haute ouverte,
+ * test critique en échec, campagne en retard ou à faible succès, produit en
+ * santé critique, GO malgré une checklist incomplète) : page « Alertes ».
  */
-export const DETECT_ALERTS = false;
+export const DETECT_ALERTS = true;
+/**
+ * Notifications calculées localement : coupées, les notifications du backend
+ * (chargement + temps réel) font foi — les deux réunies faisaient doublon.
+ */
+export const DETECT_LOCAL_NOTIFICATIONS = false;
 
 /* -------------------------------------------------------------------------- */
 /*  3. HELPERS : Persistance localStorage + Date                               */
@@ -230,10 +235,8 @@ export function loadSnapshot(): PersistedSnapshot | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PersistedSnapshot;
     if (!parsed || typeof parsed !== "object") return null;
-    if (!DETECT_ALERTS) {
-      parsed.alerts = [];
-      parsed.notifications = [];
-    }
+    if (!DETECT_ALERTS) parsed.alerts = [];
+    if (!DETECT_LOCAL_NOTIFICATIONS) parsed.notifications = [];
     return parsed;
   } catch (e) {
     console.error("[DHI] loadSnapshot error:", e);
@@ -471,6 +474,7 @@ interface Store {
     decider: string,
     justification: string,
     screenshots?: File[],
+    confirmed?: boolean,
   ) => Promise<number | null>;
 
   /*  2.8  Mutations : Alertes / Admin / Référentiel --------------------  */
@@ -1071,7 +1075,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
             type: "couverture",
             severity: "haute",
             title: `Test critique en échec : ${t.name}`,
-            message: `Campagne ${t.campaignId} — corriger avant décision Go/No-Go`,
+            message: `Campagne ${campaigns.find((c) => c.id === t.campaignId)?.name ?? t.campaignId} — corriger avant décision Go/No-Go`,
             entityId: t.id,
           });
         }
@@ -1107,17 +1111,20 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
             type: "campagne",
             severity: "haute",
             title: `Campagne en retard : ${c.name}`,
-            message: `Échéance du ${c.endDate} dépassée — statut : ${c.status}`,
+            message: `Échéance du ${c.endDate.slice(0, 10)} dépassée — statut : ${c.status}`,
             entityId: c.id,
           });
         }
       }
     }
 
-    // Règle 5 : produit santé "critique"
+    // Règle 5 : produit santé "critique". Un produit tout juste chargé a un
+    // score provisoire à 0 tant que le scoring n'est pas passé : pas d'alerte
+    // sur ce 0, sinon chaque produit était signalé « critique » à tort.
+    const isScored = (p: Product) => Object.values(p.breakdown).some((v) => v > 0);
     for (const p of products) {
       const s = productScore(p);
-      if (s < 60) {
+      if (isScored(p) && s < 60) {
         const k = fp("PROD-CRIT", p.id);
         if (!alertFingerprints.current.has(k)) {
           alertFingerprints.current.add(k);
@@ -1149,6 +1156,17 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Une alerte de santé critique tombe d'elle-même quand le produit redevient sain.
+    const healthy = new Set(
+      products.filter((p) => isScored(p) && productScore(p) >= 60).map((p) => p.id),
+    );
+    setAlerts((prev) => {
+      const next = prev.filter(
+        (a) => !(a.type === "systeme" && a.entityId && healthy.has(a.entityId)),
+      );
+      return next.length === prev.length ? prev : next;
+    });
+
     // Injection des alertes détectées
     if (fires.length) {
       setAlerts((prev) => {
@@ -1176,7 +1194,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
 
   const notifFingerprints = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (!DETECT_ALERTS) return;
+    if (!DETECT_LOCAL_NOTIFICATIONS) return;
     if (!users.length) return;
     const userIdOf = (name?: string): string | null => {
       if (!name) return null;
@@ -1908,7 +1926,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
         const campaignBackend = backendIdOf(campaign?.id);
         if (featureBackend && campaignBackend) {
           const reporter = users.find((u) => u.name === d.reporter);
-          const assignee = users.find((u) => u.name === (d.assignee ?? d.developer));
+          const assignee = users.find((u) => u.name === (d.developer || d.assignee));
           const reporterBackendId = backendIdOf(reporter?.id);
           const assigneeBackendId = backendIdOf(assignee?.id);
           const testBackendId = backendIdOf(d.testId);
@@ -1918,6 +1936,8 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
               campaign_id: campaignBackend,
               description: d.description ? `${d.title}\n\n${d.description}` : d.title,
               correction_due_date: d.targetDate,
+              severity: toBackendSeverity(d.severity),
+              priority: toBackendSeverity(d.priority),
               ...(reporterBackendId !== undefined ? { reported_by: reporterBackendId } : {}),
               ...(assigneeBackendId !== undefined ? { assigned_to: assigneeBackendId } : {}),
               ...(testBackendId !== undefined ? { test_case_id: testBackendId } : {}),
@@ -1941,12 +1961,22 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
           return prev.map((x) => (x.id === id ? { ...x, ...patch } : x));
         });
         const idBackend = backendIdOf(id);
+        // Affectation : le serveur garde un seul responsable (le développeur
+        // qui corrige, notifié à chaque affectation).
+        const assigneeName = patch.developer ?? patch.assignee;
+        const assigneeBackendId =
+          assigneeName !== undefined
+            ? backendIdOf(users.find((u) => u.name === assigneeName)?.id)
+            : undefined;
         if (idBackend) {
           attemptBackend("Mise à jour anomalie", () =>
             updateAnomalyById(idBackend, {
+              ...(assigneeBackendId !== undefined && { assigned_to: assigneeBackendId }),
               description: patch.description,
               status: patch.status ? toBackendDefectStatus(patch.status) : undefined,
               correction_due_date: patch.targetDate,
+              ...(patch.severity !== undefined && { severity: toBackendSeverity(patch.severity) }),
+              ...(patch.priority !== undefined && { priority: toBackendSeverity(patch.priority) }),
             }),
           );
         }
@@ -2067,7 +2097,14 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
           );
         }
       },
-      addGoLiveDecision: async (releaseId, verdict, decider, justification, screenshots) => {
+      addGoLiveDecision: async (
+        releaseId,
+        verdict,
+        decider,
+        justification,
+        screenshots,
+        confirmed,
+      ) => {
         const checklist = goLiveChecklist[releaseId] ?? [];
         const totalWeight = checklist.reduce((s, i) => s + i.weight, 0);
         const doneWeight = checklist.filter((i) => i.checked).reduce((s, i) => s + i.weight, 0);
@@ -2100,6 +2137,7 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
               decider,
               justification,
               checklist_completion: completion,
+              ...(confirmed ? { confirmed: true } : {}),
             });
             backendId = typeof created?.id === "number" ? created.id : null;
             setGoLiveDecisions((prev) =>
@@ -2308,6 +2346,10 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       replaceProductDocuments: (nextDocuments) => setProductDocuments(nextDocuments),
       deleteProductDocument: (id) => {
         setProductDocuments((prev) => prev.filter((d) => d.id !== id));
+        const evidenceId = backendIdOf(id);
+        if (evidenceId) {
+          attemptBackend("Suppression document produit", () => deleteEvidence(evidenceId));
+        }
         pushAudit(asActor("Système"), "Document produit supprimé", id, "—");
       },
       addProjectDocument: (d) => {
@@ -2319,6 +2361,10 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       replaceProjectDocuments: (nextDocuments) => setProjectDocuments(nextDocuments),
       deleteProjectDocument: (id) => {
         setProjectDocuments((prev) => prev.filter((d) => d.id !== id));
+        const evidenceId = backendIdOf(id);
+        if (evidenceId) {
+          attemptBackend("Suppression document projet", () => deleteEvidence(evidenceId));
+        }
         pushAudit(asActor("Système"), "Document projet supprimé", id, "—");
       },
       addCampaignDocument: (d) => {
@@ -2330,6 +2376,10 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       replaceCampaignDocuments: (nextDocuments) => setCampaignDocuments(nextDocuments),
       deleteCampaignDocument: (id) => {
         setCampaignDocuments((prev) => prev.filter((d) => d.id !== id));
+        const evidenceId = backendIdOf(id);
+        if (evidenceId) {
+          attemptBackend("Suppression document campagne", () => deleteEvidence(evidenceId));
+        }
         pushAudit(asActor("Système"), "Document campagne supprimé", id, "—");
       },
       addFeatureDocument: (d) => {
@@ -2341,6 +2391,10 @@ export function DhiStoreProvider({ children }: { children: ReactNode }) {
       replaceFeatureDocuments: (nextDocuments) => setFeatureDocuments(nextDocuments),
       deleteFeatureDocument: (id) => {
         setFeatureDocuments((prev) => prev.filter((d) => d.id !== id));
+        const evidenceId = backendIdOf(id);
+        if (evidenceId) {
+          attemptBackend("Suppression document fonctionnalité", () => deleteEvidence(evidenceId));
+        }
         pushAudit(asActor("Système"), "Document fonctionnalité supprimé", id, "—");
       },
 

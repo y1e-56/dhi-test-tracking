@@ -1,11 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { z } from "zod";
+import { AccessDenied } from "@/components/dhi/AccessDenied";
 import { AppShell } from "@/components/dhi/AppShell";
 import { Button } from "@/components/ui/button";
 import { EntityForm } from "@/lib/forms/engine";
 import { projectForm } from "@/lib/forms/project-form";
 import { useI18n } from "@/lib/i18n";
+import { canCreateProject } from "@/lib/role-protection";
 
 export const Route = createFileRoute("/projets/ajouter")({
   // Contexte d'entree optionnel : creation depuis une fiche produit
@@ -25,6 +27,8 @@ function CreateProjectPage() {
   const { productId } = Route.useSearch();
   const seed = productId ? { productId } : undefined;
   const goToProjects = () => void navigate({ to: "/projets" });
+  // Meme regle que le bouton « Nouveau projet » : pas de formulaire par l'URL directe.
+  if (!canCreateProject()) return <AccessDenied subject={t("nav.projets")} />;
 
   return (
     <AppShell

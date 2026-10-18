@@ -1,7 +1,13 @@
 import { withTransaction } from '../config/database.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { assertCanJudgeAnomaly } from './separationGuard.js';
-import { assertCanReportAnomaly } from './anomalyGuard.js';
+import {
+  applyCorrectionDelay,
+  assertAnomalyLevel,
+  assertAssigneeIsCampaignDeveloper,
+  assertCanReportAnomaly,
+} from './anomalyGuard.js';
+import { loadRules } from './rulesEngine.js';
 import { assertCampaignInProgress } from './workflowGuard.js';
 import bus from '../lib/eventBus.js';
 import * as db from '../db/index.js';
@@ -69,6 +75,11 @@ export async function createAnomaly(data) {
 
   // Une anomalie se déclare pendant l'exécution : campagne en cours uniquement.
   assertCampaignInProgress(await db.campaigns.findById(data.campaign_id));
+  // Seul un developpeur de l'equipe de la campagne peut recevoir l'anomalie.
+  if (data.assigned_to != null) {
+    const { developers } = await db.campaignMembers.getMemberIds(data.campaign_id);
+    assertAssigneeIsCampaignDeveloper(data.assigned_to, developers);
+  }
 
   // Une anomalie suit un cas de test non validé : la dernière exécution du cas
   // dans la campagne doit être en échec ou bloquée.
@@ -81,6 +92,17 @@ export async function createAnomaly(data) {
     campaignId: data.campaign_id,
     latestResult: latest?.result ?? null,
   });
+
+  // RG-8 : echeance de correction d'une anomalie de gravite haute (fixee a
+  // creation + delai si absente, refusee au-dela si la regle est bloquante).
+  const rules = await loadRules();
+  const { dueDate } = applyCorrectionDelay({
+    severity: data.severity ?? 'medium',
+    dueDate: data.correction_due_date ?? null,
+    from: new Date(),
+    rule: rules.get('RG-8'),
+  });
+  if (dueDate) data = { ...data, correction_due_date: dueDate };
 
   const featureDueDate = await getFeatureDueDate(data.feature_id);
   validateCorrectionDueDate(data.correction_due_date, featureDueDate);
@@ -101,6 +123,27 @@ export async function updateAnomaly(id, data, userId = null) {
     const existing = await db.anomalies.findById(id);
     if (!existing) throw new AppError('Anomalie non trouvée', 404);
 
+    assertAnomalyLevel(data.severity, 'Gravité');
+    assertAnomalyLevel(data.priority, 'Priorité');
+    // Reaffectation : uniquement vers un developpeur de la campagne de l'anomalie.
+    if (data.assigned_to != null && Number(data.assigned_to) !== Number(existing.assigned_to)) {
+      const { developers } = await db.campaignMembers.getMemberIds(existing.campaign_id);
+      assertAssigneeIsCampaignDeveloper(data.assigned_to, developers);
+    }
+    // RG-8 : rejoue le delai quand la gravite ou l'echeance changent, a partir
+    // de la date de creation de l'anomalie.
+    if (data.severity !== undefined || data.correction_due_date !== undefined) {
+      const rules = await loadRules();
+      const { dueDate } = applyCorrectionDelay({
+        severity: data.severity ?? existing.severity,
+        dueDate: data.correction_due_date !== undefined ? data.correction_due_date : existing.correction_due_date,
+        from: existing.created_at,
+        rule: rules.get('RG-8'),
+      });
+      if (dueDate && !existing.correction_due_date && data.correction_due_date === undefined) {
+        data = { ...data, correction_due_date: dueDate };
+      }
+    }
     if (data.correction_due_date !== undefined) {
       const featureDueDate = await getFeatureDueDate(existing.feature_id);
       validateCorrectionDueDate(data.correction_due_date, featureDueDate);
