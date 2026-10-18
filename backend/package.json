@@ -8,6 +8,8 @@
     "start": "node src/index.js",
     "seed": "node src/seed.js",
     "simulate": "node src/scripts/simulate.js",
+    "demo:setup": "node --import ./src/scripts/demo-env.js src/scripts/demo-setup.js",
+    "demo": "node --import ./src/scripts/demo-env.js src/index.js",
     "test": "node --test src/**/*.test.js"
   },
   "dependencies": {

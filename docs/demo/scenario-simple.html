@@ -1,0 +1,304 @@
+<title>Démo DHI Pay 2.0</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout : feuille de route de démo — une colonne de tours numérotés (l'ordre est l'information), barre de progression collante en haut. */
+:root {
+  --paper: #f5f7f6;
+  --sheet: #ffffff;
+  --ink: #16201d;
+  --ink-soft: #4f5e59;
+  --rule: #d5ddda;
+  --accent: #1f5f8b;
+  --accent-soft: #e3eef6;
+  --pass: #1e7a4c;
+  --pass-soft: #e2f3ea;
+  --fail: #b3362c;
+  --fail-soft: #f8e4e1;
+  --warn: #9a6200;
+  --warn-soft: #fbefd9;
+  --done: #eef2f0;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+  /* Une teinte par personne, pour reconnaître l'acteur d'un coup d'œil. */
+  --p-sophie: #1f5f8b; --p-laura: #8a3f8f; --p-karim: #a0522d; --p-thomas: #2e6f5e;
+  --p-ines: #b0386b; --p-hugo: #4b5fb0; --p-marc: #6a5a1e; --p-dina: #6a5a1e;
+  --p-alice: #b3362c; --p-louis: #5b6670; --p-admin: #16201d;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #101614; --sheet: #172019; --ink: #e6ece9; --ink-soft: #a3b3ad; --rule: #2c3833;
+    --accent: #7db6e0; --accent-soft: #19303f; --pass: #6fcf9a; --pass-soft: #173226;
+    --fail: #f08a7f; --fail-soft: #3a1d1a; --warn: #e7b45c; --warn-soft: #36290f; --done: #141c19;
+    --p-sophie: #7db6e0; --p-laura: #d59bd9; --p-karim: #e0a07a; --p-thomas: #7fcdb5;
+    --p-ines: #f08ab5; --p-hugo: #9fb0f0; --p-marc: #d8c27a; --p-dina: #d8c27a;
+    --p-alice: #f08a7f; --p-louis: #a3b3ad; --p-admin: #e6ece9;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #101614; --sheet: #172019; --ink: #e6ece9; --ink-soft: #a3b3ad; --rule: #2c3833;
+  --accent: #7db6e0; --accent-soft: #19303f; --pass: #6fcf9a; --pass-soft: #173226;
+  --fail: #f08a7f; --fail-soft: #3a1d1a; --warn: #e7b45c; --warn-soft: #36290f; --done: #141c19;
+  --p-sophie: #7db6e0; --p-laura: #d59bd9; --p-karim: #e0a07a; --p-thomas: #7fcdb5;
+  --p-ines: #f08ab5; --p-hugo: #9fb0f0; --p-marc: #d8c27a; --p-dina: #d8c27a;
+  --p-alice: #f08a7f; --p-louis: #a3b3ad; --p-admin: #e6ece9;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font-family: var(--font-body); font-size: 1rem; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 860px; margin: 0 auto; padding-block: 32px 64px; display: grid; gap: 32px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: 2rem; font-weight: 700; }
+h2 { font-size: 1.375rem; font-weight: 600; }
+code { font-family: var(--font-mono); font-size: 0.875em; background: var(--accent-soft); padding: 1px 5px; border-radius: 3px; }
+.eyebrow { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+header.top { display: grid; gap: 12px; border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+.intro { max-width: 64ch; color: var(--ink-soft); margin: 0; }
+.start { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 0.9375rem; }
+
+/* Progression collante */
+.progress {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--paper); border-bottom: 1px solid var(--rule);
+  display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; padding-block: 10px;
+}
+.bar { height: 8px; background: var(--rule); border-radius: 4px; overflow: hidden; }
+.bar > span { display: block; height: 100%; width: 0; background: var(--pass); transition: width .25s ease; }
+.count { font-family: var(--font-mono); font-size: 0.875rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+button.reset { font: 500 0.8125rem var(--font-body); color: var(--ink-soft); background: none; border: 1px solid var(--rule); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+button.reset:hover { color: var(--ink); border-color: var(--ink-soft); }
+
+/* Comptes */
+details.accounts { background: var(--sheet); border: 1px solid var(--rule); padding: 12px 16px; }
+details.accounts summary { cursor: pointer; font-weight: 600; }
+.acc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px 20px; margin-top: 12px; }
+.acc { display: grid; grid-template-columns: 12px 1fr; gap: 8px; align-items: start; font-size: 0.875rem; }
+.acc small { display: block; font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-soft); word-break: break-all; }
+.dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; background: var(--c); }
+
+/* Tours */
+ol.tours { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.tour { background: var(--sheet); border: 1px solid var(--rule); border-left: 4px solid var(--c); display: grid; grid-template-columns: 56px 1fr; transition: background .2s; }
+.tour.key { border-top: 2px solid var(--fail); border-right: 2px solid var(--fail); border-bottom: 2px solid var(--fail); }
+.tour.is-done { background: var(--done); }
+.tour.is-done .tour-body { opacity: 0.55; }
+.num { display: grid; justify-items: center; align-content: start; gap: 10px; padding: 16px 0; border-right: 1px solid var(--rule); }
+.num b { font-family: var(--font-mono); font-size: 1.25rem; font-weight: 600; color: var(--c); font-variant-numeric: tabular-nums; }
+.num input { width: 20px; height: 20px; accent-color: var(--pass); cursor: pointer; }
+.tour-body { padding: 14px 18px 16px; display: grid; gap: 10px; min-width: 0; }
+.who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.who h3 { font-size: 1.1875rem; color: var(--c); }
+.role { font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); }
+.key-tag { font-family: var(--font-mono); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.06em; color: var(--fail); background: var(--fail-soft); padding: 2px 8px; border-radius: 3px; }
+.email { font-family: var(--font-mono); font-size: 0.8125rem; color: var(--ink-soft); word-break: break-all; }
+.where { font-weight: 600; }
+.where::before { content: "→ "; color: var(--ink-soft); }
+ul.inputs { margin: 0; padding-left: 20px; display: grid; gap: 3px; }
+.result { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; padding: 8px 12px; border-radius: 4px; font-size: 0.9375rem; }
+.result .ico { font-family: var(--font-mono); font-weight: 700; }
+.result.ok { background: var(--pass-soft); color: var(--pass); }
+.result.no { background: var(--fail-soft); color: var(--fail); }
+.result.warn { background: var(--warn-soft); color: var(--warn); }
+.result span:last-child { color: var(--ink); }
+table.cases { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
+.cases-scroll { overflow-x: auto; }
+table.cases th, table.cases td { text-align: left; padding: 5px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+table.cases th { font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+
+footer { border-top: 2px solid var(--ink); padding-top: 16px; font-size: 0.875rem; color: var(--ink-soft); display: grid; gap: 4px; }
+
+@media (max-width: 560px) {
+  .tour { grid-template-columns: 44px 1fr; }
+  .tour-body { padding: 12px 12px 14px; }
+  h1 { font-size: 1.625rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media print {
+  .progress, button.reset { display: none; }
+  .tour { break-inside: avoid; }
+  details.accounts { display: block; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">Soutenance · Plateforme qualité DHI</span>
+    <h1>Démo DHI Pay 2.0, tour par tour</h1>
+    <p class="intro">Suis les tours dans l'ordre. À chaque tour, connecte-toi avec la personne indiquée, fais les saisies, vérifie le résultat, puis coche la case.</p>
+    <div class="start">
+      <span>Mot de passe de tous : <code>Demo@DHI2026</code></span>
+      <span>Avant : <code>npm run demo:setup</code> puis <code>npm run demo</code> (dossier <code>backend</code>)</span>
+      <span>Fichiers : <code>docs/demo/</code></span>
+    </div>
+  </header>
+
+  <div class="progress" aria-live="polite">
+    <div class="bar" aria-hidden="true"><span id="bar"></span></div>
+    <span class="count" id="count">0 / 21 tours</span>
+    <button type="button" class="reset" id="reset">Tout décocher</button>
+  </div>
+
+  <details class="accounts">
+    <summary>Les 11 comptes</summary>
+    <div class="acc-grid" id="accounts"></div>
+  </details>
+
+  <ol class="tours" id="tours"></ol>
+
+  <footer>
+    <span>En cas de problème : <code>npm run demo:setup</code> remet tout à zéro en 10 secondes.</span>
+    <span>Version détaillée avec les phrases à dire : <code>docs/demo/SCENARIO_SOUTENANCE.md</code>.</span>
+  </footer>
+</div>
+
+<script>
+const PEOPLE = {
+  sophie: { name: "Sophie Bernard", role: "Responsable qualité", email: "sophie.bernard@demo.example.com" },
+  laura:  { name: "Laura Petit", role: "Product owner", email: "laura.petit@demo.example.com" },
+  karim:  { name: "Karim Haddad", role: "Chef de projet", email: "karim.haddad@demo.example.com" },
+  thomas: { name: "Thomas Morel", role: "Chef testeur", email: "thomas.morel@demo.example.com" },
+  ines:   { name: "Inès Garcia", role: "Testeuse", email: "ines.garcia@demo.example.com" },
+  hugo:   { name: "Hugo Lambert", role: "Testeur", email: "hugo.lambert@demo.example.com" },
+  dina:   { name: "Dina Rousseau", role: "Développeuse", email: "dina.rousseau@demo.example.com" },
+  marc:   { name: "Marc Fontaine", role: "Développeur", email: "marc.fontaine@demo.example.com" },
+  alice:  { name: "Alice Moreau", role: "Approbatrice Go Live", email: "alice.moreau@demo.example.com" },
+  louis:  { name: "Louis Girard", role: "Lecteur", email: "louis.girard@demo.example.com" },
+  admin:  { name: "Admin DHI", role: "Administrateur", email: "admin@demo.example.com" },
+};
+
+const CASES = `<div class="cases-scroll"><table class="cases">
+<thead><tr><th>Nom</th><th>Fonctionnalité</th><th>Type</th><th>Testeur</th></tr></thead>
+<tbody>
+<tr><td><code>Carte valide</code></td><td>Paiement par carte</td><td>Fonctionnel</td><td>Inès</td></tr>
+<tr><td><code>Refus 3-D Secure</code></td><td>Paiement par carte</td><td>Sécurité</td><td>Inès</td></tr>
+<tr><td><code>Remboursement total</code></td><td>Remboursement</td><td>Fonctionnel</td><td>Hugo</td></tr>
+<tr><td><code>Non-régression remboursement</code></td><td>Remboursement</td><td>Régression</td><td>Inès</td></tr>
+</tbody></table></div>`;
+
+// result: [type, texte] avec type ok | no | warn
+const TOURS = [
+  { p: "sophie", where: "Référentiels & règles",
+    inputs: ["RG-8 → mettre <b>5</b> jours → Enregistrer"],
+    results: [["ok", "RG-7 et RG-9 en <b>Bloquant</b>, les autres en <b>Avertissement</b>."]] },
+  { p: "sophie", where: "Produits → Nouveau produit",
+    inputs: ["Nom : <code>DHI Pay</code>", "Description : <code>Plateforme de paiement en ligne</code>", "Propriétaire : <code>Laura Petit</code>", "Responsable QA : <code>Sophie Bernard</code>", "Enregistrer <b>sans version</b> → refusé", "Version : <code>2.0</code> → Enregistrer"],
+    results: [["no", "Sans version : enregistrement refusé."], ["ok", "Le produit DHI Pay version 2.0."]] },
+  { p: "laura", where: "Produits → DHI Pay → Documents → Ajouter",
+    inputs: ["Type : <code>Cahier des charges</code>", "Fichier : <code>cahier-des-charges-dhi-pay-2.0.pdf</code>"],
+    results: [["ok", "Le document dans l'onglet Documents."]] },
+  { p: "karim", where: "Projets → Nouveau projet",
+    inputs: ["Nom : <code>Refonte du paiement</code>", "Objectif : <code>Refondre le tunnel de paiement</code>", "Produit : <code>DHI Pay</code>", "Version cible : <code>2.0</code>", "Responsable test : <code>Thomas Morel</code>"],
+    results: [["ok", "Le projet rattaché à DHI Pay."]] },
+  { p: "thomas", where: "Campagnes → Nouvelle campagne, puis Fonctionnalités",
+    inputs: ["Nom : <code>Recette DHI Pay 2.0</code> · Projet : <code>Refonte du paiement</code> · Version : <code>2.0</code>", "Testeurs : <code>Inès Garcia</code>, <code>Hugo Lambert</code>", "Développeurs : <code>Dina Rousseau</code>, <code>Marc Fontaine</code>", "Fonctionnalité <code>Paiement par carte</code> · <b>Critique</b> · types requis Fonctionnel + Sécurité", "Fonctionnalité <code>Remboursement</code> · <b>Haute</b> · types requis Fonctionnel + Régression"],
+    results: [["ok", "La campagne avec 2 fonctionnalités."]] },
+  { p: "laura", where: "Exigences → Nouvelle exigence",
+    inputs: ["<code>SEC-03 — Challenge 3-D Secure avant validation</code> · Sécurité · Critique · liée à Paiement par carte", "<code>FON-07 — Remboursement crédité sous 48 h</code> · Fonctionnelle · Haute · liée à Remboursement", "<code>PERF-02 — Validation de paiement &lt; 2 s</code> · Performance · Moyenne · <b>aucune fonctionnalité</b>"],
+    results: [["ok", "Analyse des lacunes : PERF-02 sans fonctionnalité (trou de test)."]] },
+  { p: "thomas", where: "Campagne → Cas de test → Ajouter (remplir aussi les préconditions)",
+    table: CASES,
+    inputs: ["Réassigner <code>Non-régression remboursement</code> à <b>Hugo</b>", "Passer la campagne <b>En cours</b>"],
+    results: [["ok", "4 cas « non exécuté », couverture à 0 %."]] },
+  { p: "ines", where: "Campagne → Cas de test → Exécuter",
+    inputs: ["<code>Carte valide</code> → observé : <code>Paiement validé</code> → <b>PASS</b>", "<code>Refus 3-D Secure</code> → observé : <code>Paiement validé sans 3-D Secure</code> → preuve <code>capture-paiement-sans-3ds.png</code> → <b>FAIL</b>"],
+    results: [["ok", "<code>Carte valide</code> verrouillé : Inès ne peut plus le modifier."]] },
+  { p: "hugo", where: "Campagne → Cas de test → Exécuter",
+    inputs: ["<code>Remboursement total</code> → <b>PASS</b>", "<code>Non-régression remboursement</code> → <b>PASS</b>"],
+    results: [] },
+  { p: "ines", where: "Cas Refus 3-D Secure → Déclarer une anomalie",
+    inputs: ["Titre : <code>Paiement validé sans challenge 3-D Secure</code>", "Gravité : <b>Haute</b>", "Développeur affecté : <code>Dina Rousseau</code>", "Capture : <code>capture-paiement-sans-3ds.png</code>"],
+    results: [["ok", "Échéance de correction à <b>aujourd'hui + 5 jours</b> (RG-8)."]] },
+  { p: "thomas", where: "Anomalies → l'anomalie",
+    inputs: ["Développeur affecté → <code>Marc Fontaine</code> → <b>Affecter</b>"],
+    results: [["ok", "Seuls Dina et Marc sont proposés (développeurs de la campagne)."]] },
+  { p: "marc", where: "Cloche, puis l'anomalie",
+    inputs: ["Ouvrir la notification d'affectation", "Statut → <b>En correction</b>", "Statut → <b>À retester</b> (avec une capture en preuve)"],
+    results: [["warn", "Ne fais <b>pas encore</b> valider l'anomalie."]] },
+  { p: "alice", key: true, where: "Go Live Center",
+    inputs: ["Release : <code>2.0 — Refonte du paiement</code>", "Cocher les <b>5 premiers</b> points de la checklist", "Verdict <b>GO</b> · Justification <code>Demande de mise en production</code> → Historiser", "Puis verdict <b>Ajourné</b> · Justification <code>Faille 3-D Secure à corriger</code> → Historiser"],
+    results: [["no", "<b>« Décision refusée »</b> au GO : RG-9, une anomalie haute est encore ouverte."], ["ok", "« Ajourné » enregistré dans l'historique."]] },
+  { p: "thomas", where: "Anomalie, puis campagne",
+    inputs: ["Anomalie → statut <b>Fermée</b> (valider la correction)", "Cas <code>Refus 3-D Secure</code> → <b>Rouvrir</b> l'exécution"],
+    results: [] },
+  { p: "ines", where: "Cas Refus 3-D Secure → Exécuter",
+    inputs: ["<code>Refus 3-D Secure</code> → <b>PASS</b>"],
+    results: [] },
+  { p: "karim", where: "Points à surveiller → Nouveau point",
+    inputs: ["Titre : <code>Pic de charge au lancement</code>", "Criticité : <b>Critique</b>", "Description : <code>Trafic x5 attendu le jour de la mise en production</code>", "Responsable : <code>Karim Haddad</code>"],
+    results: [["ok", "Le point en tête de la colonne « Ouvert » (filtre Critique)."]] },
+  { p: "thomas", where: "Couverture, puis campagne",
+    inputs: ["Couverture → <b>100 %</b>", "Fonctionnalité <code>Paiement par carte</code> → <b>Conforme</b>", "Campagne → <b>Clôturer</b>", "Campagne → <b>Exporter le rapport PDF</b>"],
+    results: [["ok", "RG-4 à RG-7 respectées, campagne terminée."]] },
+  { p: "sophie", where: "Produits → DHI Pay",
+    inputs: ["Montrer le score qualité"],
+    results: [["warn", "Montrer le score avec Sophie ou l'admin, pas avec Alice : elle ne voit pas les campagnes, son score serait faux."]] },
+  { p: "alice", key: true, where: "Go Live Center, release 2.0",
+    inputs: ["Constater : RG-9 est maintenant <b>verte</b>", "Verdict <b>GO</b> · Justification <code>Faille 3DS corrigée, performance à compléter</code> → Historiser", "<b>Confirmer la décision</b>"],
+    results: [["warn", "<b>« Décision à confirmer »</b> : RG-10, checklist à 75 % pour 85 % requis."], ["ok", "Historique : <b>Ajourné</b> puis <b>GO</b>."]] },
+  { p: "louis", where: "Go Live Center",
+    inputs: ["Consulter la release 2.0"],
+    results: [["ok", "Tout est visible, aucune décision possible."]] },
+  { p: "admin", where: "Alertes, puis Audit & historique",
+    inputs: ["Parcourir les alertes", "Ouvrir l'audit"],
+    results: [["ok", "Toutes les actions de la démo, avec qui et quand. Fin."]] },
+];
+
+const ICO = { ok: "✓", no: "✕", warn: "!" };
+const KEY = "dhi-demo-tours-v1";
+let done = new Set();
+try { done = new Set(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...done])); } catch {} };
+
+document.getElementById("accounts").innerHTML = Object.entries(PEOPLE).map(([k, p]) =>
+  `<div class="acc" style="--c: var(--p-${k})"><span class="dot"></span><span><b>${p.name}</b> · ${p.role}<small>${p.email}</small></span></div>`).join("");
+
+const list = document.getElementById("tours");
+list.innerHTML = TOURS.map((t, i) => {
+  const p = PEOPLE[t.p];
+  const n = i + 1;
+  return `<li class="tour${t.key ? " key" : ""}" id="tour-${n}" style="--c: var(--p-${t.p})">
+    <div class="num"><b>${n}</b><input type="checkbox" id="done-${n}" aria-label="Tour ${n} fait"></div>
+    <div class="tour-body">
+      <div class="who"><h3>${p.name}</h3><span class="role">${p.role}</span>${t.key ? '<span class="key-tag">Moment clé</span>' : ""}</div>
+      <span class="email">${p.email}</span>
+      <span class="where">${t.where}</span>
+      ${t.table || ""}
+      <ul class="inputs">${t.inputs.map((x) => `<li>${x}</li>`).join("")}</ul>
+      ${t.results.map(([k, x]) => `<div class="result ${k}"><span class="ico">${ICO[k]}</span><span>${x}</span></div>`).join("")}
+    </div>
+  </li>`;
+}).join("");
+
+function refresh() {
+  TOURS.forEach((_, i) => {
+    const n = i + 1;
+    const on = done.has(n);
+    document.getElementById(`done-${n}`).checked = on;
+    document.getElementById(`tour-${n}`).classList.toggle("is-done", on);
+  });
+  document.getElementById("count").textContent = `${done.size} / ${TOURS.length} tours`;
+  document.getElementById("bar").style.width = `${(done.size / TOURS.length) * 100}%`;
+}
+list.addEventListener("change", (e) => {
+  const n = Number(e.target.id?.replace("done-", ""));
+  if (!n) return;
+  e.target.checked ? done.add(n) : done.delete(n);
+  save(); refresh();
+});
+document.getElementById("reset").addEventListener("click", () => { done.clear(); save(); refresh(); });
+refresh();
+</script>
