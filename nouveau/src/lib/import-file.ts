@@ -47,6 +47,10 @@ export async function readImportSource(file: File): Promise<ImportSource> {
     case "pdf":
       return await readPdf(file);
     case "txt":
+    case "text":
+    case "md":
+    case "log":
+    case "nor":
       return { kind: "nor", text: decodeText(await file.arrayBuffer()) };
     default:
       return { kind: "csv", text: decodeText(await file.arrayBuffer()) };

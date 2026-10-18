@@ -1,0 +1,192 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { toast } from "sonner";
+import { ArrowLeft } from "lucide-react";
+import { AppShell } from "@/components/dhi/AppShell";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  activeUserNamesByRole,
+  products as seedProducts,
+  ROLE_GROUP_QA_LEAD,
+} from "@/lib/dhi-data";
+
+import { loadSnapshot, useStore } from "@/lib/dhi-store";
+import { getUser, productVisibleTo } from "@/lib/access";
+import { ProductAccessDenied } from "@/components/dhi/AccessDenied";
+import { useI18n } from "@/lib/i18n";
+import { api, mapBackendProduct, type BackendProduct } from "@/lib/api";
+
+export const Route = createFileRoute("/produits/$productId/modifier")({
+  loader: ({ params }) => {
+    const snapshot = loadSnapshot();
+    const products = snapshot?.products ?? seedProducts;
+    const p = products.find((x) => x.id === params.productId);
+    return { name: p?.name ?? "Produit" };
+  },
+  head: ({ loaderData }) => ({
+    meta: [{ title: `Modifier ${loaderData?.name ?? "le produit"} — DHI Quality Platform` }],
+  }),
+  component: EditProductPage,
+});
+
+function EditProductPage() {
+  const { productId } = Route.useParams();
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const { products, users, updateProduct, replaceProducts } = useStore();
+  const qaLeadOptions = activeUserNamesByRole(users, ROLE_GROUP_QA_LEAD);
+  const product = products.find((p) => p.id === productId);
+
+  const [form, setForm] = useState(() => ({
+    name: product?.name ?? "",
+    description: product?.description ?? "",
+    owner: product?.owner ?? "",
+    qaLead: product?.qaLead ?? "",
+  }));
+
+  if (product && !productVisibleTo(product, getUser())) {
+    return <ProductAccessDenied subject={product.name} />;
+  }
+  if (!product) return null;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.owner || !form.qaLead) {
+      toast.error(t("pages.products.required"));
+      return;
+    }
+    const owner = users.find((user) => user.name === form.owner);
+    const qaLead = users.find((user) => user.name === form.qaLead);
+    if (!localStorage.getItem("token") || !/^\d+$/.test(product.id)) {
+      updateProduct(product.id, { name: form.name.trim(), description: form.description, owner: form.owner, qaLead: form.qaLead, qaTeam: [form.qaLead] });
+      toast.success(t("pages.products.updated_msg"));
+      void navigate({ to: "/produits" });
+      return;
+    }
+    try {
+      const response = await api<{ product: BackendProduct }>(`/products/${product.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ name: form.name.trim(), description: form.description, owner_id: owner ? Number(owner.id) : null, quality_manager_id: qaLead ? Number(qaLead.id) : null }),
+      });
+      replaceProducts(products.map((item) => item.id === product.id ? { ...mapBackendProduct(response.product), owner: form.owner, qaLead: form.qaLead, qaTeam: [form.qaLead] } : item));
+      toast.success(t("pages.products.updated_msg"));
+      void navigate({ to: "/produits" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("common.erreur"));
+    }
+  };
+
+  return (
+    <AppShell
+      title={t("pages.products.title")}
+      subtitle={t("pages.products.subtitle")}
+      breadcrumb={t("pages.products.breadcrumb")}
+    >
+      <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
+        <div className="-ml-12 mb-6 sm:-ml-16 xl:-ml-20">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate({ to: "/produits" })}
+            className="gap-2"
+          >
+            <ArrowLeft className="size-4" />
+            {t("pages.product_detail.portfolio")}
+          </Button>
+        </div>
+
+        <form onSubmit={submit} className="max-w-4xl space-y-8">
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">
+                {t("pages.products.edit_product")}
+              </h2>
+              <p className="text-sm text-muted-foreground">{t("pages.products.subtitle")}</p>
+            </div>
+
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="p-name" className="text-sm font-medium">
+                  {t("pages.products.name_label")}
+                </Label>
+                <Input
+                  id="p-name"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder={t("pages.products.name_placeholder")}
+                  required
+                  className="h-11"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="p-desc" className="text-sm font-medium">
+                  {t("common.description")}
+                </Label>
+                <Input
+                  id="p-desc"
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  className="h-11"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label className="text-sm font-medium">{t("pages.products.owner")}</Label>
+                  <Input
+                    value={form.owner}
+                    onChange={(e) => setForm((f) => ({ ...f, owner: e.target.value }))}
+                    placeholder={t("pages.products.owner_placeholder")}
+                    className="h-11"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label className="text-sm font-medium">{t("pages.products.qa_lead")}</Label>
+                  <Select
+                    value={form.qaLead}
+                    onValueChange={(v) => setForm((f) => ({ ...f, qaLead: v }))}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder={t("pages.go_live.choose")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {qaLeadOptions.map((p) => (
+                        <SelectItem key={p} value={p}>
+                          {p}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 pt-4 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate({ to: "/produits" })}
+              className="h-11 px-6"
+            >
+              {t("actions.annuler")}
+            </Button>
+            <Button type="submit" className="h-11 px-6">
+              {t("actions.enregistrer")}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </AppShell>
+  );
+}

@@ -21,6 +21,7 @@ import { campaigns as seedCampaigns } from "@/lib/dhi-data";
 import {
   exportCsvTemplate,
   exportNorTemplate,
+  isImportableRow,
   parseImportText,
   type ParsedTestRow,
 } from "@/lib/test-import";
@@ -83,7 +84,7 @@ function AddTestPage() {
       toast.error(t("pages.campaign_detail.erreur_lecture_csv"));
       return;
     }
-    const row = rows.find((r) => r.name.trim()) ?? rows[0];
+    const row = rows.find(isImportableRow) ?? rows.find((r) => r.name.trim()) ?? rows[0];
     if (!row) {
       toast.error(t("pages.campaign_detail.fichier_invalide"));
       return;

@@ -40,6 +40,11 @@ export type ParsedTestRow = {
   errors: string[];
 };
 
+/** Une ligne importable ne porte aucune erreur, a un nom et une fonctionnalite. */
+export function isImportableRow(row: ParsedTestRow): boolean {
+  return row.errors.length === 0 && row.name.trim().length > 0 && row.featureId.length > 0;
+}
+
 export function parseCsvLine(line: string): string[] {
   const result: string[] = [];
   let cur = "";

@@ -1,7 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, FileUp, Upload, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  FileSpreadsheet,
+  FileText,
+  FileUp,
+  Upload,
+  X,
+} from "lucide-react";
 import { AppShell } from "@/components/dhi/AppShell";
 import { CriticalityBadge } from "@/components/dhi/indicators";
 import { Button } from "@/components/ui/button";
@@ -21,17 +30,18 @@ import {
   findTesterOption,
   sampleTesterEmail,
 } from "@/lib/access";
+import { IMPORT_ACCEPT, readImportSource, rowsToCsv } from "@/lib/import-file";
 import { CampaignAccessDenied } from "@/components/dhi/AccessDenied";
 import { canManageCampaign } from "@/lib/role-protection";
 import { campaigns as seedCampaigns } from "@/lib/dhi-data";
+import { cn } from "@/lib/utils";
 import {
-  CSV_SEP,
   exportCsvTemplate,
   exportNorTemplate,
+  isImportableRow,
   parseImportText,
   type ParsedTestRow,
 } from "@/lib/test-import";
-import { IMPORT_ACCEPT, readImportSource, rowsToCsv } from "@/lib/import-file";
 import { campaignTabs } from "@/lib/dhi-nav";
 import { useI18n } from "@/lib/i18n";
 
@@ -52,10 +62,105 @@ export const Route = createFileRoute("/campagnes/$campaignId/importer")({
   component: ImportTestsPage,
 });
 
+function formatBytes(bytes: number): string {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} o`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
+}
+
+function Stepper({
+  labels,
+  active,
+  onSelect,
+}: {
+  labels: string[];
+  active: number;
+  onSelect: (i: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      {labels.map((label, i) => {
+        const done = i < active;
+        const current = i === active;
+        return (
+          <Fragment key={label}>
+            <button
+              type="button"
+              onClick={() => onSelect(i)}
+              title={label}
+              className="flex cursor-pointer items-center gap-2 rounded-full px-1.5 py-1 outline-none transition-colors hover:bg-subtle focus-visible:ring-2 focus-visible:ring-ring/40"
+            >
+              <span
+                className={cn(
+                  "num flex size-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold transition-colors",
+                  done && "border-success bg-success text-success-foreground",
+                  current && "border-primary bg-primary text-primary-foreground",
+                  !done && !current && "border-border bg-card text-muted-foreground",
+                )}
+              >
+                {done ? <CheckCircle2 className="size-3.5" /> : i + 1}
+              </span>
+              <span
+                className={cn(
+                  "hidden text-xs font-medium sm:block",
+                  i <= active ? "text-foreground" : "text-muted-foreground",
+                )}
+              >
+                {label}
+              </span>
+            </button>
+            {i < labels.length - 1 ? (
+              <span
+                className={cn(
+                  "h-px flex-1 rounded-full transition-colors",
+                  i < active ? "bg-success/50" : "bg-border",
+                )}
+              />
+            ) : null}
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+function StatTile({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: number;
+  tone?: "neutral" | "success" | "danger";
+}) {
+  const dot =
+    tone === "success" ? "bg-success" : tone === "danger" ? "bg-danger" : "bg-border-strong";
+  return (
+    <div className="panel-flat flex flex-col gap-1.5 px-4 py-3">
+      <div className="flex items-center gap-2">
+        <span className={cn("size-1.5 rounded-full", dot)} />
+        <p className="label-eyebrow truncate">{label}</p>
+      </div>
+      <span
+        className={cn(
+          "num text-2xl font-semibold leading-none tracking-tight",
+          tone === "success" && "text-success",
+          tone === "danger" && "text-danger",
+        )}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
 function ImportTestsPage() {
   const { campaignId } = Route.useParams();
   const store = useStore();
   const { campaigns, features, products, addTestCase, users } = store;
+  const { t } = useI18n();
+  const navigate = useNavigate();
 
   /** Testeurs sélectionnables : uniquement ceux enregistrés dans la campagne (campaign.testers). */
   const campaign = campaigns.find((c) => c.id === campaignId);
@@ -63,18 +168,25 @@ function ImportTestsPage() {
     () => campaignTesterOptions(users, campaign?.testers),
     [users, campaign?.testers],
   );
-  const { t } = useI18n();
-  const navigate = useNavigate();
 
   const [importFileName, setImportFileName] = useState("");
+  const [importFileSize, setImportFileSize] = useState(0);
   const [importPreview, setImportPreview] = useState<ParsedTestRow[]>([]);
   const [importReady, setImportReady] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [importFormat, setImportFormat] = useState<"csv" | "nor" | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const previewRef = useRef<HTMLDivElement | null>(null);
+  const footerRef = useRef<HTMLDivElement | null>(null);
 
-  const campaignFeatures = useMemo(
-    () => features.filter((f) => f.productId === campaign?.productId),
-    [features, campaign?.productId],
-  );
+  const campaignFeatures = useMemo(() => {
+    const productFeatures = features.filter((f) => f.productId === campaign?.productId);
+    const linkedIds = new Set(campaign?.featureIds ?? []);
+    const extraLinked = features.filter(
+      (f) => linkedIds.has(f.id) && f.productId !== campaign?.productId,
+    );
+    return [...productFeatures, ...extraLinked];
+  }, [features, campaign?.productId, campaign?.featureIds]);
 
   if (campaign && !campaignVisibleTo(campaign, products, getUser())) {
     return <CampaignAccessDenied subject={campaign.name} />;
@@ -87,11 +199,38 @@ function ImportTestsPage() {
   }
   if (!campaign) return null;
 
+  const goBack = () =>
+    navigate({ to: "/campagnes/$campaignId", params: { campaignId: campaign.id } });
+
+  const goToStep = (i: number) => {
+    // Sans fonctionnalité, on guide vers la page de rattachement.
+    if (campaignFeatures.length === 0) {
+      navigate({
+        to: "/campagnes/$campaignId/fonctionnalites",
+        params: { campaignId: campaign.id },
+      });
+      return;
+    }
+    // Sans fichier chargé, toute étape ouvre le sélecteur de fichier.
+    if (i === 0 || importPreview.length === 0) {
+      fileInputRef.current?.click();
+      return;
+    }
+    if (i === 1) {
+      previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    footerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   const handleFilePick = async (file: File) => {
     setImportFileName(file.name);
+    setImportFileSize(file.size);
     setImportPreview([]);
     setImportReady(false);
-
+    setImportFormat(null);
+    // Lecteur commun : CSV/TSV, texte NOR, Excel, Word, PDF ; un CSV Excel
+    // enregistre en ANSI est relu en Windows-1252 (accents preserves).
     let parsed: ParsedTestRow[];
     let norFormat = false;
     try {
@@ -108,35 +247,42 @@ function ImportTestsPage() {
       toast.error(t("pages.campaign_detail.erreur_lecture_csv"));
       return;
     }
-    if (parsed.length === 0) {
-      toast.error(
-        norFormat
-          ? t("pages.campaign_detail.fichier_invalide")
-          : t("pages.campaign_detail.colonne_nom_introuvable"),
+      if (parsed.length === 0) {
+        toast.error(
+          norFormat
+            ? t("pages.campaign_detail.fichier_invalide")
+            : t("pages.campaign_detail.colonne_nom_introuvable"),
+        );
+        return;
+      }
+      setImportPreview(parsed);
+      setImportReady(parsed.some(isImportableRow));
+      setImportFormat(norFormat ? "nor" : "csv");
+      const ok = parsed.filter(isImportableRow).length;
+      const bad = parsed.length - ok;
+      toast(
+        bad
+          ? t("pages.campaign_detail.import_ok_bad")
+              .replace("{ok}", String(ok))
+              .replace("{bad}", String(bad))
+          : t("pages.campaign_detail.import_ok_clean").replace("{ok}", String(ok)),
+        {
+          description: bad ? t("campagne_import.ignorer_lignes") : t("campagne_import.pret_import"),
+          icon: bad ? undefined : <CheckCircle2 className="size-4 text-success" />,
+        },
       );
-      return;
-    }
-    setImportPreview(parsed);
-    setImportReady(parsed.some((p) => !p.errors.length));
-    const ok = parsed.filter((p) => p.errors.length === 0).length;
-    const bad = parsed.length - ok;
-    toast(
-      bad
-        ? t("pages.campaign_detail.import_ok_bad")
-            .replace("{ok}", String(ok))
-            .replace("{bad}", String(bad))
-        : t("pages.campaign_detail.import_ok_clean").replace("{ok}", String(ok)),
-      {
-        description: bad ? t("campagne_import.ignorer_lignes") : t("campagne_import.pret_import"),
-        icon: bad ? undefined : <CheckCircle2 className="size-4 text-success" />,
-      },
-    );
+  };
+
+  const clearFile = () => {
+    setImportFileName("");
+    setImportFileSize(0);
+    setImportPreview([]);
+    setImportReady(false);
+    setImportFormat(null);
   };
 
   const handleImportSubmit = () => {
-    const validRows = importPreview.filter(
-      (r) => r.name.trim().length > 0 && r.featureId.length > 0,
-    );
+    const validRows = importPreview.filter(isImportableRow);
     if (validRows.length === 0) {
       toast.error(t("pages.campaign_detail.aucune_ligne_valide"));
       return;
@@ -147,6 +293,7 @@ function ImportTestsPage() {
       // Résolution du nom de testeur issu du CSV vers un compte réel : sans id
       // numérique, l'affectation ne peut pas être enregistrée.
       const wanted = (row.tester ?? "").trim().toLowerCase();
+      // Testeur designe par e-mail (forme recommandee) ou par nom.
       const match = findTesterOption(testerOptions, users, wanted);
       if (wanted && !match) unassigned++;
       addTestCase({
@@ -172,9 +319,10 @@ function ImportTestsPage() {
     navigate({ to: "/campagnes/$campaignId", params: { campaignId: campaign.id } });
   };
 
-  const importValidCount = importPreview.filter(
-    (r) => r.name.trim().length > 0 && r.featureId.length > 0,
-  ).length;
+  const importValidCount = importPreview.filter(isImportableRow).length;
+  const importErrorCount = importPreview.length - importValidCount;
+  const hasFeatures = campaignFeatures.length > 0;
+  const activeStep = importPreview.length > 0 ? 2 : importFileName ? 1 : 0;
 
   return (
     <AppShell
@@ -185,208 +333,313 @@ function ImportTestsPage() {
     >
       <div className="panel p-6 pl-12 sm:p-8 sm:pl-16 xl:pl-20">
         <div className="-ml-12 mb-6 sm:-ml-16 xl:-ml-20">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              navigate({
-                to: "/campagnes/$campaignId",
-                params: { campaignId: campaign.id },
-              })
-            }
-            className="gap-2"
-          >
+          <Button variant="outline" size="sm" onClick={goBack} className="gap-2">
             <ArrowLeft className="size-4" />
             {t("pages.campaigns.campaigns")}
           </Button>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-lg font-semibold tracking-tight">{t("campagne_import.title")}</h2>
-            <p className="text-xs text-muted-foreground">
-              {t("campagne_import.format_colonnes")} :{" "}
-              <code className="text-[11px]">
-                nom ; fonctionnalite ; criticite ; type ; testeur ; preconditions ; steps ;
-                resultat_attendu ; resultat_obtenu ; commentaires
-              </code>
-              . {t("campagne_import.separateur")} : <strong>{CSV_SEP}</strong>.{" "}
-              {t("pages.campaign_detail.multilignes")}. Format <strong>NOR (.txt)</strong> : titres
-              de sections <em>Préconditions:</em>, <em>Étapes:</em>, <em>Résultats attendus:</em>,{" "}
-              <em>Résultat obtenu:</em>, <em>Commentaire:</em>. Colonnes compatibles aussi avec{" "}
-              <code>expected</code> / <code>observed</code> / <code>comment</code>.
-            </p>
-          </div>
+        <div className="mx-auto max-w-5xl space-y-6">
+          <h2 className="text-lg font-semibold tracking-tight">{t("campagne_import.title")}</h2>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={IMPORT_ACCEPT}
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleFilePick(f);
-                e.target.value = "";
-              }}
-            />
-            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-              <Upload className="size-4 mr-1.5" />
-              {importFileName
-                ? t("campagne_import.autre_fichier")
-                : t("campagne_import.choisir_fichier")}
-            </Button>
-            {importFileName ? (
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success bg-success-soft border border-success/30 rounded-md px-2 py-1">
-                <CheckCircle2 className="size-3.5" />
-                {importFileName}
+          <Stepper
+            labels={[
+              t("campagne_import.etape_fichier"),
+              t("campagne_import.etape_apercu"),
+              t("campagne_import.etape_import"),
+            ]}
+            active={activeStep}
+            onSelect={goToStep}
+          />
+
+          {!hasFeatures ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-danger/30 bg-danger-soft/40 p-3.5 text-xs text-danger">
+              <AlertTriangle className="size-4 shrink-0" />
+              <span className="min-w-0 flex-1">
+                <strong>{t("pages.campaign_detail.aucune_fonctionnalite")}</strong> —{" "}
+                {t("campagne_import.aucune_fonctionnalite_detail")}
               </span>
-            ) : null}
-            <div className="ml-auto flex items-center gap-2">
               <Button
-                variant="ghost"
                 size="sm"
-                onClick={() => exportCsvTemplate(campaignFeatures, sampleTesterEmail(testerOptions, users))}
-                title="Modèle CSV"
+                variant="outline"
+                onClick={() =>
+                  navigate({
+                    to: "/campagnes/$campaignId/fonctionnalites",
+                    params: { campaignId: campaign.id },
+                  })
+                }
               >
-                <FileUp className="size-4 mr-1.5" /> {t("campagne_import.telecharger_modele")}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => exportNorTemplate(campaignFeatures, sampleTesterEmail(testerOptions, users))}
-                title="Modèle NOR (.txt)"
-              >
-                <FileUp className="size-4 mr-1.5" /> NOR (.txt)
+                {t("campagne_import.rattacher_fonctionnalites")}
               </Button>
             </div>
-          </div>
+          ) : null}
 
-          <div className="rounded-md border border-border bg-subtle/50 p-2.5 text-[11px] text-muted-foreground leading-relaxed">
-            <p className="font-medium text-foreground mb-1">{t("campagne_import.aide_titre")} :</p>
-            <ul className="list-disc pl-4 space-y-0.5">
-              <li>
-                <code>fonctionnalite</code> {t("pages.campaign_detail.aide_fonctionnalite")}
-              </li>
-              <li>
-                <code>criticite</code> : critique, haute, moyenne, basse.
-              </li>
-              <li>
-                <code>type</code> : fonctionnel, regression, securite, performance, etc.
-              </li>
-              <li>
-                <code>
-                  preconditions / steps / resultat_attendu / resultat_obtenu / commentaires
-                </code>{" "}
-                : {t("pages.campaign_detail.aide_separateurs")}
-              </li>
-            </ul>
-          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={`${IMPORT_ACCEPT},.tsv,.tab,.text,.md,.log,.nor`}
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void handleFilePick(f);
+              e.target.value = "";
+            }}
+          />
 
-          <div className="overflow-auto rounded-md border border-border">
-            {importPreview.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-14 text-center text-muted-foreground">
-                <FileUp className="size-10 opacity-50" />
-                <p className="text-sm">{t("campagne_import.aucun_fichier")}</p>
-                <p className="text-xs">{t("pages.campaign_detail.choisir_csv_preview")}</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader className="sticky top-0 bg-subtle/90 backdrop-blur">
-                  <TableRow>
-                    <TableHead className="text-[11px]">#</TableHead>
-                    <TableHead className="text-[11px]">{t("common.nom")}</TableHead>
-                    <TableHead className="text-[11px]">{t("common.fonctionnalite")}</TableHead>
-                    <TableHead className="text-[11px]">
-                      {t("pages.campaign_detail.crit_short")}
-                    </TableHead>
-                    <TableHead className="text-[11px]">{t("common.type")}</TableHead>
-                    <TableHead className="text-[11px]">
-                      {t("pages.campaign_detail.etapes")}
-                    </TableHead>
-                    <TableHead className="text-[11px]">{t("common.statut")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {importPreview.map((row, i) => (
-                    <TableRow
-                      key={i}
-                      className={row.errors.length ? "bg-danger-soft/40" : undefined}
-                    >
-                      <TableCell className="num text-xs">{i + 1}</TableCell>
-                      <TableCell className="text-xs max-w-[220px] truncate" title={row.name}>
-                        <span className="font-medium truncate">
-                          {row.name || t("pages.campaign_detail.vide_paren")}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-xs max-w-[160px] truncate">
-                        {features.find((f) => f.id === row.featureId)?.name ??
-                          (row.featureId ? `ID:${row.featureId}` : "—")}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        <CriticalityBadge level={row.criticality} />
-                      </TableCell>
-                      <TableCell className="text-xs capitalize">
-                        {row.type.replace(/_/g, " ")}
-                      </TableCell>
-                      <TableCell className="num text-xs">
-                        {row.steps.length}{" "}
-                        {row.steps.length > 1
-                          ? t("pages.campaign_detail.steps_plural")
-                          : t("pages.campaign_detail.step_singular")}
-                      </TableCell>
-                      <TableCell className="text-xs max-w-[200px]">
-                        {row.errors.length === 0 ? (
-                          <span className="inline-flex items-center gap-1 text-success">
-                            <CheckCircle2 className="size-3.5" /> {t("common.ok")}
-                          </span>
-                        ) : (
-                          <div className="flex flex-col text-danger" title={row.errors.join(" — ")}>
-                            {row.errors.slice(0, 1).map((err, j) => (
-                              <span key={j} className="truncate">
-                                ⚠ {err}
-                              </span>
-                            ))}
-                            {row.errors.length > 1 ? (
-                              <span className="text-[10px] text-muted-foreground">
-                                +{row.errors.length - 1} {t("campagne_import.avertissements")}
-                              </span>
-                            ) : null}
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+          <div
+            role="button"
+            tabIndex={hasFeatures ? 0 : -1}
+            aria-disabled={!hasFeatures}
+            onClick={() => hasFeatures && fileInputRef.current?.click()}
+            onKeyDown={(e) => {
+              if ((e.key === "Enter" || e.key === " ") && hasFeatures) {
+                e.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
+            onDragOver={(e) => {
+              if (!hasFeatures) return;
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              if (!hasFeatures) return;
+              const f = e.dataTransfer.files?.[0];
+              if (f) void handleFilePick(f);
+            }}
+            className={cn(
+              "group relative flex cursor-pointer flex-col items-center justify-center gap-3 overflow-hidden rounded-xl border border-dashed px-6 py-9 text-center outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40",
+              dragOver
+                ? "border-primary bg-secondary/70"
+                : "border-border-strong bg-subtle/40 hover:border-foreground/40 hover:bg-subtle",
+              !hasFeatures && "cursor-not-allowed opacity-60",
             )}
-          </div>
-
-          <div className="flex items-center gap-3 pt-4 border-t border-border">
-            <div className="flex-1 text-xs text-muted-foreground">
-              {importPreview.length > 0 ? (
-                <>
-                  {t("pages.campaign_detail.lignes_importables")
-                    .replace(
-                      "{ok}",
-                      String(importPreview.filter((r) => r.errors.length === 0).length),
-                    )
-                    .replace("{total}", String(importPreview.length))}{" "}
-                  {t("campagne_import.ignorer_lignes")}
-                </>
-              ) : null}
+          >
+            <div className="grid-faint pointer-events-none absolute inset-0" aria-hidden />
+            <span
+              className={cn(
+                "relative flex size-11 items-center justify-center rounded-full border transition-all",
+                dragOver
+                  ? "border-primary bg-primary text-primary-foreground scale-105"
+                  : "border-border bg-card text-foreground group-hover:scale-105",
+              )}
+            >
+              <Upload className="size-5" />
+            </span>
+            <div className="relative space-y-1">
+              <p className="text-sm font-medium">
+                {dragOver ? t("campagne_import.drop_actif") : t("campagne_import.drop_titre")}
+              </p>
+              <p className="pt-0.5 text-[11px] text-muted-foreground">
+                {t("campagne_import.drop_formats")}
+              </p>
             </div>
             <Button
               type="button"
-              variant="outline"
-              onClick={() =>
-                navigate({
-                  to: "/campagnes/$campaignId",
-                  params: { campaignId: campaign.id },
-                })
-              }
-              className="h-11 px-6"
+              size="sm"
+              disabled={!hasFeatures}
+              className="relative mt-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }}
             >
+              <FileUp className="size-3.5" /> {t("campagne_import.choisir_fichier_cta")}
+            </Button>
+          </div>
+
+          {importFileName ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-success/30 bg-success-soft/50 px-3.5 py-2.5">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-success/30 bg-card text-success">
+                <FileText className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-2 truncate text-xs font-medium text-foreground">
+                  <span className="truncate">{importFileName}</span>
+                  {importFormat ? (
+                    <span
+                      className={cn(
+                        "shrink-0 rounded border px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide",
+                        importFormat === "csv"
+                          ? "border-primary/30 bg-primary/5 text-primary"
+                          : "border-success/30 bg-success/10 text-success",
+                      )}
+                    >
+                      {importFormat === "csv" ? "CSV" : "NOR (.txt)"}
+                    </span>
+                  ) : null}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {formatBytes(importFileSize)} ·{" "}
+                  {importPreview.length > 0
+                    ? t("pages.campaign_detail.lignes_importables")
+                        .replace("{ok}", String(importValidCount))
+                        .replace("{total}", String(importPreview.length))
+                    : t("campagne_import.pret_import")}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={!hasFeatures}
+                >
+                  <FileUp className="size-3.5" /> {t("campagne_import.remplacer_fichier")}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={clearFile}
+                  title={t("campagne_import.retirer_fichier")}
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          <p className="label-eyebrow">{t("campagne_import.exemple_titre")}</p>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="panel-flat flex items-center gap-3 p-3.5">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-subtle text-foreground">
+                <FileSpreadsheet className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold tracking-tight">
+                  {t("campagne_import.format_csv_titre")}
+                </p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                  {t("campagne_import.format_csv_desc")}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportCsvTemplate(campaignFeatures, sampleTesterEmail(testerOptions, users))}
+                disabled={!hasFeatures}
+              >
+                <FileUp className="size-3.5" /> {t("campagne_import.exemple_csv")}
+              </Button>
+            </div>
+
+            <div className="panel-flat flex items-center gap-3 p-3.5">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-subtle text-foreground">
+                <FileText className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold tracking-tight">
+                  {t("campagne_import.format_nor_titre")}
+                </p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                  {t("campagne_import.format_nor_desc")}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportNorTemplate(campaignFeatures, sampleTesterEmail(testerOptions, users))}
+                disabled={!hasFeatures}
+              >
+                <FileUp className="size-3.5" /> {t("campagne_import.exemple_txt")}
+              </Button>
+            </div>
+          </div>
+
+          {importPreview.length > 0 ? (
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                <StatTile label={t("campagne_import.lignes_detectees")} value={importPreview.length} />
+                <StatTile label={t("campagne_import.lignes_ok")} value={importValidCount} tone="success" />
+                <StatTile label={t("campagne_import.lignes_erreurs")} value={importErrorCount} tone="danger" />
+              </div>
+
+              <div ref={previewRef} className="scroll-mt-6 space-y-2">
+                <p className="label-eyebrow">{t("campagne_import.apercu_titre")}</p>
+                <div className="overflow-auto rounded-xl border border-border">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-subtle/90 backdrop-blur">
+                      <TableRow>
+                        <TableHead className="w-10 text-[11px]">#</TableHead>
+                        <TableHead className="text-[11px]">{t("common.nom")}</TableHead>
+                        <TableHead className="text-[11px]">{t("common.fonctionnalite")}</TableHead>
+                        <TableHead className="text-[11px]">
+                          {t("pages.campaign_detail.crit_short")}
+                        </TableHead>
+                        <TableHead className="text-[11px]">{t("common.type")}</TableHead>
+                        <TableHead className="text-[11px]">
+                          {t("pages.campaign_detail.etapes")}
+                        </TableHead>
+                        <TableHead className="text-[11px]">{t("common.statut")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {importPreview.map((row, i) => {
+                        const valid = isImportableRow(row);
+                        return (
+                          <TableRow key={i} className={!valid ? "bg-danger-soft/40" : undefined}>
+                            <TableCell className="num text-xs text-muted-foreground">
+                              {i + 1}
+                            </TableCell>
+                            <TableCell className="max-w-[220px] truncate text-xs" title={row.name}>
+                              <span className="font-medium">
+                                {row.name || t("pages.campaign_detail.vide_paren")}
+                              </span>
+                            </TableCell>
+                            <TableCell className="max-w-[160px] truncate text-xs">
+                              {features.find((f) => f.id === row.featureId)?.name ??
+                                (row.featureId ? `ID:${row.featureId}` : "—")}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <CriticalityBadge level={row.criticality} />
+                            </TableCell>
+                            <TableCell className="text-xs capitalize">
+                              {row.type.replace(/_/g, " ")}
+                            </TableCell>
+                            <TableCell className="num text-xs">
+                              {row.steps.length}{" "}
+                              {row.steps.length > 1
+                                ? t("pages.campaign_detail.steps_plural")
+                                : t("pages.campaign_detail.step_singular")}
+                            </TableCell>
+                            <TableCell className="max-w-[220px] text-xs">
+                              {valid ? (
+                                <span className="inline-flex items-center gap-1 text-success">
+                                  <CheckCircle2 className="size-3.5" /> {t("common.ok")}
+                                </span>
+                              ) : (
+                                <div
+                                  className="flex flex-col gap-0.5 text-danger"
+                                  title={row.errors.join(" — ")}
+                                >
+                                  {row.errors.map((err, j) => (
+                                    <span key={j} className="inline-flex items-start gap-1">
+                                      <AlertTriangle className="mt-px size-3 shrink-0" />
+                                      <span className="truncate">{err}</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </>
+          ) : null}
+
+          <div
+            ref={footerRef}
+            className="scroll-mt-6 flex items-center justify-end gap-3 border-t border-border pt-4"
+          >
+            <Button type="button" variant="outline" onClick={goBack} className="h-11 px-6">
               <X className="size-4 mr-1.5" /> {t("actions.annuler")}
             </Button>
             <Button
